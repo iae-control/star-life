@@ -18,6 +18,7 @@ export class StageIntroScene extends Phaser.Scene {
   private session!: GameSession;
   private spaceBg!: SpaceBackground;
   private elapsed = 0;
+  private started = false;
 
   constructor() {
     super(SceneKeys.StageIntro);
@@ -26,6 +27,7 @@ export class StageIntroScene extends Phaser.Scene {
   create(data: { session: GameSession }): void {
     this.session = data.session;
     this.elapsed = 0;
+    this.started = false;
     const level = DATA.levels.levels[this.session.level - 1] ?? DATA.levels.levels[0]!;
 
     this.spaceBg = new SpaceBackground(this, -10, level.background);
@@ -73,7 +75,8 @@ export class StageIntroScene extends Phaser.Scene {
 
     // 2.2초 후 자동 진입 (탭/키로 스킵)
     const go = (): void => {
-      if (!this.scene.isActive(SceneKeys.StageIntro)) return;
+      if (this.started || !this.scene.isActive(SceneKeys.StageIntro)) return;
+      this.started = true;
       this.scene.start(SceneKeys.Game, { session: this.session });
     };
     this.time.delayedCall(2200, go);

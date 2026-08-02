@@ -341,6 +341,7 @@ export const levelsSchema = z.object({
 });
 
 export const shopSchema = z.object({
+  creditRate: z.number().min(0).max(1),
   power: z.object({ base: z.number(), perLevel: z.number() }),
   shield: z.object({
     base: z.number(),

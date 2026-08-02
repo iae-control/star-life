@@ -34,7 +34,8 @@ export class PreloadScene extends Phaser.Scene {
     // Boot/Preload로의 점프는 자기 재시작 무한루프가 되므로 제외한다.
     if (import.meta.env.DEV) {
       const jump = new URLSearchParams(window.location.search).get('scene');
-      if (isSceneKey(jump) && jump !== SceneKeys.Boot && jump !== SceneKeys.Preload) {
+      // 세션 없이 시작 가능한 씬만 허용 (Shop/StageIntro/Result는 세션 필요 → 크래시)
+      if (isSceneKey(jump) && (jump === SceneKeys.Title || jump === SceneKeys.Game)) {
         this.scene.start(jump);
         return;
       }

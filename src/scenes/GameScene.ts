@@ -62,6 +62,7 @@ interface Enemy {
   cx?: number;
   cy?: number;
   ang?: number;
+  rr?: number;
   img: Phaser.GameObjects.Image;
 }
 interface BossState {
@@ -76,6 +77,7 @@ interface BossState {
   hcd: number;
   dir: number;
   flashT: number;
+  entered: boolean;
   spiralAngle: number;
   wanderTx: number;
   wanderTy: number;
@@ -249,7 +251,7 @@ export class GameScene extends Phaser.Scene {
     super(SceneKeys.Game);
   }
 
-  create(data?: { session?: GameSession }): void {
+  create(data?: { session?: GameSession; replayWave?: boolean }): void {
     // 씬 재시작마다 상태 초기화 (씬 인스턴스는 재사용됨)
     this.session = data?.session ?? newSession();
     this.bullets = [];
@@ -321,15 +323,40 @@ export class GameScene extends Phaser.Scene {
     this.setupInput();
     if (this.debug) this.createDebug();
 
-    // 데이터 핫리로드 → 세션 유지한 채 씬 재시작
+    // 데이터 핫리로드 → 세션 유지한 채 현재 웨이브부터 재생
     const onDataReload = (): void => {
-      if (this.scene.isActive(SceneKeys.Game)) this.scene.restart({ session: this.session });
+      if (!this.scene.isActive(SceneKeys.Game)) return;
+      if (this.pendingShop > 0 && !this.session.campaignDone) {
+        // 보스 격파~상점 전환 창: 상점을 건너뛰지 않도록 곧장 상점으로
+        this.scene.start(SceneKeys.Shop, { session: this.session });
+        return;
+      }
+      this.scene.restart({ session: this.session, replayWave: true });
     };
     this.game.events.on('data-reloaded', onDataReload);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.game.events.off('data-reloaded', onDataReload);
     });
 
+    if (this.session.campaignDone) {
+      // 완주 세션으로 재진입(핫리로드 등) — 빈 레벨 소프트락 대신 완료 화면
+      this.time.delayedCall(0, () => {
+        saveBest(this.session.score);
+        this.scene.pause();
+        this.scene.launch(SceneKeys.Result, { session: this.session, mode: 'complete' });
+      });
+      return;
+    }
+    // 핫리로드 재시작이면 방금 웨이브를 다시 재생 (카운터는 nextWave가 재증가)
+    if (
+      data?.replayWave &&
+      this.session.levelWave > 0 &&
+      this.session.levelWave <= this.level.waves.length
+    ) {
+      this.session.levelWave--;
+      this.session.wave = Math.max(0, this.session.wave - 1);
+    }
+    if (!this.auto && !document.hasFocus()) this.togglePause(true);
     this.nextWave();
   }
 
@@ -459,11 +486,21 @@ export class GameScene extends Phaser.Scene {
       this.debugGfx.clear();
     });
     kb?.on('keydown-N', () => {
+      if (this.pendingShop > 0) return;
+      if (this.boss) {
+        // 보스는 정식 격파 처리로 넘긴다 (레벨 전이 일관성)
+        this.damageBoss(this.boss.hp + 1);
+        return;
+      }
       this.clearField();
       this.nextWave();
     });
-    kb?.on('keydown-J', () => this.scrubWave(5));
-    kb?.on('keydown-K', () => this.scrubWave(-5));
+    kb?.on('keydown-J', () => {
+      if (this.pendingShop <= 0 && !this.boss) this.scrubWave(5);
+    });
+    kb?.on('keydown-K', () => {
+      if (this.pendingShop <= 0 && !this.boss) this.scrubWave(-5);
+    });
     kb?.on('keydown-L', () => {
       this.session.level = (this.session.level % DATA.levels.levels.length) + 1;
       this.session.levelWave = 0;
@@ -622,8 +659,9 @@ export class GameScene extends Phaser.Scene {
 
   /* ---------- 웨이브 ---------- */
   private nextWave(): void {
+    const li = Math.min(this.session.level, DATA.levels.levels.length) - 1;
     const isBossWave = this.session.levelWave >= this.level.waves.length;
-    this.spawnQ = buildLevelWave(this.session.level - 1, this.session.levelWave);
+    this.spawnQ = buildLevelWave(li, this.session.levelWave);
     if (!isBossWave) {
       this.session.wave++;
       this.session.levelWave++;
@@ -730,11 +768,12 @@ export class GameScene extends Phaser.Scene {
       t: 0,
       hp,
       hpMax: hp,
-      phase: 0,
+      phase: -1,
       cool: 1.2,
       hcd: 0,
       dir: 1,
       flashT: 0,
+      entered: false,
       spiralAngle: Math.PI / 2,
       wanderTx: GAME_WIDTH / 2,
       wanderTy: def.entryY,
@@ -856,19 +895,19 @@ export class GameScene extends Phaser.Scene {
     e.dead = true;
     this.session.kills++;
     this.session.score += e.score;
-    this.session.credits += e.score;
+    this.session.credits += Math.round(e.score * DATA.shop.creditRate);
     this.addBoom(e.x, e.y, 1.3, false);
     this.addFloatText(e.x, e.y, `+${e.score}`, '#ffd76a');
     const orb = DATA.enemies.orb;
     const chance = e.def.behavior === 'turret' ? orb.chanceTurret : orb.chance;
-    if (Math.random() < orb.chance || (e.def.behavior === 'turret' && Math.random() < chance))
-      this.dropOrb(e.x, e.y);
+    if (Math.random() < chance) this.dropOrb(e.x, e.y);
     // 분열체: 사망 시 파생 스폰
     if (e.def.onDeath) {
       const sp = e.def.onDeath.spawn;
+      // 충돌 킬 시 플레이어 위치에 겹쳐 즉사하지 않도록 약간 위쪽에 흩뿌린다
       for (let k = 0; k < sp.count; k++)
-        this.spawnEnemyAt(sp.type, e.x + rnd(-14, 14), e.y + rnd(-8, 8), {
-          vx: rnd(-60, 60),
+        this.spawnEnemyAt(sp.type, e.x + rnd(-22, 22), e.y - rnd(28, 48), {
+          vx: rnd(-70, 70),
         });
     }
   }
@@ -887,7 +926,7 @@ export class GameScene extends Phaser.Scene {
         });
       }
       this.session.score += B.def.killScore;
-      this.session.credits += B.def.killScore;
+      this.session.credits += Math.round(B.def.killScore * DATA.shop.creditRate);
       this.addFloatText(bx, by, `+${B.def.killScore}`, '#7ef7ff');
       B.img.clearTint();
       this.pool.release(B.img);
@@ -1258,6 +1297,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateWaves(dt: number): void {
+    // 보스 격파~상점/완료 전환 대기 중에는 웨이브 진행 금지
+    // (슈퍼 진행으로 전환이 보류된 동안 다음 레벨 웨이브가 오염 스폰되는 것 방지)
+    if (this.pendingShop > 0) return;
     this.waveT += dt;
     for (let i = this.spawnQ.length - 1; i >= 0; i--) {
       const ev = this.spawnQ[i];
@@ -1379,8 +1421,9 @@ export class GameScene extends Phaser.Scene {
         } else {
           e.cy = (e.cy ?? 0) + p.centerDriftY * dt;
           e.ang = (e.ang ?? 0) + p.orbitSpeed * dt;
-          e.x = (e.cx ?? e.x) + Math.cos(e.ang ?? 0) * p.orbitRadius;
-          e.y = (e.cy ?? e.y) + Math.sin(e.ang ?? 0) * p.orbitRadius;
+          e.rr = Math.min(p.orbitRadius, (e.rr ?? 0) + p.orbitRadius * 2.2 * dt);
+          e.x = (e.cx ?? e.x) + Math.cos(e.ang ?? 0) * (e.rr ?? 0);
+          e.y = (e.cy ?? e.y) + Math.sin(e.ang ?? 0) * (e.rr ?? 0);
           e.life = (e.life ?? p.life) - dt;
           e.fireT = (e.fireT ?? 0) - dt;
           if ((e.fireT ?? 0) <= 0 && this.alive) {
@@ -1404,7 +1447,8 @@ export class GameScene extends Phaser.Scene {
         const b = this.bullets[j];
         if (!b) continue;
         if (aabb(b.x, b.y, b.w, b.h, e.x, e.y, hb.w, hb.h)) {
-          e.hp -= b.dmg;
+          // 관통탄은 겹친 프레임마다 히트하므로 60fps 기준으로 정규화
+          e.hp -= b.pierce > 0 ? b.dmg * Math.min(3, dt * 60) : b.dmg;
           e.flashT = 0.05;
           if (b.pierce > 0) b.pierce--;
           else {
@@ -1445,8 +1489,13 @@ export class GameScene extends Phaser.Scene {
     const def = B.def;
     B.t += dt;
     if (B.hcd > 0) B.hcd -= dt;
-    if (B.y < def.entryY) B.y += def.entrySpd * dt;
-    else {
+    if (!B.entered) {
+      B.y += def.entrySpd * dt;
+      if (B.y >= def.entryY) {
+        B.entered = true;
+        B.cx = B.x;
+      }
+    } else {
       const mv = def.movement;
       if (mv.type === 'patrol') {
         B.x += B.dir * (mv.base + this.session.wave * mv.perWave) * dt;
@@ -1504,7 +1553,7 @@ export class GameScene extends Phaser.Scene {
           this.bullets.splice(j, 1);
         }
         B.flashT = 0.05;
-        this.damageBoss(b.dmg);
+        this.damageBoss(b.pierce > 0 ? b.dmg * Math.min(3, dt * 60) : b.dmg);
         if (!this.boss) return;
       }
     }
@@ -1548,7 +1597,7 @@ export class GameScene extends Phaser.Scene {
             this.addFloatText(this.px, this.py - 21, t('game.powerup'), '#8aff8a');
           } else {
             this.session.score += orb.maxPowerBonusScore;
-            this.session.credits += orb.maxPowerBonusScore;
+            this.session.credits += Math.round(orb.maxPowerBonusScore * DATA.shop.creditRate);
             this.addFloatText(this.px, this.py - 21, `+${orb.maxPowerBonusScore}`, '#8aff8a');
           }
         } else {
