@@ -5,6 +5,8 @@ export interface ShopPlayerState {
   credits: number;
   weapons: Partial<Record<string, number>>;
   cur: string;
+  rear: string | null;
+  sidekick: string | null;
   shieldMax: number;
   armorMax: number;
   shield: number;
@@ -13,7 +15,7 @@ export interface ShopPlayerState {
 }
 
 export interface UpgradeItem {
-  id: 'power' | 'shield' | 'armor' | 'super';
+  id: 'shield' | 'armor' | 'super';
   price: (s: ShopPlayerState) => number;
   can: (s: ShopPlayerState) => boolean;
   stat: (s: ShopPlayerState) => string;
@@ -23,15 +25,6 @@ export interface UpgradeItem {
 export const curLevel = (s: ShopPlayerState): number => s.weapons[s.cur] ?? 1;
 
 export const UPGRADE_ITEMS: UpgradeItem[] = [
-  {
-    id: 'power',
-    price: (s) => DATA.shop.power.base + curLevel(s) * DATA.shop.power.perLevel,
-    can: (s) => curLevel(s) < MAX_WEAPON_LEVEL,
-    stat: (s) => `Lv ${curLevel(s)}/${MAX_WEAPON_LEVEL}`,
-    apply: (s) => {
-      s.weapons[s.cur] = curLevel(s) + 1;
-    },
-  },
   {
     id: 'shield',
     price: (s) =>
@@ -67,7 +60,12 @@ export const UPGRADE_ITEMS: UpgradeItem[] = [
 
 export type ShopActionResult = 'bought' | 'equipped' | 'denied' | 'noop';
 
-/** 무기 행 액션: 미보유면 구매+장착, 보유면 장착 전환. */
+export function powerPrice(s: ShopPlayerState, key: string): number {
+  const lv = s.weapons[key] ?? 1;
+  return DATA.shop.power.base + lv * DATA.shop.power.perLevel;
+}
+
+/** 무기 행 통합 액션: 미보유=구매+장착, 보유·미장착=장착, 장착중=파워업 (피드백 2) */
 export function weaponAction(s: ShopPlayerState, key: string): ShopActionResult {
   const def = DATA.weapons.weapons[key];
   if (!def) return 'noop';
@@ -82,7 +80,33 @@ export function weaponAction(s: ShopPlayerState, key: string): ShopActionResult 
     s.cur = key;
     return 'equipped';
   }
-  return 'noop';
+  const lv = s.weapons[key] ?? 1;
+  if (lv >= MAX_WEAPON_LEVEL) return 'noop';
+  const price = powerPrice(s, key);
+  if (s.credits < price) return 'denied';
+  s.credits -= price;
+  s.weapons[key] = lv + 1;
+  return 'bought';
+}
+
+/** 장비(후방/사이드킥) 행 액션: 미보유=구매+장착, 보유=탈부착 토글 */
+export function equipAction(
+  s: ShopPlayerState,
+  slot: 'rear' | 'sidekick',
+  key: string,
+): ShopActionResult {
+  const def = DATA.equipment[slot][key];
+  if (!def) return 'noop';
+  // 보유=장착 단일 모델: 구매 시 즉시 장착, 같은 행을 다시 누르면 탈착(환불 없음),
+  // 다른 장비를 사면 교체(이전 장비 소멸)
+  if (s[slot] === key) {
+    s[slot] = null;
+    return 'equipped';
+  }
+  if (s.credits < def.price) return 'denied';
+  s.credits -= def.price;
+  s[slot] = key;
+  return 'bought';
 }
 
 export function itemAction(s: ShopPlayerState, item: UpgradeItem): ShopActionResult {

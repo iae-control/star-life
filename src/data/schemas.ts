@@ -263,6 +263,26 @@ export const bossesSchema = z.object({
       cool: waveCurve,
       fireOffsetY: z.number(),
       phases: z.array(bossPhaseSchema).min(1),
+      /** 파괴 가능한 부위 — shield=true 부위가 하나라도 살아 있으면 코어 무적 */
+      parts: z
+        .array(
+          z.object({
+            id: z.string(),
+            sprite: z.string(),
+            dx: z.number(),
+            dy: z.number(),
+            hp: hpCurve,
+            hitbox: z.object({ w: z.number(), h: z.number() }),
+            shield: z.boolean(),
+            phase: bossPhaseSchema.optional(),
+            fireEvery: z.number().optional(),
+          }),
+        )
+        .optional(),
+      /** 블랙홀 기믹: 플레이어 탄·기체를 끌어당기는 중력 */
+      gravity: z
+        .object({ radius: z.number(), pull: z.number(), playerPull: z.number() })
+        .optional(),
       killScore: z.number().int(),
       shopDelay: z.number(),
       hitCooldown: z.number(),
@@ -329,7 +349,15 @@ export const levelsSchema = z.object({
         nameKey: z.string(),
         taglineKey: z.string(),
         background: z.object({
-          theme: z.enum(['nebula', 'protostar', 'mainseq', 'asteroids']),
+          theme: z.enum([
+            'nebula',
+            'protostar',
+            'mainseq',
+            'asteroids',
+            'redgiant',
+            'supernova',
+            'blackhole',
+          ]),
           nebulaAlpha: z.number().min(0).max(1),
         }),
         scroll: z.object({ base: z.number(), perWave: z.number(), boss: z.number() }),
@@ -360,6 +388,18 @@ export const shopSchema = z.object({
   super: z.object({ price: z.number(), cap: z.number().int() }),
 });
 
+const equipBase = {
+  name: z.string(),
+  descKey: z.string(),
+  price: z.number().int().min(0),
+  color: hex,
+  fireEvery: z.number().positive(),
+};
+export const equipmentSchema = z.object({
+  rear: z.record(z.string(), z.object({ ...equipBase, kind: z.enum(['tail', 'side', 'homing']) })),
+  sidekick: z.record(z.string(), z.object({ ...equipBase, kind: z.enum(['pods', 'satellite']) })),
+});
+
 export const i18nSchema = z.record(z.string(), z.string());
 
 export type WeaponsData = z.infer<typeof weaponsSchema>;
@@ -373,4 +413,6 @@ export type WaveGroup = z.infer<typeof waveGroupSchema>;
 export type LevelsData = z.infer<typeof levelsSchema>;
 export type LevelData = LevelsData['levels'][number];
 export type ShopData = z.infer<typeof shopSchema>;
+export type EquipmentData = z.infer<typeof equipmentSchema>;
+export type EquipItem = EquipmentData['rear'][string];
 export type I18nData = z.infer<typeof i18nSchema>;

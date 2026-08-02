@@ -91,7 +91,7 @@ for (let done = 0; done < totalFrames; done += CHUNK_FRAMES) {
     await page.evaluate(() => {
       const g = window.__game;
       const shop = g.scene.getScene('Shop');
-      shop?.act?.(9); // 마지막 행 = 출격
+      shop?.act?.(shop.rows?.length ?? 13); // 마지막 인덱스 = 출격
     });
   }
   const line = `[soak] ${Math.round(((done + n) / totalFrames) * 100)}% simT=${s.simT}s L${s.level} wave=${s.wave} score=${s.score} ent(b=${s.bullets},eb=${s.ebullets},e=${s.enemies},ph=${s.phantoms}) children=${s.children} heap=${s.heapMB}MB${s.boss ? ' BOSS' : ''}${s.superActive ? ' SUPER' : ''}`;

@@ -1,18 +1,21 @@
 // 콘텐츠 데이터 레지스트리 — JSON이 단일 출처(PLAN 3장). zod 검증 + 개발 핫리로드.
 import rawBosses from './bosses.json';
 import rawEnemies from './enemies.json';
+import rawEquipment from './equipment.json';
 import rawEn from './i18n/en.json';
 import rawKo from './i18n/ko.json';
 import rawLevels from './levels.json';
 import {
   bossesSchema,
   enemiesSchema,
+  equipmentSchema,
   i18nSchema,
   levelsSchema,
   shopSchema,
   weaponsSchema,
   type BossesData,
   type EnemiesData,
+  type EquipmentData,
   type I18nData,
   type LevelsData,
   type ShopData,
@@ -24,6 +27,7 @@ import rawWeapons from './weapons.json';
 export interface GameData {
   weapons: WeaponsData;
   enemies: EnemiesData;
+  equipment: EquipmentData;
   bosses: BossesData;
   levels: LevelsData;
   shop: ShopData;
@@ -34,6 +38,7 @@ function parseAll(): GameData {
   return {
     weapons: weaponsSchema.parse(rawWeapons),
     enemies: enemiesSchema.parse(rawEnemies),
+    equipment: equipmentSchema.parse(rawEquipment),
     bosses: bossesSchema.parse(rawBosses),
     levels: levelsSchema.parse(rawLevels),
     shop: shopSchema.parse(rawShop),
@@ -88,6 +93,7 @@ if (import.meta.hot) {
     [
       './weapons.json',
       './enemies.json',
+      './equipment.json',
       './bosses.json',
       './levels.json',
       './shop.json',
@@ -95,10 +101,11 @@ if (import.meta.hot) {
       './i18n/en.json',
     ],
     (mods) => {
-      const [w, e, b, lv, sh, ko, en] = mods;
+      const [w, e, eq, b, lv, sh, ko, en] = mods;
       try {
         if (w) DATA.weapons = weaponsSchema.parse(w.default);
         if (e) DATA.enemies = enemiesSchema.parse(e.default);
+        if (eq) DATA.equipment = equipmentSchema.parse(eq.default);
         if (b) DATA.bosses = bossesSchema.parse(b.default);
         if (lv) DATA.levels = levelsSchema.parse(lv.default);
         if (sh) DATA.shop = shopSchema.parse(sh.default);

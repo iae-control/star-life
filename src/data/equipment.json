@@ -1,0 +1,46 @@
+{
+  "rear": {
+    "tailgun": {
+      "name": "TAIL GUN",
+      "descKey": "rear.tailgun.desc",
+      "price": 1200,
+      "color": "#ffb347",
+      "fireEvery": 0.34,
+      "kind": "tail"
+    },
+    "sidecutter": {
+      "name": "SIDE CUTTER",
+      "descKey": "rear.sidecutter.desc",
+      "price": 2600,
+      "color": "#7ef7ff",
+      "fireEvery": 0.42,
+      "kind": "side"
+    },
+    "seeker": {
+      "name": "SEEKER MISSILE",
+      "descKey": "rear.seeker.desc",
+      "price": 5200,
+      "color": "#ff8ad8",
+      "fireEvery": 0.75,
+      "kind": "homing"
+    }
+  },
+  "sidekick": {
+    "pods": {
+      "name": "TWIN PODS",
+      "descKey": "side.pods.desc",
+      "price": 3400,
+      "color": "#8fd3ff",
+      "fireEvery": 0.5,
+      "kind": "pods"
+    },
+    "satellite": {
+      "name": "ORBIT SATELLITE",
+      "descKey": "side.satellite.desc",
+      "price": 6400,
+      "color": "#b48aff",
+      "fireEvery": 1.1,
+      "kind": "satellite"
+    }
+  }
+}

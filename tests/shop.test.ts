@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   curLevel,
+  equipAction,
   itemAction,
+  powerPrice,
   UPGRADE_ITEMS,
   weaponAction,
   type ShopPlayerState,
@@ -18,6 +20,8 @@ function state(over: Partial<ShopPlayerState> = {}): ShopPlayerState {
     shield: 60,
     armor: 50,
     superN: 2,
+    rear: null,
+    sidekick: null,
     ...over,
   };
 }
@@ -26,7 +30,7 @@ describe('weaponAction', () => {
   it('buys an unowned weapon at level 1 and equips it', () => {
     const s = state();
     expect(weaponAction(s, 'vulcan')).toBe('bought');
-    expect(s.credits).toBe(10_000 - 800);
+    expect(s.credits).toBe(10_000 - 1500);
     expect(s.weapons.vulcan).toBe(1);
     expect(s.cur).toBe('vulcan');
   });
@@ -46,15 +50,27 @@ describe('weaponAction', () => {
 });
 
 describe('upgrade items (demo price curves)', () => {
-  const [power, shield, armor, superItem] = UPGRADE_ITEMS;
+  const [shield, armor, superItem] = UPGRADE_ITEMS;
 
-  it('power: 250 + level*250, caps at 6', () => {
+  it('equipped weapon row upgrades power: 400 + level*400, caps at 6', () => {
     const s = state({ weapons: { pulse: 3 } });
-    expect(power?.price(s)).toBe(1000);
-    expect(itemAction(s, power!)).toBe('bought');
+    expect(powerPrice(s, 'pulse')).toBe(1600);
+    expect(weaponAction(s, 'pulse')).toBe('bought');
     expect(curLevel(s)).toBe(4);
+    expect(s.credits).toBe(10_000 - 1600);
     const maxed = state({ weapons: { pulse: 6 } });
-    expect(power?.can(maxed)).toBe(false);
+    expect(weaponAction(maxed, 'pulse')).toBe('noop');
+  });
+
+  it('equipment: buy equips, tap again unequips, other purchase replaces', () => {
+    const s = state();
+    expect(equipAction(s, 'rear', 'tailgun')).toBe('bought');
+    expect(s.rear).toBe('tailgun');
+    expect(equipAction(s, 'rear', 'tailgun')).toBe('equipped');
+    expect(s.rear).toBeNull();
+    equipAction(s, 'rear', 'tailgun');
+    expect(equipAction(s, 'rear', 'sidecutter')).toBe('bought');
+    expect(s.rear).toBe('sidecutter');
   });
 
   it('shield: 300 + (max-60)*6, refills, caps at 160', () => {

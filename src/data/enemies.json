@@ -1,5 +1,8 @@
 {
-  "hitbox": { "w": 20, "h": 27 },
+  "hitbox": {
+    "w": 20,
+    "h": 27
+  },
   "spawnY": -27,
   "orb": {
     "chance": 0.16,
@@ -8,7 +11,7 @@
     "magnetRadius": 86,
     "magnetPull": 220,
     "everyNthIsShield": 4,
-    "shieldArmorBonus": 18,
+    "shieldArmorBonus": 12,
     "maxPowerBonusScore": 500
   },
   "ebullet": {
@@ -23,7 +26,10 @@
       "behavior": "sineDescend",
       "sprite": "ship-e1",
       "score": 100,
-      "hp": { "base": 2, "perWave": 0.4 },
+      "hp": {
+        "base": 2,
+        "perWave": 0.4
+      },
       "params": {
         "spdMin": 93,
         "spdMax": 127,
@@ -42,7 +48,10 @@
       "behavior": "turret",
       "sprite": "ship-e2",
       "score": 300,
-      "hp": { "base": 6, "perWave": 1.2 },
+      "hp": {
+        "base": 6,
+        "perWave": 1.2
+      },
       "params": {
         "spd": 56,
         "holdYMin": 93,
@@ -65,7 +74,10 @@
       "behavior": "diver",
       "sprite": "ship-e3",
       "score": 150,
-      "hp": { "base": 2, "perWave": 0.4 },
+      "hp": {
+        "base": 2,
+        "perWave": 0.4
+      },
       "params": {
         "spdBase": 200,
         "spdPerWave": 11,
@@ -73,12 +85,14 @@
         "homingGain": 1.2
       }
     },
-
     "nb_wisp": {
       "behavior": "sineDescend",
       "sprite": "ship-wisp",
       "score": 120,
-      "hp": { "base": 2.5, "perWave": 0.4 },
+      "hp": {
+        "base": 2.5,
+        "perWave": 0.4
+      },
       "params": {
         "spdMin": 70,
         "spdMax": 100,
@@ -97,8 +111,16 @@
       "behavior": "sineDescend",
       "sprite": "ship-spore",
       "score": 250,
-      "hp": { "base": 7, "perWave": 0.8 },
-      "onDeath": { "spawn": { "type": "nb_mite", "count": 3 } },
+      "hp": {
+        "base": 7,
+        "perWave": 0.8
+      },
+      "onDeath": {
+        "spawn": {
+          "type": "nb_mite",
+          "count": 3
+        }
+      },
       "params": {
         "spdMin": 45,
         "spdMax": 60,
@@ -117,7 +139,10 @@
       "behavior": "diver",
       "sprite": "ship-mite",
       "score": 60,
-      "hp": { "base": 1, "perWave": 0.2 },
+      "hp": {
+        "base": 1,
+        "perWave": 0.2
+      },
       "params": {
         "spdBase": 150,
         "spdPerWave": 8,
@@ -125,12 +150,14 @@
         "homingGain": 1.6
       }
     },
-
     "pr_ember": {
       "behavior": "strafer",
       "sprite": "ship-ember",
       "score": 200,
-      "hp": { "base": 4, "perWave": 0.6 },
+      "hp": {
+        "base": 4,
+        "perWave": 0.6
+      },
       "params": {
         "speedX": 130,
         "yMin": 80,
@@ -145,7 +172,10 @@
       "behavior": "sineDescend",
       "sprite": "ship-shard",
       "score": 160,
-      "hp": { "base": 3, "perWave": 0.5 },
+      "hp": {
+        "base": 3,
+        "perWave": 0.5
+      },
       "params": {
         "spdMin": 140,
         "spdMax": 175,
@@ -164,7 +194,10 @@
       "behavior": "orbiter",
       "sprite": "ship-orbiter",
       "score": 350,
-      "hp": { "base": 8, "perWave": 1.0 },
+      "hp": {
+        "base": 8,
+        "perWave": 1.0
+      },
       "params": {
         "descendSpd": 70,
         "holdYMin": 110,
@@ -178,12 +211,14 @@
         "life": 12
       }
     },
-
     "ms_flare": {
       "behavior": "diver",
       "sprite": "ship-flare",
       "score": 180,
-      "hp": { "base": 2.5, "perWave": 0.5 },
+      "hp": {
+        "base": 2.5,
+        "perWave": 0.5
+      },
       "params": {
         "spdBase": 250,
         "spdPerWave": 12,
@@ -195,7 +230,10 @@
       "behavior": "turret",
       "sprite": "ship-sentinel",
       "score": 420,
-      "hp": { "base": 11, "perWave": 1.5 },
+      "hp": {
+        "base": 11,
+        "perWave": 1.5
+      },
       "params": {
         "spd": 50,
         "holdYMin": 90,
@@ -218,7 +256,10 @@
       "behavior": "sineDescend",
       "sprite": "ship-prominence",
       "score": 300,
-      "hp": { "base": 5, "perWave": 0.8 },
+      "hp": {
+        "base": 5,
+        "perWave": 0.8
+      },
       "params": {
         "spdMin": 85,
         "spdMax": 110,
@@ -231,6 +272,193 @@
         "fireChancePerSec": 0.22,
         "bulletSpeed": 150,
         "fireMode": "spread3"
+      }
+    },
+    "rg_cinder": {
+      "behavior": "diver",
+      "sprite": "ship-cinder",
+      "score": 220,
+      "hp": {
+        "base": 3.5,
+        "perWave": 0.5
+      },
+      "params": {
+        "spdBase": 230,
+        "spdPerWave": 10,
+        "homingClamp": 360,
+        "homingGain": 1.3
+      }
+    },
+    "rg_furnace": {
+      "behavior": "turret",
+      "sprite": "ship-furnace",
+      "score": 520,
+      "hp": {
+        "base": 16,
+        "perWave": 1.6
+      },
+      "params": {
+        "spd": 46,
+        "holdYMin": 90,
+        "holdYMax": 170,
+        "coolMin": 0.7,
+        "coolMax": 1.2,
+        "fireCoolMin": 0.8,
+        "fireCoolMax": 1.4,
+        "coolReducePerWave": 0.03,
+        "coolReduceMax": 0.4,
+        "life": 14,
+        "driftMax": 28,
+        "driftBoundX": 34,
+        "leaveSpd": 80,
+        "bulletSpeedBase": 185,
+        "bulletSpeedPerWave": 5
+      }
+    },
+    "rg_flarewing": {
+      "behavior": "sineDescend",
+      "sprite": "ship-flarewing",
+      "score": 360,
+      "hp": {
+        "base": 7,
+        "perWave": 0.9
+      },
+      "params": {
+        "spdMin": 80,
+        "spdMax": 105,
+        "spdPerWave": 3,
+        "ampMin": 60,
+        "ampMax": 100,
+        "freqMin": 1.3,
+        "freqMax": 1.9,
+        "fireFromWave": 1,
+        "fireChancePerSec": 0.28,
+        "bulletSpeed": 165,
+        "fireMode": "spread3"
+      }
+    },
+    "sn_fragment": {
+      "behavior": "sineDescend",
+      "sprite": "ship-fragment",
+      "score": 320,
+      "hp": {
+        "base": 9,
+        "perWave": 1.0
+      },
+      "onDeath": {
+        "spawn": {
+          "type": "sn_bit",
+          "count": 3
+        }
+      },
+      "params": {
+        "spdMin": 60,
+        "spdMax": 80,
+        "spdPerWave": 2,
+        "ampMin": 30,
+        "ampMax": 55,
+        "freqMin": 0.9,
+        "freqMax": 1.3,
+        "fireFromWave": 99,
+        "fireChancePerSec": 0,
+        "bulletSpeed": 0,
+        "fireMode": "aimed"
+      }
+    },
+    "sn_bit": {
+      "behavior": "diver",
+      "sprite": "ship-bit",
+      "score": 70,
+      "hp": {
+        "base": 1.5,
+        "perWave": 0.25
+      },
+      "params": {
+        "spdBase": 190,
+        "spdPerWave": 9,
+        "homingClamp": 300,
+        "homingGain": 1.7
+      }
+    },
+    "sn_lancer": {
+      "behavior": "strafer",
+      "sprite": "ship-lancer",
+      "score": 300,
+      "hp": {
+        "base": 6,
+        "perWave": 0.8
+      },
+      "params": {
+        "speedX": 175,
+        "yMin": 70,
+        "yMax": 230,
+        "fireEvery": 0.9,
+        "bulletSpeed": 185,
+        "swayAmp": 24,
+        "swayFreq": 4.0
+      }
+    },
+    "bh_shade": {
+      "behavior": "sineDescend",
+      "sprite": "ship-shade",
+      "score": 380,
+      "hp": {
+        "base": 12,
+        "perWave": 1.2
+      },
+      "params": {
+        "spdMin": 65,
+        "spdMax": 90,
+        "spdPerWave": 2,
+        "ampMin": 80,
+        "ampMax": 130,
+        "freqMin": 0.8,
+        "freqMax": 1.3,
+        "fireFromWave": 1,
+        "fireChancePerSec": 0.2,
+        "bulletSpeed": 150,
+        "fireMode": "aimed"
+      }
+    },
+    "bh_gazer": {
+      "behavior": "turret",
+      "sprite": "ship-gazer",
+      "score": 600,
+      "hp": {
+        "base": 18,
+        "perWave": 1.8
+      },
+      "params": {
+        "spd": 50,
+        "holdYMin": 85,
+        "holdYMax": 175,
+        "coolMin": 0.6,
+        "coolMax": 1.0,
+        "fireCoolMin": 0.7,
+        "fireCoolMax": 1.2,
+        "coolReducePerWave": 0.03,
+        "coolReduceMax": 0.4,
+        "life": 15,
+        "driftMax": 34,
+        "driftBoundX": 34,
+        "leaveSpd": 80,
+        "bulletSpeedBase": 200,
+        "bulletSpeedPerWave": 5
+      }
+    },
+    "bh_wraith": {
+      "behavior": "diver",
+      "sprite": "ship-wraith",
+      "score": 260,
+      "hp": {
+        "base": 4,
+        "perWave": 0.6
+      },
+      "params": {
+        "spdBase": 260,
+        "spdPerWave": 11,
+        "homingClamp": 430,
+        "homingGain": 1.8
       }
     }
   }

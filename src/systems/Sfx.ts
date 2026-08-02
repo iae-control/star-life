@@ -39,6 +39,14 @@ export function toggleMute(): boolean {
 export function isMuted(): boolean {
   return muted;
 }
+export function setMuted(next: boolean): void {
+  muted = next;
+}
+/** Music 엔진 등 다른 오디오 모듈이 같은 컨텍스트를 공유한다 */
+export function getAudioContext(): AudioContext | null {
+  audioInit();
+  return actx;
+}
 
 function env(g: GainNode, t0: number, a: number, d: number, peak: number): void {
   g.gain.setValueAtTime(0.0001, t0);

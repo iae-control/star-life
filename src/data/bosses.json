@@ -54,7 +54,53 @@
       "killScore": 5000,
       "shopDelay": 1.5,
       "hitCooldown": 0.05,
-      "touchDamage": 20
+      "touchDamage": 20,
+      "parts": [
+        {
+          "id": "nucL",
+          "sprite": "part-pod",
+          "dx": -40,
+          "dy": 16,
+          "hp": {
+            "base": 60,
+            "perWave": 5
+          },
+          "hitbox": {
+            "w": 24,
+            "h": 24
+          },
+          "shield": false,
+          "phase": {
+            "type": "aimed",
+            "speed": 150,
+            "offsetX": 0,
+            "big": false
+          },
+          "fireEvery": 2.4
+        },
+        {
+          "id": "nucR",
+          "sprite": "part-pod",
+          "dx": 40,
+          "dy": 16,
+          "hp": {
+            "base": 60,
+            "perWave": 5
+          },
+          "hitbox": {
+            "w": 24,
+            "h": 24
+          },
+          "shield": false,
+          "phase": {
+            "type": "aimed",
+            "speed": 150,
+            "offsetX": 0,
+            "big": false
+          },
+          "fireEvery": 2.4
+        }
+      ]
     },
     "protocore": {
       "sprite": "boss-protocore",
@@ -127,7 +173,39 @@
       "killScore": 6500,
       "shopDelay": 1.5,
       "hitCooldown": 0.05,
-      "touchDamage": 22
+      "touchDamage": 22,
+      "parts": [
+        {
+          "id": "vaneL",
+          "sprite": "part-vane",
+          "dx": -48,
+          "dy": 0,
+          "hp": {
+            "base": 90,
+            "perWave": 6
+          },
+          "hitbox": {
+            "w": 26,
+            "h": 40
+          },
+          "shield": true
+        },
+        {
+          "id": "vaneR",
+          "sprite": "part-vane",
+          "dx": 48,
+          "dy": 0,
+          "hp": {
+            "base": 90,
+            "perWave": 6
+          },
+          "hitbox": {
+            "w": 26,
+            "h": 40
+          },
+          "shield": true
+        }
+      ]
     },
     "helios": {
       "sprite": "boss-helios",
@@ -191,7 +269,53 @@
       "killScore": 8000,
       "shopDelay": 1.5,
       "hitCooldown": 0.05,
-      "touchDamage": 24
+      "touchDamage": 24,
+      "parts": [
+        {
+          "id": "corL",
+          "sprite": "part-corona",
+          "dx": -52,
+          "dy": -8,
+          "hp": {
+            "base": 80,
+            "perWave": 6
+          },
+          "hitbox": {
+            "w": 24,
+            "h": 30
+          },
+          "shield": false,
+          "phase": {
+            "type": "fan",
+            "count": 3,
+            "angleStep": 0.35,
+            "speed": 140
+          },
+          "fireEvery": 2.6
+        },
+        {
+          "id": "corR",
+          "sprite": "part-corona",
+          "dx": 52,
+          "dy": -8,
+          "hp": {
+            "base": 80,
+            "perWave": 6
+          },
+          "hitbox": {
+            "w": 24,
+            "h": 30
+          },
+          "shield": false,
+          "phase": {
+            "type": "fan",
+            "count": 3,
+            "angleStep": 0.35,
+            "speed": 140
+          },
+          "fireEvery": 2.6
+        }
+      ]
     },
     "core": {
       "sprite": "ship-boss",
@@ -243,6 +367,399 @@
       "shopDelay": 1.5,
       "hitCooldown": 0.05,
       "touchDamage": 20
+    },
+    "crimson": {
+      "sprite": "boss-crimson",
+      "nameKey": "boss.crimson",
+      "hp": {
+        "base": 760,
+        "perWave": 20
+      },
+      "hitbox": {
+        "w": 92,
+        "h": 74
+      },
+      "entryY": 112,
+      "entrySpd": 46,
+      "movement": {
+        "type": "patrol",
+        "base": 34,
+        "perWave": 1.6,
+        "minX": 86,
+        "maxX": 274
+      },
+      "cool": {
+        "base": 1.3,
+        "min": 0.6,
+        "perWave": -0.02
+      },
+      "fireOffsetY": 30,
+      "phases": [
+        {
+          "type": "ring",
+          "count": 16,
+          "speed": 120
+        },
+        {
+          "type": "fan",
+          "count": 7,
+          "angleStep": 0.26,
+          "speed": 160,
+          "cool": 0.55
+        },
+        {
+          "type": "fan",
+          "count": 7,
+          "angleStep": 0.26,
+          "speed": 160,
+          "cool": 1.4
+        },
+        {
+          "type": "aimed",
+          "speed": 210,
+          "offsetX": 24,
+          "big": true
+        },
+        {
+          "type": "spawn",
+          "enemy": "rg_cinder",
+          "count": 2,
+          "cool": 2.0
+        }
+      ],
+      "parts": [
+        {
+          "id": "canL",
+          "sprite": "part-flarecannon",
+          "dx": -58,
+          "dy": 10,
+          "hp": {
+            "base": 150,
+            "perWave": 8
+          },
+          "hitbox": {
+            "w": 26,
+            "h": 38
+          },
+          "shield": true,
+          "phase": {
+            "type": "aimed",
+            "speed": 185,
+            "offsetX": 0,
+            "big": true
+          },
+          "fireEvery": 1.7
+        },
+        {
+          "id": "canR",
+          "sprite": "part-flarecannon",
+          "dx": 58,
+          "dy": 10,
+          "hp": {
+            "base": 150,
+            "perWave": 8
+          },
+          "hitbox": {
+            "w": 26,
+            "h": 38
+          },
+          "shield": true,
+          "phase": {
+            "type": "aimed",
+            "speed": 185,
+            "offsetX": 0,
+            "big": true
+          },
+          "fireEvery": 1.7
+        }
+      ],
+      "killScore": 10000,
+      "shopDelay": 1.5,
+      "hitCooldown": 0.05,
+      "touchDamage": 26
+    },
+    "nova": {
+      "sprite": "boss-nova",
+      "nameKey": "boss.nova",
+      "hp": {
+        "base": 900,
+        "perWave": 22
+      },
+      "hitbox": {
+        "w": 84,
+        "h": 84
+      },
+      "entryY": 118,
+      "entrySpd": 50,
+      "movement": {
+        "type": "sway",
+        "amp": 76,
+        "freq": 0.7,
+        "bobAmp": 20,
+        "bobFreq": 1.3
+      },
+      "cool": {
+        "base": 1.15,
+        "min": 0.5,
+        "perWave": -0.02
+      },
+      "fireOffsetY": 30,
+      "phases": [
+        {
+          "type": "spiral",
+          "arms": 3,
+          "speed": 150,
+          "rotStep": 0.5,
+          "cool": 0.2
+        },
+        {
+          "type": "spiral",
+          "arms": 3,
+          "speed": 150,
+          "rotStep": 0.5,
+          "cool": 0.2
+        },
+        {
+          "type": "spiral",
+          "arms": 3,
+          "speed": 150,
+          "rotStep": 0.5,
+          "cool": 0.2
+        },
+        {
+          "type": "spiral",
+          "arms": 3,
+          "speed": 150,
+          "rotStep": 0.5,
+          "cool": 1.5
+        },
+        {
+          "type": "ring",
+          "count": 18,
+          "speed": 135
+        },
+        {
+          "type": "spawn",
+          "enemy": "sn_bit",
+          "count": 3,
+          "cool": 1.8
+        }
+      ],
+      "parts": [
+        {
+          "id": "sat1",
+          "sprite": "part-shard",
+          "dx": -52,
+          "dy": -30,
+          "hp": {
+            "base": 110,
+            "perWave": 7
+          },
+          "hitbox": {
+            "w": 22,
+            "h": 26
+          },
+          "shield": true,
+          "phase": {
+            "type": "aimed",
+            "speed": 175,
+            "offsetX": 0,
+            "big": false
+          },
+          "fireEvery": 1.9
+        },
+        {
+          "id": "sat2",
+          "sprite": "part-shard",
+          "dx": 52,
+          "dy": -30,
+          "hp": {
+            "base": 110,
+            "perWave": 7
+          },
+          "hitbox": {
+            "w": 22,
+            "h": 26
+          },
+          "shield": true,
+          "phase": {
+            "type": "aimed",
+            "speed": 175,
+            "offsetX": 0,
+            "big": false
+          },
+          "fireEvery": 1.9
+        },
+        {
+          "id": "sat3",
+          "sprite": "part-shard",
+          "dx": -56,
+          "dy": 26,
+          "hp": {
+            "base": 110,
+            "perWave": 7
+          },
+          "hitbox": {
+            "w": 22,
+            "h": 26
+          },
+          "shield": true,
+          "phase": {
+            "type": "fan",
+            "count": 3,
+            "angleStep": 0.4,
+            "speed": 150
+          },
+          "fireEvery": 2.3
+        },
+        {
+          "id": "sat4",
+          "sprite": "part-shard",
+          "dx": 56,
+          "dy": 26,
+          "hp": {
+            "base": 110,
+            "perWave": 7
+          },
+          "hitbox": {
+            "w": 22,
+            "h": 26
+          },
+          "shield": true,
+          "phase": {
+            "type": "fan",
+            "count": 3,
+            "angleStep": 0.4,
+            "speed": 150
+          },
+          "fireEvery": 2.3
+        }
+      ],
+      "killScore": 14000,
+      "shopDelay": 1.5,
+      "hitCooldown": 0.05,
+      "touchDamage": 28
+    },
+    "singularity": {
+      "sprite": "boss-singularity",
+      "nameKey": "boss.singularity",
+      "hp": {
+        "base": 1200,
+        "perWave": 24
+      },
+      "hitbox": {
+        "w": 96,
+        "h": 96
+      },
+      "entryY": 130,
+      "entrySpd": 40,
+      "movement": {
+        "type": "wander",
+        "speed": 34,
+        "minX": 100,
+        "maxX": 260,
+        "minY": 100,
+        "maxY": 190
+      },
+      "cool": {
+        "base": 1.1,
+        "min": 0.5,
+        "perWave": -0.015
+      },
+      "fireOffsetY": 36,
+      "gravity": {
+        "radius": 250,
+        "pull": 300,
+        "playerPull": 60
+      },
+      "phases": [
+        {
+          "type": "spiral",
+          "arms": 4,
+          "speed": 140,
+          "rotStep": 0.45,
+          "cool": 0.22
+        },
+        {
+          "type": "spiral",
+          "arms": 4,
+          "speed": 140,
+          "rotStep": 0.45,
+          "cool": 0.22
+        },
+        {
+          "type": "spiral",
+          "arms": 4,
+          "speed": 140,
+          "rotStep": 0.45,
+          "cool": 1.4
+        },
+        {
+          "type": "ring",
+          "count": 20,
+          "speed": 125
+        },
+        {
+          "type": "aimed",
+          "speed": 230,
+          "offsetX": 28,
+          "big": true
+        },
+        {
+          "type": "spawn",
+          "enemy": "bh_wraith",
+          "count": 2,
+          "cool": 2.2
+        }
+      ],
+      "parts": [
+        {
+          "id": "arcL",
+          "sprite": "part-arc",
+          "dx": -64,
+          "dy": 0,
+          "hp": {
+            "base": 180,
+            "perWave": 9
+          },
+          "hitbox": {
+            "w": 26,
+            "h": 52
+          },
+          "shield": true,
+          "phase": {
+            "type": "ring",
+            "count": 8,
+            "speed": 130
+          },
+          "fireEvery": 3.0
+        },
+        {
+          "id": "arcR",
+          "sprite": "part-arc",
+          "dx": 64,
+          "dy": 0,
+          "hp": {
+            "base": 180,
+            "perWave": 9
+          },
+          "hitbox": {
+            "w": 26,
+            "h": 52
+          },
+          "shield": true,
+          "phase": {
+            "type": "ring",
+            "count": 8,
+            "speed": 130
+          },
+          "fireEvery": 3.0
+        }
+      ],
+      "killScore": 20000,
+      "shopDelay": 2.5,
+      "hitCooldown": 0.05,
+      "touchDamage": 32
     }
   }
 }

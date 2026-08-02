@@ -1,21 +1,33 @@
-// 타이틀 — 데모 drawTitle() 이식 (Tyrian 크레딧 제거, 자체 에셋).
+// 타이틀 — 메뉴(처음부터/이어하기/엔들리스) + 난이도 선택 + 타이틀 BGM.
 import Phaser from 'phaser';
 
 import { GAME_HEIGHT, GAME_WIDTH, SceneKeys } from '../config';
-import { t } from '../data';
-import { loadBest, newSession } from '../game/session';
+import { DATA, t } from '../data';
+import { loadBest, newSession, type GameSession } from '../game/session';
 import { SpaceBackground } from '../systems/background';
+import { playMusic } from '../systems/Music';
+import { loadSave, updateSave, type Difficulty } from '../systems/Save';
 import { audioResume } from '../systems/Sfx';
 import { uiText } from '../ui/text';
+
+const DIFF_ORDER: Difficulty[] = ['easy', 'normal', 'hard'];
+
+interface MenuEntry {
+  label: string;
+  action: () => GameSession;
+}
 
 export class TitleScene extends Phaser.Scene {
   private starting = false;
   private ship!: Phaser.GameObjects.Image;
   private flame!: Phaser.GameObjects.Image;
   private orb!: Phaser.GameObjects.Image;
-  private prompt!: Phaser.GameObjects.Text;
   private spaceBg!: SpaceBackground;
   private t = 0;
+  private menu: MenuEntry[] = [];
+  private menuTexts: Phaser.GameObjects.Text[] = [];
+  private sel = 0;
+  private diffText!: Phaser.GameObjects.Text;
 
   constructor() {
     super(SceneKeys.Title);
@@ -24,11 +36,15 @@ export class TitleScene extends Phaser.Scene {
   create(): void {
     this.starting = false;
     this.t = 0;
+    this.sel = 0;
+    this.menu = [];
+    this.menuTexts = [];
+    const save = loadSave();
 
     this.spaceBg = new SpaceBackground(this, -10);
     this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x020410, 0.28).setOrigin(0, 0).setDepth(-5);
 
-    const glow = this.add.image(GAME_WIDTH / 2, 262, 'super-aura');
+    const glow = this.add.image(GAME_WIDTH / 2, 246, 'super-aura');
     glow.setBlendMode(Phaser.BlendModes.ADD).setScale(3).setAlpha(0.7);
     this.tweens.add({
       targets: glow,
@@ -40,38 +56,131 @@ export class TitleScene extends Phaser.Scene {
       ease: 'Sine.easeInOut',
     });
     this.flame = this.add
-      .image(GAME_WIDTH / 2, 262 + 52, 'engine-flame')
+      .image(GAME_WIDTH / 2, 246 + 52, 'engine-flame')
       .setScale(3)
       .setBlendMode(Phaser.BlendModes.ADD);
-    this.ship = this.add.image(GAME_WIDTH / 2, 262, 'ship-player').setScale(3);
-    this.orb = this.add.image(GAME_WIDTH / 2 + 92, 262, 'orb-P').setScale(1.4);
+    this.ship = this.add.image(GAME_WIDTH / 2, 246, 'ship-player').setScale(3);
+    this.orb = this.add.image(GAME_WIDTH / 2 + 92, 246, 'orb-P').setScale(1.4);
 
-    uiText(this, GAME_WIDTH / 2, 144, '별의 일생', 40, '#dfe8ff', 'center');
-    uiText(this, GAME_WIDTH / 2, 186, t('title.subtitle'), 10, '#8a93b0', 'center');
+    uiText(this, GAME_WIDTH / 2, 132, '별의 일생', 40, '#dfe8ff', 'center');
+    uiText(this, GAME_WIDTH / 2, 172, t('title.subtitle'), 10, '#8a93b0', 'center');
 
-    const best = loadBest();
-    this.prompt = uiText(
+    // 메뉴 구성 (진행 저장 기반 — SaveSystem)
+    this.menu.push({ label: t('title.menu.start'), action: () => newSession() });
+    if (save.progress.unlockedLevel > 1) {
+      const lv = Math.min(save.progress.unlockedLevel, DATA.levels.levels.length);
+      this.menu.push({
+        label: t('title.menu.continue', lv),
+        action: () => {
+          const s = newSession();
+          s.level = lv;
+          // 후반 시작 보정: 전 레벨 분량의 기본 자금
+          s.credits = (lv - 1) * 1600;
+          return s;
+        },
+      });
+    }
+    if (save.progress.endlessUnlocked) {
+      this.menu.push({
+        label: t('title.menu.endless'),
+        action: () => {
+          const s = newSession();
+          s.endless = true;
+          s.level = 1 + Math.floor(Math.random() * DATA.levels.levels.length);
+          s.credits = 2000;
+          return s;
+        },
+      });
+    }
+
+    const menuY = 356;
+    this.menu.forEach((entry, i) => {
+      const txt = uiText(
+        this,
+        GAME_WIDTH / 2,
+        menuY + i * 30,
+        entry.label,
+        13,
+        '#fff2b0',
+        'center',
+      );
+      this.menuTexts.push(txt);
+      this.add
+        .zone(60, menuY + i * 30 - 13, GAME_WIDTH - 120, 26)
+        .setOrigin(0, 0)
+        .setInteractive({ useHandCursor: true })
+        .on('pointerdown', () => {
+          audioResume();
+          if (this.sel === i) this.startGame(i);
+          else {
+            this.sel = i;
+            this.refreshMenu();
+          }
+        });
+    });
+
+    // 난이도 선택 (피드백 6)
+    this.diffText = uiText(
       this,
       GAME_WIDTH / 2,
-      384,
-      best ? t('title.restart') : t('title.start'),
-      13,
-      '#fff2b0',
+      menuY + this.menu.length * 30 + 14,
+      '',
+      10,
+      '#9aa6c8',
       'center',
     );
-    uiText(this, GAME_WIDTH / 2, 420, t('title.help1'), 8, '#9aa6c8', 'center');
-    uiText(this, GAME_WIDTH / 2, 438, t('title.help2'), 8, '#9aa6c8', 'center');
-    uiText(this, GAME_WIDTH / 2, 456, t('title.help3'), 8, '#9aa6c8', 'center');
-    if (best) uiText(this, GAME_WIDTH / 2, 492, t('title.best', best), 12, '#ffd76a', 'center');
+    this.add
+      .zone(90, menuY + this.menu.length * 30 + 1, GAME_WIDTH - 180, 26)
+      .setOrigin(0, 0)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => this.cycleDiff(1));
+    this.refreshMenu();
 
-    this.input.keyboard?.removeAllListeners();
-    this.input.once('pointerdown', () => this.startGame());
-    // e.repeat 가드: 발사키를 누른 채 사망→타이틀로 온 경우 자동반복으로 즉시 재시작되는 것 방지
+    uiText(this, GAME_WIDTH / 2, 508, t('title.help1'), 8, '#9aa6c8', 'center');
+    uiText(this, GAME_WIDTH / 2, 524, t('title.help2'), 8, '#9aa6c8', 'center');
+    uiText(this, GAME_WIDTH / 2, 540, t('title.help3'), 8, '#9aa6c8', 'center');
+    const best = loadBest();
+    if (best) uiText(this, GAME_WIDTH / 2, 570, t('title.best', best), 11, '#ffd76a', 'center');
+
+    const kb = this.input.keyboard;
+    kb?.removeAllListeners();
+    kb?.on('keydown-UP', () => {
+      this.sel = (this.sel + this.menu.length - 1) % this.menu.length;
+      this.refreshMenu();
+    });
+    kb?.on('keydown-DOWN', () => {
+      this.sel = (this.sel + 1) % this.menu.length;
+      this.refreshMenu();
+    });
+    kb?.on('keydown-LEFT', () => this.cycleDiff(-1));
+    kb?.on('keydown-RIGHT', () => this.cycleDiff(1));
     const onKey = (e: KeyboardEvent): void => {
-      if (!e.repeat) this.startGame();
+      if (!e.repeat) this.startGame(this.sel);
     };
-    this.input.keyboard?.on('keydown-ENTER', onKey);
-    this.input.keyboard?.on('keydown-SPACE', onKey);
+    kb?.on('keydown-ENTER', onKey);
+    kb?.on('keydown-SPACE', onKey);
+
+    playMusic('title');
+  }
+
+  private cycleDiff(d: number): void {
+    const save = loadSave();
+    const idx = DIFF_ORDER.indexOf(save.settings.difficulty);
+    const next = DIFF_ORDER[(idx + DIFF_ORDER.length + d) % DIFF_ORDER.length] ?? 'normal';
+    updateSave((s) => {
+      s.settings.difficulty = next;
+    });
+    this.refreshMenu();
+  }
+
+  private refreshMenu(): void {
+    this.menuTexts.forEach((txt, i) => {
+      txt.setColor(i === this.sel ? '#fff2b0' : '#8a93b0');
+      const entry = this.menu[i];
+      if (entry) txt.setText((i === this.sel ? '▶ ' : '') + entry.label);
+    });
+    const diff = loadSave().settings.difficulty;
+    this.diffText.setText(`${t('title.diff')}  ◀ ${t(`diff.${diff}`)} ▶`);
   }
 
   update(_time: number, deltaMs: number): void {
@@ -79,21 +188,23 @@ export class TitleScene extends Phaser.Scene {
     this.t += dt;
     this.spaceBg.update(dt, 45);
     const bob = Math.sin(this.t * 2) * 5;
-    this.ship.setY(262 + bob);
-    this.flame.setY(262 + bob + 52);
+    this.ship.setY(246 + bob);
+    this.flame.setY(246 + bob + 52);
     this.flame.setScale(3, 3 + Math.sin(this.t * 40) * 0.7);
     this.orb.setPosition(
       GAME_WIDTH / 2 + Math.cos(this.t * 1.6) * 92,
-      262 + bob + Math.sin(this.t * 1.6) * 44,
+      246 + bob + Math.sin(this.t * 1.6) * 44,
     );
-    this.prompt.setVisible(Math.floor(this.t * 1.4) % 2 === 0);
+    const selTxt = this.menuTexts[this.sel];
+    if (selTxt) selTxt.setAlpha(0.75 + Math.sin(this.t * 6) * 0.25);
   }
 
-  private startGame(): void {
+  private startGame(idx: number): void {
     if (this.starting) return;
+    const entry = this.menu[idx];
+    if (!entry) return;
     this.starting = true;
     audioResume();
-    // 새 세션을 명시적으로 전달 — data 없이 start하면 Phaser가 이전 settings.data(죽은 세션)를 재사용한다
-    this.scene.start(SceneKeys.StageIntro, { session: newSession() });
+    this.scene.start(SceneKeys.StageIntro, { session: entry.action() });
   }
 }

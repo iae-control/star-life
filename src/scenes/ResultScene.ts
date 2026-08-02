@@ -4,6 +4,8 @@ import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH, SceneKeys } from '../config';
 import { t } from '../data';
 import { loadBest, type GameSession } from '../game/session';
+import { playMusic } from '../systems/Music';
+import { loadSave } from '../systems/Save';
 import { uiText } from '../ui/text';
 
 export class ResultScene extends Phaser.Scene {
@@ -20,19 +22,30 @@ export class ResultScene extends Phaser.Scene {
     this.t = 0;
     const s = data.session;
     const complete = data.mode === 'complete';
+    playMusic('title');
 
-    this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x06020a, 0.62).setOrigin(0, 0);
-    uiText(
-      this,
-      GAME_WIDTH / 2,
-      253,
-      complete ? t('result.complete') : t('result.title'),
-      complete ? 22 : 28,
-      complete ? '#7ef7ff' : '#ff8a8a',
-      'center',
-    );
-    if (complete)
-      uiText(this, GAME_WIDTH / 2, 279, t('result.completeSub'), 9, '#8fa0c8', 'center');
+    this.add
+      .rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x06020a, complete ? 0.8 : 0.62)
+      .setOrigin(0, 0);
+    if (complete) {
+      // 캠페인 엔딩 — 별의 일생 완주
+      uiText(this, GAME_WIDTH / 2, 180, t('ending.title'), 30, '#dfe8ff', 'center');
+      uiText(this, GAME_WIDTH / 2, 226, t('ending.line1'), 10, '#9aa6c8', 'center');
+      uiText(this, GAME_WIDTH / 2, 244, t('ending.line2'), 10, '#9aa6c8', 'center');
+      uiText(this, GAME_WIDTH / 2, 274, t('ending.thanks'), 9, '#7ef7ff', 'center');
+    } else {
+      uiText(this, GAME_WIDTH / 2, 253, t('result.title'), 28, '#ff8a8a', 'center');
+      if (data.session.endless)
+        uiText(
+          this,
+          GAME_WIDTH / 2,
+          279,
+          `${t('result.endless')}  ${loadSave().endlessBest}`,
+          9,
+          '#b48aff',
+          'center',
+        );
+    }
     uiText(this, GAME_WIDTH / 2, 301, t('result.score', s.score), 15, '#fff2b0', 'center');
     uiText(this, GAME_WIDTH / 2, 328, t('result.wave', s.wave), 12, '#cfd8ff', 'center');
     if (s.score > 0 && s.score >= loadBest())

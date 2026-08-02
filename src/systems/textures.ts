@@ -322,6 +322,122 @@ const HELIOS_MAP = [
 ];
 const HELIOS_PAL = { O: '#3a1804', Y: '#ffd75e', f: '#ff9a3a', c: '#ffe8a0', W: '#fffff0' };
 
+/* ---------- L4~L6 보스 (M4 — 거대 멀티파츠) ---------- */
+
+// L4 크림슨 자이언트 — 부풀어 오른 적색거성 껍질
+const CRIMSON_MAP = [
+  '....OOO........OOO....',
+  '..OOrrrOO....OOrrrOO..',
+  '.OrrffrrrOOOOrrrffrrO.',
+  '.OrfffrrrrrrrrrrfffrO.',
+  'OrrfffrrrrrrrrrrfffrrO',
+  'OrfffrrRRRRRRRRrrfffrO',
+  'OrffrrRRffffffRRrrffrO',
+  'OrfrrRRffYYYYffRRrrfrO',
+  'OrrrRRffYYccYYffRRrrrO',
+  'OrrrRffYYccccYYffRrrrO',
+  'OrrrRffYYccccYYffRrrrO',
+  'OrrrRRffYYYYYYffRRrrrO',
+  'OrffrrRRffffffRRrrffrO',
+  'OrfffrrRRRRRRRRrrfffrO',
+  'OrrfffrrrrrrrrrrfffrrO',
+  '.OrfffrrrOOOOrrrfffrO.',
+  '..OOrrrOO....OOrrrOO..',
+  '....OOO........OOO....',
+];
+const CRIMSON_PAL = {
+  O: '#2a0808',
+  r: '#8a2018',
+  R: '#c84a2a',
+  f: '#e07040',
+  Y: '#ffb060',
+  c: '#ffe0a0',
+};
+
+// L5 노바 코어 — 붕괴 직전의 항성핵
+const NOVA_MAP = [
+  '.....O....OO....O.....',
+  '....OcO..OccO..OcO....',
+  '...OcWcOOcWWcOOcWc....',
+  '..OcWWWccWWWWccWWWcO..',
+  '.OcWWffWWffffWWffWWcO.',
+  'OcWffffffffffffffffWcO',
+  'OcWfffccccccccccfffWcO',
+  '.OWffccWWWWWWWWccffWO.',
+  '.OWffcWWWWWWWWWWcffWO.',
+  'OcWffcWWWWWWWWWWcffWcO',
+  'OcWffcWWWWWWWWWWcffWcO',
+  '.OWffcWWWWWWWWWWcffWO.',
+  '.OWffccWWWWWWWWccffWO.',
+  'OcWfffccccccccccfffWcO',
+  'OcWffffffffffffffffWcO',
+  '.OcWWffWWffffWWffWWcO.',
+  '..OcWWWccWWWWccWWWcO..',
+  '...OcWcOOcWWcOOcWcO...',
+  '....OcO..OccO..OcO....',
+  '.....O....OO....O.....',
+];
+const NOVA_PAL = { O: '#3a2404', c: '#ffd75e', W: '#fffff0', f: '#ff9a3a' };
+
+// L6 싱귤래리티 — 강착 원반을 두른 블랙홀 (최종 보스, Jungjioo 호응)
+const SING_MAP = [
+  '......OOOOOOOOOOOO......',
+  '....OOaaaaAAAAaaaaOO....',
+  '..OOaaAAppppppppAAaaOO..',
+  '.OaaAppaaaaaaaaaappAaaO.',
+  '.OaAppaa........aappAaO.',
+  'OaAppa....DDDD....appAaO',
+  'OaApa...DDDDDDDD...apAaO',
+  'OaAp...DDDDDDDDDD...pAaO',
+  'OaAp..DDDDDDDDDDDD..pAaO',
+  'OaAp..DDDDDDDDDDDD..pAaO',
+  'OaAp..DDDDDDDDDDDD..pAaO',
+  'OaAp..DDDDDDDDDDDD..pAaO',
+  'OaAp...DDDDDDDDDD...pAaO',
+  'OaApa...DDDDDDDD...apAaO',
+  'OaAppa....DDDD....appAaO',
+  '.OaAppaa........aappAaO.',
+  '.OaaAppaaaaaaaaaappAaaO.',
+  '..OOaaAAppppppppAAaaOO..',
+  '....OOaaaaAAAAaaaaOO....',
+  '......OOOOOOOOOOOO......',
+];
+const SING_PAL = { O: '#160a24', a: '#5a3aa0', A: '#9a6ae0', p: '#d8b0ff', D: '#050208' };
+
+/* ---------- 보스 파츠 (파괴 가능 부위) ---------- */
+const POD_MAP = [
+  '..OOOO..',
+  '.OggGgO.',
+  'OgGNNGgO',
+  'OgNNNNgO',
+  'OgNNNNgO',
+  'OgGNNGgO',
+  '.OggGgO.',
+  '..OOOO..',
+];
+const POD_PAL = { O: '#0c2418', g: '#3a8a5a', G: '#7ad89a', N: '#d8ff8a' };
+const VANE_MAP = ['.Oa.', 'OfaO', 'OfrO', 'OfrO', 'OfrO', 'OfrO', 'OfrO', 'OfrO', 'OfaO', '.Oa.'];
+const VANE_PAL = { O: '#240a04', f: '#ff8a3a', r: '#c84a1a', a: '#6a2a10' };
+const CORONA_MAP = ['..OY..', '.OYfO.', 'OYffYO', 'OYffYO', 'OYffYO', '.OYfO.', '..OY..'];
+const CORONA_PAL = { O: '#3a1804', Y: '#ffd75e', f: '#ff9a3a' };
+const CANNON_MAP = ['.OrrO.', 'OrffrO', 'OrffrO', 'OrffrO', 'OrYYrO', 'OrYYrO', '.OrrO.', '.OWWO.'];
+const CANNON_PAL = { O: '#2a0808', r: '#8a2018', f: '#e07040', Y: '#ffb060', W: '#ffe0a0' };
+const SHARDP_MAP = ['..OW..', '.OWcO.', 'OWccWO', 'OcWWcO', 'OcWWcO', '.OccO.', '..OO..'];
+const SHARDP_PAL = { O: '#3a2404', W: '#fffff0', c: '#ffd75e' };
+const ARC_MAP = [
+  '..Op.',
+  '.OpAO',
+  'OpAaO',
+  'OpAaO',
+  'OAaO.',
+  'OAaO.',
+  'OpAaO',
+  'OpAaO',
+  '.OpAO',
+  '..Op.',
+];
+const ARC_PAL = { O: '#160a24', p: '#d8b0ff', A: '#9a6ae0', a: '#5a3aa0' };
+
 function tinted(rows: string[], scale: number, color: string, alpha: number): HTMLCanvasElement {
   const h = rows.length;
   const w = Math.max(...rows.map((r) => r.length));
@@ -409,6 +525,80 @@ export function generateTextures(scene: Phaser.Scene): void {
   addCanvasTexture(scene, 'boss-amoeba', pixmap(AMOEBA_MAP, AMOEBA_PAL, 3));
   addCanvasTexture(scene, 'boss-protocore', pixmap(PROTOCORE_MAP, PROTOCORE_PAL, 3));
   addCanvasTexture(scene, 'boss-helios', pixmap(HELIOS_MAP, HELIOS_PAL, 3));
+
+  // L4~L6 적 (팔레트 스왑 변형)
+  addCanvasTexture(
+    scene,
+    'ship-cinder',
+    pixmap(EMBER_MAP, { O: '#2a0404', Y: '#ff6a3a', f: '#c8301a', r: '#701008' }, 2),
+  );
+  addCanvasTexture(
+    scene,
+    'ship-furnace',
+    pixmap(
+      E2_MAP,
+      {
+        O: '#240804',
+        W: '#ffc8a0',
+        P: '#c84a2a',
+        p: '#8a2018',
+        d: '#4a0f08',
+        C: '#ffd75e',
+        c: '#fff0c0',
+      },
+      2,
+    ),
+  );
+  addCanvasTexture(
+    scene,
+    'ship-flarewing',
+    pixmap(PROM_MAP, { O: '#2a0808', Y: '#ff9a5a', f: '#e05028', r: '#8a1810' }, 2),
+  );
+  addCanvasTexture(
+    scene,
+    'ship-fragment',
+    pixmap(SPORE_MAP, { O: '#241804', P: '#e0a03a', p: '#9a6a1a', G: '#fff0b0', g: '#ffd75e' }, 2),
+  );
+  addCanvasTexture(
+    scene,
+    'ship-bit',
+    pixmap(E1_MAP, { O: '#241804', W: '#fff0c0', R: '#ffc83a', r: '#c8901a', d: '#705008' }, 1),
+  );
+  addCanvasTexture(
+    scene,
+    'ship-lancer',
+    pixmap(EMBER_MAP, { O: '#04182a', Y: '#7ef7ff', f: '#3aa8e0', r: '#1a5a9a' }, 2),
+  );
+  addCanvasTexture(
+    scene,
+    'ship-shade',
+    pixmap(WISP_MAP, { O: '#0a0614', T: '#4a3a7a', g: '#7a5ac8', G: '#c8b0ff' }, 2),
+  );
+  addCanvasTexture(
+    scene,
+    'ship-gazer',
+    pixmap(
+      ORBITER_MAP,
+      { O: '#0a0614', m: '#3a2a6a', M: '#5a4a9a', w: '#b0a0e0', C: '#ff3a6a', d: '#700a20' },
+      2,
+    ),
+  );
+  addCanvasTexture(
+    scene,
+    'ship-wraith',
+    pixmap(E3_MAP, { O: '#0a0614', W: '#d8c8ff', Y: '#8a6ae0', o: '#5a3aa0', d: '#2a1850' }, 2),
+  );
+
+  // 보스 3종 (@4 거대) + 파츠
+  addCanvasTexture(scene, 'boss-crimson', pixmap(CRIMSON_MAP, CRIMSON_PAL, 4));
+  addCanvasTexture(scene, 'boss-nova', pixmap(NOVA_MAP, NOVA_PAL, 4));
+  addCanvasTexture(scene, 'boss-singularity', pixmap(SING_MAP, SING_PAL, 4));
+  addCanvasTexture(scene, 'part-pod', pixmap(POD_MAP, POD_PAL, 3));
+  addCanvasTexture(scene, 'part-vane', pixmap(VANE_MAP, VANE_PAL, 3));
+  addCanvasTexture(scene, 'part-corona', pixmap(CORONA_MAP, CORONA_PAL, 3));
+  addCanvasTexture(scene, 'part-flarecannon', pixmap(CANNON_MAP, CANNON_PAL, 3));
+  addCanvasTexture(scene, 'part-shard', pixmap(SHARDP_MAP, SHARDP_PAL, 3));
+  addCanvasTexture(scene, 'part-arc', pixmap(ARC_MAP, ARC_PAL, 3));
 
   // 플레이어 탄 (글로우 베이크)
   addCanvasTexture(
@@ -913,5 +1103,89 @@ export function generateTextures(scene: Phaser.Scene): void {
       }
     }
     addCanvasTexture(scene, 'bg-sunstreaks', c);
+  }
+  {
+    // 적색 성운 (적색거성 테마)
+    const [c, ctx] = canvas(GAME_WIDTH, TILE_H);
+    for (let i = 0; i < 8; i++) {
+      const x = Math.random() * GAME_WIDTH;
+      const y = Math.random() * TILE_H;
+      const r = 90 + Math.random() * 130;
+      const a = 0.1 + Math.random() * 0.09;
+      const hue = ['rgba(200,40,20,A)', 'rgba(160,20,40,A)', 'rgba(220,80,20,A)'][i % 3] as string;
+      for (const yy of [y - TILE_H, y, y + TILE_H]) {
+        const g = ctx.createRadialGradient(x, yy, 0, x, yy, r);
+        g.addColorStop(0, hue.replace('A', String(a)));
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(x - r, yy - r, r * 2, r * 2);
+      }
+    }
+    addCanvasTexture(scene, 'bg-nebula-red', c);
+  }
+  {
+    // 거대 태양 (주계열성 상단 장식 — 피드백 5)
+    const [c, ctx] = canvas(280, 280);
+    let g = ctx.createRadialGradient(140, 140, 10, 140, 140, 140);
+    g.addColorStop(0, 'rgba(255,250,220,0.95)');
+    g.addColorStop(0.35, 'rgba(255,214,94,0.75)');
+    g.addColorStop(0.7, 'rgba(255,150,50,0.28)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 280, 280);
+    g = ctx.createRadialGradient(140, 140, 60, 140, 140, 100);
+    g.addColorStop(0, 'rgba(255,240,190,0.9)');
+    g.addColorStop(1, 'rgba(255,200,90,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(140, 140, 100, 0, 7);
+    ctx.fill();
+    addCanvasTexture(scene, 'decor-sun', c);
+  }
+  {
+    // 적색거성 가장자리 (화면 하단을 채우는 거대한 붉은 반구)
+    const [c, ctx] = canvas(GAME_WIDTH, 200);
+    const g = ctx.createRadialGradient(180, 320, 80, 180, 320, 330);
+    g.addColorStop(0, 'rgba(255,120,60,0.85)');
+    g.addColorStop(0.55, 'rgba(200,50,25,0.55)');
+    g.addColorStop(0.85, 'rgba(120,20,15,0.25)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, GAME_WIDTH, 200);
+    addCanvasTexture(scene, 'decor-redlimb', c);
+  }
+  {
+    // 초신성 충격파 링
+    const [c, ctx] = canvas(300, 300);
+    for (const [r, w, a] of [
+      [130, 22, 0.22],
+      [95, 12, 0.16],
+      [60, 8, 0.12],
+    ] as const) {
+      const g = ctx.createRadialGradient(150, 150, r - w, 150, 150, r + w);
+      g.addColorStop(0, 'rgba(0,0,0,0)');
+      g.addColorStop(0.5, `rgba(255,230,160,${a})`);
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, 300, 300);
+    }
+    addCanvasTexture(scene, 'decor-shock', c);
+  }
+  {
+    // 블랙홀 강착 소용돌이 (회전 장식)
+    const [c, ctx] = canvas(300, 300);
+    ctx.translate(150, 150);
+    for (let arm = 0; arm < 2; arm++) {
+      for (let i = 0; i < 60; i++) {
+        const p = i / 60;
+        const ang = arm * Math.PI + p * 4.2;
+        const r = 30 + p * 110;
+        const a = 0.28 * (1 - p);
+        ctx.fillStyle = `rgba(${150 + p * 90},${100 + p * 60},255,${a})`;
+        const sz = 3 + (1 - p) * 5;
+        ctx.fillRect(Math.cos(ang) * r - sz / 2, Math.sin(ang) * r - sz / 2, sz, sz);
+      }
+    }
+    addCanvasTexture(scene, 'decor-swirl', c);
   }
 }

@@ -1,5 +1,6 @@
 // 게임 세션 상태 — Game/Shop/Result 씬이 공유하는 런 단위 상태 (데모의 G/P 전역 대응).
 // 영속 저장(진행도)은 M4에서 SaveSystem으로 정식 도입. 지금은 BEST만 localStorage.
+import { loadSave, updateSave, type Difficulty } from '../systems/Save';
 import { PLAYER } from './logic/balance';
 
 export interface GameSession {
@@ -22,9 +23,13 @@ export interface GameSession {
   armor: number;
   armorMax: number;
   superN: number;
+  /** 후방무기/사이드킥 (미보유 = null) */
+  rear: string | null;
+  sidekick: string | null;
+  difficulty: Difficulty;
+  /** 엔들리스 모드 여부 (캠페인 완주 후 해금) */
+  endless: boolean;
 }
-
-const BEST_KEY = 'starlife.best.v1';
 
 export function newSession(): GameSession {
   return {
@@ -43,23 +48,21 @@ export function newSession(): GameSession {
     armor: PLAYER.armorMax,
     armorMax: PLAYER.armorMax,
     superN: PLAYER.superStart,
+    rear: null,
+    sidekick: null,
+    difficulty: loadSave().settings.difficulty,
+    endless: false,
   };
 }
 
 export function loadBest(): number {
-  try {
-    return Number(localStorage.getItem(BEST_KEY)) || 0;
-  } catch {
-    return 0;
-  }
+  return loadSave().best;
 }
 
 export function saveBest(score: number): void {
-  try {
-    if (score > loadBest()) localStorage.setItem(BEST_KEY, String(score));
-  } catch {
-    /* 저장 불가 환경(사파리 프라이빗 등)은 무시 */
-  }
+  updateSave((s) => {
+    if (score > s.best) s.best = score;
+  });
 }
 
 export function weaponLevel(s: GameSession): number {

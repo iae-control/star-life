@@ -5,6 +5,7 @@ import { GAME_HEIGHT, GAME_WIDTH, SceneKeys } from '../config';
 import { DATA, t } from '../data';
 import type { GameSession } from '../game/session';
 import { SpaceBackground } from '../systems/background';
+import { playMusic } from '../systems/Music';
 import { uiText } from '../ui/text';
 
 const THEME_COLOR: Record<string, string> = {
@@ -31,6 +32,7 @@ export class StageIntroScene extends Phaser.Scene {
     const level = DATA.levels.levels[this.session.level - 1] ?? DATA.levels.levels[0]!;
 
     this.spaceBg = new SpaceBackground(this, -10, level.background);
+    playMusic(level.background.theme);
     this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x020410, 0.5).setOrigin(0, 0).setDepth(-5);
 
     const color = THEME_COLOR[level.background.theme] ?? '#e8ecff';

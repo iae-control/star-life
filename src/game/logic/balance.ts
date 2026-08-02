@@ -23,15 +23,27 @@ export const PLAYER = {
   maxX: GAME_WIDTH - 14,
   minY: 40, // (30)
   maxY: GAME_HEIGHT - 24, // (LH-18)
-  shieldMax: 60,
-  armorMax: 50,
-  shieldRegenDelay: 2.5,
-  shieldRegenRate: 7,
+  shieldMax: 50, // (60) 피드백: 몸빵 너프
+  armorMax: 40, // (50)
+  shieldRegenDelay: 3.0, // (2.5)
+  shieldRegenRate: 4.5, // (7)
   invulnAfterHit: 0.9,
   collideDamage: 13,
   superStart: 2,
   superMax: 5,
 } as const;
+
+// 난이도 배수 (Easy/Normal/Hard) — 적 체력·적 공격력·크레딧 수입
+export interface DiffMods {
+  hp: number;
+  dmg: number;
+  credit: number;
+}
+export const DIFficulty: Record<'easy' | 'normal' | 'hard', DiffMods> = {
+  easy: { hp: 0.75, dmg: 0.7, credit: 1.15 },
+  normal: { hp: 1, dmg: 1, credit: 1 },
+  hard: { hp: 1.3, dmg: 1.35, credit: 0.85 },
+};
 
 // 슈퍼무기 "Jungjioo" — 대사 표기는 정본, 변경 금지 (PLAN 0장)
 export const SUPER = {
