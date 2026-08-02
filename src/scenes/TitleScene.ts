@@ -146,6 +146,14 @@ export class TitleScene extends Phaser.Scene {
     const best = loadBest();
     if (best) uiText(this, GAME_WIDTH / 2, 570, t('title.best', best), 11, '#ffd76a', 'center');
 
+    // 설정 진입
+    uiText(this, GAME_WIDTH / 2, 600, `⚙ ${t('settings.title')}`, 10, '#8fa0c8', 'center');
+    this.add
+      .zone(GAME_WIDTH / 2 - 70, 588, 140, 26)
+      .setOrigin(0, 0)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => this.openSettings());
+
     const kb = this.input.keyboard;
     kb?.removeAllListeners();
     kb?.on('keydown-UP', () => {
@@ -163,6 +171,7 @@ export class TitleScene extends Phaser.Scene {
     };
     kb?.on('keydown-ENTER', onKey);
     kb?.on('keydown-SPACE', onKey);
+    kb?.on('keydown-S', () => this.openSettings());
 
     playMusic('title');
   }
@@ -201,6 +210,12 @@ export class TitleScene extends Phaser.Scene {
     );
     const selTxt = this.menuTexts[this.sel];
     if (selTxt) selTxt.setAlpha(0.75 + Math.sin(this.t * 6) * 0.25);
+  }
+
+  private openSettings(): void {
+    if (this.starting) return;
+    this.scene.pause();
+    this.scene.launch(SceneKeys.Settings, { from: SceneKeys.Title });
   }
 
   private startGame(idx: number): void {

@@ -20,7 +20,17 @@ export class PauseScene extends Phaser.Scene {
       this.scene.resume(SceneKeys.Game);
     };
     this.input.keyboard?.removeAllListeners();
-    this.input.once('pointerdown', resume);
+    this.input.keyboard?.on('keydown-S', () => {
+      this.scene.stop();
+      this.scene.launch(SceneKeys.Settings, { from: SceneKeys.Pause });
+    });
+    this.input.on('pointerdown', (ptr: Phaser.Input.Pointer) => {
+      const inSettings =
+        Math.abs(ptr.worldX - GAME_WIDTH / 2) < 70 &&
+        ptr.worldY > GAME_HEIGHT / 2 + 52 &&
+        ptr.worldY < GAME_HEIGHT / 2 + 78;
+      if (!inSettings) resume();
+    });
     this.input.keyboard?.once('keydown-P', resume);
     this.input.keyboard?.once('keydown-ESC', resume);
   }

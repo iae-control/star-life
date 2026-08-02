@@ -81,5 +81,19 @@
   "ending.line1": "Born in a nebula, setting into a black hole —",
   "ending.line2": "you have lived the life of a star.",
   "ending.thanks": "— Endless mode unlocked —",
-  "result.endless": "Endless record"
+  "result.endless": "Endless record",
+  "settings.title": "SETTINGS",
+  "settings.music": "Music volume",
+  "settings.sfx": "SFX volume",
+  "settings.lang": "Language",
+  "settings.vibration": "Vibration",
+  "settings.difficulty": "Difficulty",
+  "settings.on": "ON",
+  "settings.off": "OFF",
+  "settings.close": "CLOSE",
+  "pause.settings": "Settings: S key or tap below",
+  "tut.move": "Drag (or arrow keys) to move",
+  "tut.fire": "Firing is automatic — destroy enemies!",
+  "tut.super": "In danger, tap S — super \"Jungjioo\"",
+  "tut.done": "Ready. Good luck!"
 }

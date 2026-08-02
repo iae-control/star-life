@@ -1,8 +1,10 @@
 import Phaser from 'phaser';
 
 import { BACKGROUND_COLOR, GAME_HEIGHT, GAME_WIDTH } from './config';
+import { setLang } from './data';
+import { setMusicVolume } from './systems/Music';
 import { loadSave } from './systems/Save';
-import { installAudioUnlock, setMuted } from './systems/Sfx';
+import { installAudioUnlock, setMuted, setSfxVolume } from './systems/Sfx';
 import { BootScene } from './scenes/BootScene';
 import { CreditsScene } from './scenes/CreditsScene';
 import { GameScene } from './scenes/GameScene';
@@ -72,7 +74,11 @@ function boot(): void {
   });
 
   installAudioUnlock();
-  setMuted(loadSave().settings.muted);
+  const sv = loadSave().settings;
+  setMuted(sv.muted);
+  setMusicVolume(sv.musicVol);
+  setSfxVolume(sv.sfxVol);
+  setLang(sv.lang);
 
   // 개발·디버그 도구(?debug HUD 포함)에서 접근할 수 있게 노출.
   window.__game = game;

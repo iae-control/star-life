@@ -81,5 +81,19 @@
   "ending.line1": "성운에서 태어나 블랙홀로 저무는,",
   "ending.line2": "한 별의 일생을 완주했습니다.",
   "ending.thanks": "— 엔들리스 모드가 해금되었습니다 —",
-  "result.endless": "엔들리스 기록"
+  "result.endless": "엔들리스 기록",
+  "settings.title": "설정",
+  "settings.music": "음악 볼륨",
+  "settings.sfx": "효과음 볼륨",
+  "settings.lang": "언어",
+  "settings.vibration": "진동",
+  "settings.difficulty": "난이도",
+  "settings.on": "켬",
+  "settings.off": "끔",
+  "settings.close": "닫기",
+  "pause.settings": "설정: S키 또는 하단 탭",
+  "tut.move": "드래그(또는 방향키)로 기체를 움직여 보세요",
+  "tut.fire": "발사는 자동! 적을 파괴하세요",
+  "tut.super": "위기엔 우하단 S 버튼 — 슈퍼 \"Jungjioo\"",
+  "tut.done": "준비 완료. 행운을 빕니다!"
 }

@@ -12,7 +12,8 @@ import { buildLevelWave, type SpawnEvent } from '../game/logic/waves';
 import { newSession, saveBest, weaponLevel, type GameSession } from '../game/session';
 import { SpaceBackground } from '../systems/background';
 import { playMusic } from '../systems/Music';
-import { updateSave } from '../systems/Save';
+import { vibrate } from '../systems/haptics';
+import { loadSave, updateSave } from '../systems/Save';
 import { ImagePool } from '../systems/Pool';
 import { audioResume, isMuted, SFX, toggleMute } from '../systems/Sfx';
 import { uiText } from '../ui/text';
@@ -265,6 +266,22 @@ export class GameScene extends Phaser.Scene {
   private bubbleMsg = '';
 
   private immuneMsgT = 0;
+  // 게임필: 슬로모/히트스톱 + 화이트 플래시 (M5)
+  private timeScale = 1;
+  private slomoT = 0;
+  private whiteFlash!: Phaser.GameObjects.Rectangle;
+  // 튜토리얼 (첫 플레이)
+  private tutStep = -1;
+  private tutT = 0;
+  private tutMoved = 0;
+  private tutText: Phaser.GameObjects.Text | null = null;
+  // HUD 변경 감지 캐시
+  private lastScore = -1;
+  private lastCredits = -1;
+  private lastWave = -1;
+  private lastSuperN = -1;
+  private lastWpnKey = '';
+  private lastWpnLvl = -1;
 
   // 개발용 (?auto ?god) / 디버그 도구 (?debug — PLAN 3장)
   private auto = false;
@@ -315,6 +332,15 @@ export class GameScene extends Phaser.Scene {
     this.nextPropAt = 4 + Math.random() * 5;
     this.rearCd = 0;
     this.sideCd = 0;
+    this.timeScale = 1;
+    this.slomoT = 0;
+    this.tutStep = -1;
+    this.tutT = 0;
+    this.tutMoved = 0;
+    this.tutText = null;
+    this.lastScore = this.lastCredits = this.lastWave = this.lastSuperN = -1;
+    this.lastWpnKey = '';
+    this.lastWpnLvl = -1;
     this.podL = this.podR = this.satellite = null;
     this.satAng = 0;
     this.diff = DIFficulty[this.session.difficulty] ?? DIFficulty.normal;
@@ -376,8 +402,36 @@ export class GameScene extends Phaser.Scene {
 
     this.createHud();
     this.createBubble();
+    this.whiteFlash = this.add
+      .rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0xffffff, 1)
+      .setOrigin(0, 0)
+      .setDepth(DEPTH.banner + 1)
+      .setAlpha(0)
+      .setVisible(false);
     this.setupInput();
     if (this.debug) this.createDebug();
+    // 튜토리얼: 첫 플레이 L1 도입 (PLAN 4장 — 90초 내 자연 학습)
+    if (
+      !loadSave().progress.tutorialDone &&
+      this.session.level === 1 &&
+      this.session.levelWave === 0 &&
+      !this.session.endless &&
+      !this.auto
+    ) {
+      this.tutStep = 0;
+      this.tutT = 0;
+      this.tutText = uiText(
+        this,
+        GAME_WIDTH / 2,
+        GAME_HEIGHT * 0.68,
+        t('tut.move'),
+        11,
+        '#8fd3ff',
+        'center',
+      )
+        .setDepth(DEPTH.banner)
+        .setShadow(1, 1, 'rgba(0,0,0,0.9)', 0);
+    }
 
     // 데이터 핫리로드 → 세션 유지한 채 현재 웨이브부터 재생
     const onDataReload = (): void => {
@@ -596,6 +650,38 @@ export class GameScene extends Phaser.Scene {
     }
     this.spawnQ = [];
     this.waveClearT = -1;
+  }
+
+  private updateTutorial(dt: number): void {
+    if (!this.tutText) return;
+    this.tutT += dt;
+    this.tutMoved += Math.abs(this.pvx * dt) + Math.abs(this.pvy * dt);
+    this.tutText.setAlpha(0.7 + Math.sin(this.worldT * 5) * 0.3);
+    if (this.tutStep === 0 && (this.tutMoved > 60 || this.tutT > 5)) {
+      this.tutStep = 1;
+      this.tutT = 0;
+      this.tutText.setText(t('tut.fire'));
+    } else if (this.tutStep === 1 && this.tutT > 2.6) {
+      this.tutStep = 2;
+      this.tutT = 0;
+      this.tutText.setText(t('tut.super')).setColor('#cfc2ff');
+    } else if (this.tutStep === 2 && this.tutT > 3.2) {
+      this.tutStep = 3;
+      this.tutT = 0;
+      this.tutText.setText(t('tut.done')).setColor('#8aff8a');
+    } else if (this.tutStep === 3 && this.tutT > 1.6) {
+      this.tutStep = -1;
+      this.tutText.destroy();
+      this.tutText = null;
+      updateSave((sv) => {
+        sv.progress.tutorialDone = true;
+      });
+    }
+  }
+
+  private slomo(scale: number, dur: number): void {
+    this.timeScale = scale;
+    this.slomoT = dur;
   }
 
   private updateDebug(): void {
@@ -1084,6 +1170,8 @@ export class GameScene extends Phaser.Scene {
     if (part.hp <= 0) {
       part.alive = false;
       part.img.clearTint();
+      vibrate(50);
+      this.slomo(0.35, 0.22);
       this.addBoom(B.x + part.def.dx, B.y + part.def.dy, 1.6, true);
       this.session.score += 800;
       this.session.credits += Math.round(800 * DATA.shop.creditRate * this.diff.credit);
@@ -1101,6 +1189,8 @@ export class GameScene extends Phaser.Scene {
     this.session.armor = r.armor;
     this.inv = PLAYER.invulnAfterHit;
     SFX.hit();
+    vibrate(40);
+    this.slomo(0, 0.05);
     this.shake = Math.min(7, this.shake + 3);
     if (r.dead) {
       this.alive = false;
@@ -1112,6 +1202,8 @@ export class GameScene extends Phaser.Scene {
       this.podL?.setVisible(false);
       this.podR?.setVisible(false);
       this.satellite?.setVisible(false);
+      vibrate(160);
+      this.slomo(0.3, 0.7);
       this.deathT = 1.4;
     }
   }
@@ -1151,6 +1243,15 @@ export class GameScene extends Phaser.Scene {
             this.addBoom(bx + rnd(-26, 26), by + rnd(-24, 24), rnd(1.2, 2.1), k === 0);
         });
       }
+      vibrate([70, 50, 160]);
+      this.slomo(0.25, 0.9);
+      this.whiteFlash.setVisible(true).setAlpha(0.85);
+      this.tweens.add({
+        targets: this.whiteFlash,
+        alpha: 0,
+        duration: 550,
+        onComplete: () => this.whiteFlash.setVisible(false),
+      });
       this.session.score += B.def.killScore;
       this.session.credits += Math.round(B.def.killScore * DATA.shop.creditRate * this.diff.credit);
       this.addFloatText(bx, by, `+${B.def.killScore}`, '#7ef7ff');
@@ -1266,6 +1367,7 @@ export class GameScene extends Phaser.Scene {
     this.sp = { t: 0, holes, phantoms: [], acc: 0, spidSaid: false };
     this.inv = 999;
     this.auraImg.setVisible(true);
+    vibrate(80);
     SFX.superOn();
     this.shake = 6;
   }
@@ -1392,8 +1494,14 @@ export class GameScene extends Phaser.Scene {
 
   /* ---------- 메인 업데이트 ---------- */
   update(_time: number, deltaMs: number): void {
-    const dt = Math.min(0.05, deltaMs / 1000);
+    const realDt = Math.min(0.05, deltaMs / 1000);
+    if (this.slomoT > 0) {
+      this.slomoT -= realDt;
+      if (this.slomoT <= 0) this.timeScale = 1;
+    }
+    const dt = realDt * this.timeScale;
     this.worldT += dt;
+    if (this.tutStep >= 0) this.updateTutorial(realDt);
 
     this.spaceBg.update(dt, this.scrollSpd);
     this.updateProps(dt);
@@ -1858,6 +1966,7 @@ export class GameScene extends Phaser.Scene {
       if (B.y >= def.entryY) {
         B.entered = true;
         B.cx = B.x;
+        this.banner(t(def.nameKey), 2.0, '#ff9a9a');
       }
     } else {
       const mv = def.movement;
@@ -2131,19 +2240,38 @@ export class GameScene extends Phaser.Scene {
     const wpn = DATA.weapons.weapons[s.cur];
     this.hudShieldBar.setScale(clamp(s.shield / s.shieldMax, 0, 1), 1);
     this.hudArmorBar.setScale(clamp(s.armor / s.armorMax, 0, 1), 1);
-    this.hudWpn.setText(wpn?.short ?? s.cur);
+    // 텍스트는 값이 바뀔 때만 재생성 (모바일 텍스처 업로드 절약)
     const lvl = weaponLevel(s);
-    this.hudPips.forEach((p, i) => p.setFillStyle(i < lvl ? 0x8aff8a : 0x37543f));
-    this.hudWaveT.setText(t('hud.wave', s.wave));
-    this.hudScore.setText(String(s.score).padStart(7, '0'));
-    this.hudCredits.setText(t('hud.credits', s.credits));
+    if (s.cur !== this.lastWpnKey) {
+      this.lastWpnKey = s.cur;
+      this.hudWpn.setText(wpn?.short ?? s.cur);
+    }
+    if (lvl !== this.lastWpnLvl) {
+      this.lastWpnLvl = lvl;
+      this.hudPips.forEach((p, i) => p.setFillStyle(i < lvl ? 0x8aff8a : 0x37543f));
+    }
+    if (s.wave !== this.lastWave) {
+      this.lastWave = s.wave;
+      this.hudWaveT.setText(t('hud.wave', s.wave));
+    }
+    if (s.score !== this.lastScore) {
+      this.lastScore = s.score;
+      this.hudScore.setText(String(s.score).padStart(7, '0'));
+    }
+    if (s.credits !== this.lastCredits) {
+      this.lastCredits = s.credits;
+      this.hudCredits.setText(t('hud.credits', s.credits));
+    }
     // 하단 탄막을 가리지 않게 반투명 유지, 사용 가능 시 펄스
     if (s.superN > 0) {
       this.superBtn.setAlpha(0.66).setScale(1 + Math.sin(this.worldT * 4.5) * 0.05);
     } else {
       this.superBtn.setAlpha(0.28).setScale(1);
     }
-    this.superCount.setText(`x${s.superN}`);
+    if (s.superN !== this.lastSuperN) {
+      this.lastSuperN = s.superN;
+      this.superCount.setText(`x${s.superN}`);
+    }
     const B = this.boss;
     if (B) this.bossBar.setScale(clamp(B.hp / B.hpMax, 0, 1), 1);
   }

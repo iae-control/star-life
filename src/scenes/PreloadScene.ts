@@ -10,6 +10,10 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   preload(): void {
+    // Kenney Pixel Shmup (CC0) — 기계형 적기 헐. assets/LICENSES.md 기록.
+    for (const n of [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]) {
+      this.load.image(`kship_${n}`, `assets/kenney/ships/ship_00${n}.png`);
+    }
     const barWidth = 200;
     const barHeight = 6;
     const x = (GAME_WIDTH - barWidth) / 2;

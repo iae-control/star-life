@@ -504,6 +504,41 @@ function glowBullet(
 
 /* ---------- 메인 ---------- */
 
+/** Kenney 회색 헐 → 테마 색상화 + 하향 반전 + 입체 필터 (기계형 적기) */
+function kenneyShip(scene: Phaser.Scene, outKey: string, srcKey: string, color: string): boolean {
+  if (!scene.textures.exists(srcKey)) return false;
+  const src = scene.textures.get(srcKey).getSourceImage() as HTMLImageElement;
+  const [c, ctx] = canvas(32, 32);
+  ctx.save();
+  ctx.translate(0, 32);
+  ctx.scale(1, -1); // 적기는 아래를 향한다
+  ctx.drawImage(src, 0, 0);
+  ctx.restore();
+  // 회색 헐에 테마 색 입히기 (음영 유지)
+  ctx.globalCompositeOperation = 'color';
+  ctx.fillStyle = color;
+  ctx.fillRect(0, 0, 32, 32);
+  ctx.globalCompositeOperation = 'destination-in';
+  ctx.save();
+  ctx.translate(0, 32);
+  ctx.scale(1, -1);
+  ctx.drawImage(src, 0, 0);
+  ctx.restore();
+  // 우주 톤으로 약간 어둡게
+  ctx.globalCompositeOperation = 'multiply';
+  ctx.fillStyle = 'rgba(160,160,190,1)';
+  ctx.fillRect(0, 0, 32, 32);
+  ctx.globalCompositeOperation = 'destination-in';
+  ctx.save();
+  ctx.translate(0, 32);
+  ctx.scale(1, -1);
+  ctx.drawImage(src, 0, 0);
+  ctx.restore();
+  ctx.globalCompositeOperation = 'source-over';
+  addCanvasTexture(scene, outKey, enhance(c));
+  return true;
+}
+
 export function generateTextures(scene: Phaser.Scene): void {
   // 함선
   addCanvasTexture(scene, 'ship-player', enhance(pixmap(PLAYER_MAP, PLAYER_PAL, 2)));
@@ -629,6 +664,17 @@ export function generateTextures(scene: Phaser.Scene): void {
   addCanvasTexture(scene, 'part-flarecannon', enhance(pixmap(CANNON_MAP, CANNON_PAL, 3)));
   addCanvasTexture(scene, 'part-shard', enhance(pixmap(SHARDP_MAP, SHARDP_PAL, 3)));
   addCanvasTexture(scene, 'part-arc', enhance(pixmap(ARC_MAP, ARC_PAL, 3)));
+
+  // 기계형 적기 — Kenney Pixel Shmup 헐 (CC0) 색상화. 로드 실패 시 위의 절차 생성 유지.
+  kenneyShip(scene, 'ship-e1', 'kship_18', '#e64a4a');
+  kenneyShip(scene, 'ship-e2', 'kship_14', '#9a6ae0');
+  kenneyShip(scene, 'ship-e3', 'kship_19', '#ffb347');
+  kenneyShip(scene, 'ship-sentinel', 'kship_15', '#e0a03a');
+  kenneyShip(scene, 'ship-furnace', 'kship_12', '#e05028');
+  kenneyShip(scene, 'ship-gazer', 'kship_16', '#7a5ac8');
+  kenneyShip(scene, 'ship-lancer', 'kship_22', '#3aa8e0');
+  kenneyShip(scene, 'ship-ember', 'kship_23', '#ff8a3a');
+  kenneyShip(scene, 'ship-cinder', 'kship_20', '#c8401a');
 
   // 플레이어 탄 (글로우 베이크)
   addCanvasTexture(

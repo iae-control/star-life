@@ -10,11 +10,15 @@ export interface SaveData {
     lang: 'ko' | 'en';
     muted: boolean;
     difficulty: Difficulty;
+    musicVol: number;
+    sfxVol: number;
+    vibration: boolean;
   };
   progress: {
     /** 도달한 최고 레벨 (이어하기 시작점) */
     unlockedLevel: number;
     endlessUnlocked: boolean;
+    tutorialDone: boolean;
   };
 }
 
@@ -26,8 +30,15 @@ function defaults(): SaveData {
     v: 1,
     best: 0,
     endlessBest: 0,
-    settings: { lang: 'ko', muted: false, difficulty: 'normal' },
-    progress: { unlockedLevel: 1, endlessUnlocked: false },
+    settings: {
+      lang: 'ko',
+      muted: false,
+      difficulty: 'normal',
+      musicVol: 0.8,
+      sfxVol: 1,
+      vibration: true,
+    },
+    progress: { unlockedLevel: 1, endlessUnlocked: false, tutorialDone: false },
   };
 }
 

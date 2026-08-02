@@ -1,6 +1,11 @@
 // 절차 생성 SFX — 데모의 WebAudio 코드를 그대로 이식 (M5에서 ZzFX/오디오버스로 대체 검토).
 let actx: AudioContext | null = null;
 let muted = false;
+let sfxVol = 1;
+
+export function setSfxVolume(v: number): void {
+  sfxVol = v;
+}
 
 export function audioInit(): void {
   if (actx) return;
@@ -69,7 +74,7 @@ function tone(
   o.type = type;
   o.frequency.setValueAtTime(f0, t0);
   o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t0 + dur);
-  env(g, t0, 0.005, dur, peak);
+  env(g, t0, 0.005, dur, peak * sfxVol);
   o.connect(g).connect(actx.destination);
   o.start(t0);
   o.stop(t0 + dur + 0.05);
@@ -95,7 +100,7 @@ function noiseBurst(dur: number, peak: number, fc0: number, fc1: number, delay =
   f.frequency.setValueAtTime(fc0, t0);
   f.frequency.exponentialRampToValueAtTime(fc1, t0 + dur);
   const g = actx.createGain();
-  env(g, t0, 0.005, dur, peak);
+  env(g, t0, 0.005, dur, peak * sfxVol);
   src.connect(f).connect(g).connect(actx.destination);
   src.start(t0);
   src.stop(t0 + dur + 0.05);
