@@ -454,6 +454,36 @@ function tinted(rows: string[], scale: number, color: string, alpha: number): HT
   return c;
 }
 
+/** 픽셀아트 입체감 필터: 상단 림 라이트 + 하단 셀프 섀도 + 수직 그라디언트 */
+function enhance(c: HTMLCanvasElement): HTMLCanvasElement {
+  const ctx = c.getContext('2d');
+  if (!ctx) return c;
+  const w = c.width;
+  const h = c.height;
+  const img = ctx.getImageData(0, 0, w, h);
+  const d = img.data;
+  const idx = (x: number, y: number) => (y * w + x) * 4;
+  const alphaAt = (x: number, y: number) =>
+    x < 0 || y < 0 || x >= w || y >= h ? 0 : (d[idx(x, y) + 3] ?? 0);
+  const out = ctx.createImageData(w, h);
+  out.data.set(d);
+  const o = out.data;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = idx(x, y);
+      if ((d[i + 3] ?? 0) === 0) continue;
+      let f = 1 + 0.16 * (0.5 - y / h);
+      if (alphaAt(x, y - 2) === 0) f *= 1.4;
+      else if (alphaAt(x, y + 2) === 0) f *= 0.7;
+      o[i] = Math.min(255, (d[i] ?? 0) * f);
+      o[i + 1] = Math.min(255, (d[i + 1] ?? 0) * f);
+      o[i + 2] = Math.min(255, (d[i + 2] ?? 0) * f);
+    }
+  }
+  ctx.putImageData(out, 0, 0);
+  return c;
+}
+
 /* ---------- 유틸: 글로우 탄환 ---------- */
 
 function glowBullet(
@@ -476,29 +506,29 @@ function glowBullet(
 
 export function generateTextures(scene: Phaser.Scene): void {
   // 함선
-  addCanvasTexture(scene, 'ship-player', pixmap(PLAYER_MAP, PLAYER_PAL, 2));
-  addCanvasTexture(scene, 'ship-e1', pixmap(E1_MAP, E1_PAL, 2));
-  addCanvasTexture(scene, 'ship-e2', pixmap(E2_MAP, E2_PAL, 2));
-  addCanvasTexture(scene, 'ship-e3', pixmap(E3_MAP, E3_PAL, 2));
-  addCanvasTexture(scene, 'ship-boss', pixmap(BOSS_MAP, BOSS_PAL, 3));
+  addCanvasTexture(scene, 'ship-player', enhance(pixmap(PLAYER_MAP, PLAYER_PAL, 2)));
+  addCanvasTexture(scene, 'ship-e1', enhance(pixmap(E1_MAP, E1_PAL, 2)));
+  addCanvasTexture(scene, 'ship-e2', enhance(pixmap(E2_MAP, E2_PAL, 2)));
+  addCanvasTexture(scene, 'ship-e3', enhance(pixmap(E3_MAP, E3_PAL, 2)));
+  addCanvasTexture(scene, 'ship-boss', enhance(pixmap(BOSS_MAP, BOSS_PAL, 3)));
   // 환영 함선(Jungjioo 러시): 플레이어 실루엣 청백 틴트
   addCanvasTexture(scene, 'ship-ghost', tinted(PLAYER_MAP, 2, 'rgb(150,225,255)', 0.88));
 
   // L1~L3 신규 적 (신규 맵 + 팔레트 스왑 변형)
-  addCanvasTexture(scene, 'ship-wisp', pixmap(WISP_MAP, WISP_PAL, 2));
-  addCanvasTexture(scene, 'ship-spore', pixmap(SPORE_MAP, SPORE_PAL, 2));
+  addCanvasTexture(scene, 'ship-wisp', enhance(pixmap(WISP_MAP, WISP_PAL, 2)));
+  addCanvasTexture(scene, 'ship-spore', enhance(pixmap(SPORE_MAP, SPORE_PAL, 2)));
   addCanvasTexture(
     scene,
     'ship-mite',
     pixmap(E1_MAP, { O: '#08282a', W: '#c8fff4', R: '#3ac8b8', r: '#1f8a80', d: '#0c4a48' }, 1),
   );
-  addCanvasTexture(scene, 'ship-ember', pixmap(EMBER_MAP, EMBER_PAL, 2));
+  addCanvasTexture(scene, 'ship-ember', enhance(pixmap(EMBER_MAP, EMBER_PAL, 2)));
   addCanvasTexture(
     scene,
     'ship-shard',
     pixmap(E3_MAP, { O: '#2a0424', W: '#ffd8f4', Y: '#ff8ad8', o: '#c83a9a', d: '#701858' }, 2),
   );
-  addCanvasTexture(scene, 'ship-orbiter', pixmap(ORBITER_MAP, ORBITER_PAL, 2));
+  addCanvasTexture(scene, 'ship-orbiter', enhance(pixmap(ORBITER_MAP, ORBITER_PAL, 2)));
   addCanvasTexture(
     scene,
     'ship-flare',
@@ -521,10 +551,10 @@ export function generateTextures(scene: Phaser.Scene): void {
       2,
     ),
   );
-  addCanvasTexture(scene, 'ship-prominence', pixmap(PROM_MAP, PROM_PAL, 2));
-  addCanvasTexture(scene, 'boss-amoeba', pixmap(AMOEBA_MAP, AMOEBA_PAL, 3));
-  addCanvasTexture(scene, 'boss-protocore', pixmap(PROTOCORE_MAP, PROTOCORE_PAL, 3));
-  addCanvasTexture(scene, 'boss-helios', pixmap(HELIOS_MAP, HELIOS_PAL, 3));
+  addCanvasTexture(scene, 'ship-prominence', enhance(pixmap(PROM_MAP, PROM_PAL, 2)));
+  addCanvasTexture(scene, 'boss-amoeba', enhance(pixmap(AMOEBA_MAP, AMOEBA_PAL, 3)));
+  addCanvasTexture(scene, 'boss-protocore', enhance(pixmap(PROTOCORE_MAP, PROTOCORE_PAL, 3)));
+  addCanvasTexture(scene, 'boss-helios', enhance(pixmap(HELIOS_MAP, HELIOS_PAL, 3)));
 
   // L4~L6 적 (팔레트 스왑 변형)
   addCanvasTexture(
@@ -590,15 +620,15 @@ export function generateTextures(scene: Phaser.Scene): void {
   );
 
   // 보스 3종 (@4 거대) + 파츠
-  addCanvasTexture(scene, 'boss-crimson', pixmap(CRIMSON_MAP, CRIMSON_PAL, 4));
-  addCanvasTexture(scene, 'boss-nova', pixmap(NOVA_MAP, NOVA_PAL, 4));
-  addCanvasTexture(scene, 'boss-singularity', pixmap(SING_MAP, SING_PAL, 4));
-  addCanvasTexture(scene, 'part-pod', pixmap(POD_MAP, POD_PAL, 3));
-  addCanvasTexture(scene, 'part-vane', pixmap(VANE_MAP, VANE_PAL, 3));
-  addCanvasTexture(scene, 'part-corona', pixmap(CORONA_MAP, CORONA_PAL, 3));
-  addCanvasTexture(scene, 'part-flarecannon', pixmap(CANNON_MAP, CANNON_PAL, 3));
-  addCanvasTexture(scene, 'part-shard', pixmap(SHARDP_MAP, SHARDP_PAL, 3));
-  addCanvasTexture(scene, 'part-arc', pixmap(ARC_MAP, ARC_PAL, 3));
+  addCanvasTexture(scene, 'boss-crimson', enhance(pixmap(CRIMSON_MAP, CRIMSON_PAL, 4)));
+  addCanvasTexture(scene, 'boss-nova', enhance(pixmap(NOVA_MAP, NOVA_PAL, 4)));
+  addCanvasTexture(scene, 'boss-singularity', enhance(pixmap(SING_MAP, SING_PAL, 4)));
+  addCanvasTexture(scene, 'part-pod', enhance(pixmap(POD_MAP, POD_PAL, 3)));
+  addCanvasTexture(scene, 'part-vane', enhance(pixmap(VANE_MAP, VANE_PAL, 3)));
+  addCanvasTexture(scene, 'part-corona', enhance(pixmap(CORONA_MAP, CORONA_PAL, 3)));
+  addCanvasTexture(scene, 'part-flarecannon', enhance(pixmap(CANNON_MAP, CANNON_PAL, 3)));
+  addCanvasTexture(scene, 'part-shard', enhance(pixmap(SHARDP_MAP, SHARDP_PAL, 3)));
+  addCanvasTexture(scene, 'part-arc', enhance(pixmap(ARC_MAP, ARC_PAL, 3)));
 
   // 플레이어 탄 (글로우 베이크)
   addCanvasTexture(
@@ -1187,5 +1217,118 @@ export function generateTextures(scene: Phaser.Scene): void {
       }
     }
     addCanvasTexture(scene, 'decor-swirl', c);
+  }
+
+  /* ---------- 대형 지형 구조물 (티리안식 흘러가는 지물) ---------- */
+  const snap2 = (v: number) => Math.round(v / 2) * 2;
+  const bigRock = (key: string, base: string, mid: string, hi: string, crack?: string) => {
+    const [c, ctx] = canvas(96, 96);
+    const cx = 48;
+    const cy = 48;
+    const r = 38;
+    const verts: [number, number][] = [];
+    const n = 11;
+    const seed = Math.random() * 6.28;
+    for (let i = 0; i < n; i++) {
+      const a = seed + (i / n) * Math.PI * 2;
+      const rr = r * (0.72 + Math.random() * 0.4);
+      verts.push([snap2(cx + Math.cos(a) * rr), snap2(cy + Math.sin(a) * rr)]);
+    }
+    const poly = (offX: number, offY: number, shrink: number) => {
+      ctx.beginPath();
+      verts.forEach(([vx, vy], i) => {
+        const px = cx + (vx - cx) * shrink + offX;
+        const py = cy + (vy - cy) * shrink + offY;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      });
+      ctx.closePath();
+    };
+    ctx.fillStyle = '#0a0a12';
+    poly(3, 4, 1);
+    ctx.fill();
+    ctx.fillStyle = base;
+    poly(0, 0, 1);
+    ctx.fill();
+    ctx.fillStyle = mid;
+    poly(-r * 0.1, -r * 0.14, 0.74);
+    ctx.fill();
+    ctx.fillStyle = hi;
+    poly(-r * 0.18, -r * 0.24, 0.42);
+    ctx.fill();
+    for (let k = 0; k < 4; k++) {
+      const ca = Math.random() * 6.28;
+      const cd = r * 0.5 * Math.random();
+      ctx.fillStyle = 'rgba(10,8,14,0.5)';
+      ctx.beginPath();
+      ctx.arc(snap2(cx + Math.cos(ca) * cd), snap2(cy + Math.sin(ca) * cd), 4 + r * 0.12, 0, 7);
+      ctx.fill();
+    }
+    if (crack) {
+      ctx.strokeStyle = crack;
+      ctx.lineWidth = 2;
+      for (let k = 0; k < 3; k++) {
+        const a0 = Math.random() * 6.28;
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(a0) * r * 0.2, cy + Math.sin(a0) * r * 0.2);
+        ctx.lineTo(cx + Math.cos(a0 + 0.5) * r * 0.6, cy + Math.sin(a0 + 0.5) * r * 0.6);
+        ctx.lineTo(cx + Math.cos(a0 + 0.3) * r * 0.9, cy + Math.sin(a0 + 0.3) * r * 0.9);
+        ctx.stroke();
+      }
+    }
+    addCanvasTexture(scene, key, c);
+  };
+  bigRock('prop-rock', '#584a40', '#7a685a', '#948270');
+  bigRock('prop-emberrock', '#4a2018', '#7a3020', '#a84828', '#ff8a3a');
+  {
+    // 수정 성단 (성운 테마)
+    const [c, ctx] = canvas(90, 100);
+    const crystal = (cx: number, cy: number, w2: number, h2: number, rot: number) => {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(rot);
+      ctx.fillStyle = '#1a3a4a';
+      ctx.beginPath();
+      ctx.moveTo(0, -h2);
+      ctx.lineTo(w2, 0);
+      ctx.lineTo(0, h2);
+      ctx.lineTo(-w2, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#3a8a9a';
+      ctx.beginPath();
+      ctx.moveTo(0, -h2);
+      ctx.lineTo(w2 * 0.6, -h2 * 0.1);
+      ctx.lineTo(0, h2 * 0.6);
+      ctx.lineTo(-w2 * 0.6, -h2 * 0.1);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#8ae8e8';
+      ctx.fillRect(-2, -h2 + 4, 3, h2 * 0.8);
+      ctx.restore();
+    };
+    crystal(45, 55, 14, 42, 0);
+    crystal(24, 62, 10, 28, -0.5);
+    crystal(66, 64, 9, 26, 0.45);
+    crystal(38, 74, 7, 18, -0.2);
+    addCanvasTexture(scene, 'prop-crystal', c);
+  }
+  {
+    // 난파선 잔해 (블랙홀 테마)
+    const rows = [
+      '....OOOOOO..........',
+      '..OOhhhhhhOO...OOO..',
+      '.OhhHHHHhhhhO.OhhhO.',
+      'OhhHHwwHHhhhhOhhhhhO',
+      'OhhHwwwwHhhhhhhhhhhO',
+      '.OhhHHHHhhhOOOhhhhO.',
+      '..OOhhhhOO...OOhhO..',
+      '....OOOO.......OO...',
+      '.......O..O.........',
+      '......OhOOhO........',
+      '......OOOOOO........',
+    ];
+    const pal = { O: '#0c0c14', h: '#3a3a4a', H: '#5a5a70', w: '#8a93b0' };
+    addCanvasTexture(scene, 'prop-derelict', enhance(pixmap(rows, pal, 4)));
   }
 }

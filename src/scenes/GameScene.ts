@@ -223,6 +223,9 @@ export class GameScene extends Phaser.Scene {
   private worldT = 0;
   private flashes: Flash[] = [];
   private thrustT = 0;
+  private props: { img: Phaser.GameObjects.Image; rot: number }[] = [];
+  private nextPropAt = 4;
+  private propT = 0;
 
   // 장비 (후방무기·사이드킥)
   private rearCd = 0;
@@ -307,6 +310,9 @@ export class GameScene extends Phaser.Scene {
     this.hudPips = [];
     this.flashes = [];
     this.thrustT = 0;
+    this.props = [];
+    this.propT = 0;
+    this.nextPropAt = 4 + Math.random() * 5;
     this.rearCd = 0;
     this.sideCd = 0;
     this.podL = this.podR = this.satellite = null;
@@ -1390,6 +1396,7 @@ export class GameScene extends Phaser.Scene {
     this.worldT += dt;
 
     this.spaceBg.update(dt, this.scrollSpd);
+    this.updateProps(dt);
     if (this.bannerT > 0) {
       this.bannerT -= dt;
       this.bannerText.setAlpha(Math.min(1, this.bannerT * 2));
@@ -1785,6 +1792,14 @@ export class GameScene extends Phaser.Scene {
         }
       }
       e.img.setPosition(e.x, e.y);
+      // 움직임 주스: 이동 방향에 따른 기울기
+      if (def.behavior === 'diver') {
+        e.img.setRotation(clamp((e.vx ?? 0) * 0.0016, -0.45, 0.45));
+      } else if (def.behavior === 'sineDescend') {
+        e.img.setRotation(Math.cos(e.t * (e.f ?? 2)) * (e.amp ?? 0) * 0.003);
+      } else if (def.behavior === 'strafer') {
+        e.img.setRotation((e.dir ?? 1) * 0.18);
+      }
       // 피격 화이트 플래시
       if (e.flashT > 0) {
         e.flashT -= dt;
@@ -1883,6 +1898,7 @@ export class GameScene extends Phaser.Scene {
       }
     }
     B.img.setPosition(B.x, B.y);
+    B.img.setScale(1 + Math.sin(B.t * 2.4) * 0.02);
     // 파츠: 앵커 추적 + 자체 사격
     for (const part of B.parts) {
       if (!part.alive) continue;
@@ -2020,6 +2036,43 @@ export class GameScene extends Phaser.Scene {
         this.pool.release(o.img);
         this.pool.release(o.glow);
         this.orbs.splice(i, 1);
+      }
+    }
+  }
+
+  /** 티리안식 대형 지형 구조물 — 테마별 프롭이 스크롤을 따라 흘러간다 */
+  private updateProps(dt: number): void {
+    this.propT += dt;
+    if (this.propT >= this.nextPropAt) {
+      this.propT = 0;
+      this.nextPropAt = 7 + Math.random() * 6;
+      const table: Record<string, string[]> = {
+        nebula: ['prop-crystal'],
+        protostar: ['prop-emberrock'],
+        mainseq: ['prop-emberrock', 'prop-rock'],
+        asteroids: ['prop-rock'],
+        redgiant: ['prop-emberrock'],
+        supernova: ['prop-rock'],
+        blackhole: ['prop-derelict'],
+      };
+      const keys = table[this.level.background.theme] ?? ['prop-rock'];
+      const key = keys[Math.floor(Math.random() * keys.length)] ?? 'prop-rock';
+      const img = this.add
+        .image(rnd(45, GAME_WIDTH - 45), -90, key)
+        .setDepth(DEPTH.bg + 0.8)
+        .setAlpha(0.88)
+        .setScale(rnd(0.65, 1.25))
+        .setRotation(rnd(0, 6.28));
+      this.props.push({ img, rot: rnd(-0.25, 0.25) });
+    }
+    for (let i = this.props.length - 1; i >= 0; i--) {
+      const pr = this.props[i];
+      if (!pr) continue;
+      pr.img.y += this.scrollSpd * 1.15 * dt;
+      pr.img.rotation += pr.rot * dt;
+      if (pr.img.y > GAME_HEIGHT + 100) {
+        pr.img.destroy();
+        this.props.splice(i, 1);
       }
     }
   }
