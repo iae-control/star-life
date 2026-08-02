@@ -5,6 +5,8 @@
 | 에셋                          | 출처                                    | 라이선스 | 사용 위치                     | 비고                           |
 | ----------------------------- | --------------------------------------- | -------- | ----------------------------- | ------------------------------ |
 | Galmuri 픽셀 폰트 (11/9/Bold) | https://github.com/quiple/galmuri (npm) | OFL-1.1  | public/fonts/, 전체 UI 텍스트 | 한글 픽셀 폰트, 표기 의무 없음 |
-| 자체 절차 생성 스프라이트     | src/systems/textures.ts                 | 자체작   | 전 씬                         | M3에서 정식 아트로 교체 예정   |
+| Kenney Pixel Shmup 회색 헐 12종 | https://kenney.nl/assets/pixel-shmup | CC0 | public/assets/kenney/, 기계형 적기(색상화) | 표기 의무 없음, 크레딧에 자발 표기 |
+| ansimuz Spaceship Shooter / Starfighter 스프라이트 | https://ansimuz.itch.io (LICENSE-ansimuz.txt 동봉) | 자유 사용(상업·수정·재배포 허용, 크레딧 감사 표기) | public/assets/ansimuz/ — 플레이어기·유기체 적 3종·폭발·소행성 | 크레딧 화면에 표기 |
+| 자체 절차 생성 스프라이트     | src/systems/textures.ts                 | 자체작   | 보스·살인달팽이·프롭·이펙트·배경 | 시그니처 아트는 계속 자체작   |
 
-원칙: CC0 우선(Kenney 등, 표기 의무 없음). 신규 제작분은 자체 저작. Tyrian CC-BY 에셋은 사용하지 않는다.
+원칙: CC0/자유 라이선스 우선(표기 의무 없음이어도 크레딧에 표기). 신규 제작분은 자체 저작. Tyrian CC-BY 에셋은 사용하지 않는다.

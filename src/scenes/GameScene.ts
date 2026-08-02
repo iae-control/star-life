@@ -100,6 +100,9 @@ interface BossState {
   img: Phaser.GameObjects.Image;
   glow: Phaser.GameObjects.Image;
 }
+// ansimuz 적 시트 — 2프레임 아이들 애니메이션 대상
+const AZ_ENEMY_FRAMES: Record<string, number> = { 'az-small': 2, 'az-medium': 2, 'az-big': 2 };
+
 interface Boom {
   x: number;
   y: number;
@@ -409,12 +412,11 @@ export class GameScene extends Phaser.Scene {
       .setBlendMode(Phaser.BlendModes.ADD)
       .setVisible(false);
     this.playerImg = this.add
-      .image(
-        this.px,
-        this.py,
-        this.session.pilot === 'parksulhee' ? 'ship-player-ps' : 'ship-player',
-      )
+      .image(this.px, this.py, this.session.pilot === 'parksulhee' ? 'az-ship-ps' : 'az-ship', 0)
+      .setScale(2)
       .setDepth(DEPTH.player);
+    // 엔진 화염은 시트에 포함(행 플리커) — 별도 화염 이미지는 끈다
+    this.flameImg.setVisible(false);
 
     // 사이드킥 표시체
     if (this.session.sidekick === 'pods') {
@@ -932,7 +934,13 @@ export class GameScene extends Phaser.Scene {
       dead: false,
       score: def.score,
       flashT: 0,
-      img: this.pool.get(def.sprite, x, y),
+      img: this.pool.get(
+        AZ_ENEMY_FRAMES[def.sprite] && def.tint && this.textures.exists(def.sprite + def.tint)
+          ? def.sprite + def.tint
+          : def.sprite,
+        x,
+        y,
+      ),
     };
     if (def.behavior === 'sineDescend') {
       const p = def.params;
@@ -967,6 +975,8 @@ export class GameScene extends Phaser.Scene {
       e.life = p.life;
     }
     e.img.setDepth(DEPTH.enemy);
+    if (AZ_ENEMY_FRAMES[def.sprite]) e.img.setFrame(0);
+    if (def.scale) e.img.setScale(def.scale);
     this.enemies.push(e);
   }
 
@@ -1326,11 +1336,13 @@ export class GameScene extends Phaser.Scene {
 
   /* ---------- 이펙트/드랍 ---------- */
   private addBoom(x: number, y: number, scale: number, big: boolean): void {
-    const img = this.fxPool.get('boom', x, y);
+    const img = this.fxPool.get('az-explosion', x, y);
     img
+      .setFrame(0)
       .setDepth(DEPTH.boom)
       .setBlendMode(Phaser.BlendModes.ADD)
-      .setScale(0.1 * scale);
+      .setScale(1.4 * scale)
+      .setRotation(rnd(0, 6.283));
     const ring = this.fxPool.get('boom-ring', x, y);
     ring
       .setDepth(DEPTH.boom + 0.1)
@@ -1835,7 +1847,7 @@ export class GameScene extends Phaser.Scene {
     this.thrustT += dt;
     if (this.thrustT > 0.028 && this.playerImg.visible) {
       this.thrustT = 0;
-      const s = this.fxPool.get('spark-cyan', this.px + rnd(-3, 3), this.py + 18);
+      const s = this.fxPool.get('spark-cyan', this.px + rnd(-3, 3), this.py + 23);
       s.setDepth(DEPTH.player - 0.6)
         .setBlendMode(Phaser.BlendModes.ADD)
         .setAlpha(0.9)
@@ -1850,17 +1862,14 @@ export class GameScene extends Phaser.Scene {
       );
     }
 
-    // 렌더 반영
+    // 렌더 반영 — 뱅킹은 시트 열(0..4), 엔진 플리커는 행(0/1)
     this.playerImg.setPosition(Math.round(this.px), Math.round(this.py));
-    this.playerImg.setRotation(clamp(this.pvx * 0.0007, -0.15, 0.15));
-    // 뱅킹 연출: 좌우 속도에 비례한 가로 스쿼시
-    this.playerImg.setScale(1 - Math.min(0.18, Math.abs(this.pvx) / 1500), 1);
+    const bank = clamp(Math.round(this.pvx / 130), -2, 2) + 2;
+    const flick = Math.floor(this.worldT * 14) % 2;
+    this.playerImg.setFrame(flick * 5 + bank);
     this.playerImg.setVisible(
       !(this.inv > 0 && !this.sp && Math.floor(this.worldT * 20) % 2 === 1),
     );
-    this.flameImg.setPosition(Math.round(this.px), Math.round(this.py) + 17);
-    this.flameImg.setScale(1, 1 + Math.sin(this.worldT * 40) * 0.25);
-    this.flameImg.setVisible(this.playerImg.visible);
     if (this.sp || this.ps) this.auraImg.setPosition(this.px, this.py);
   }
 
@@ -2049,6 +2058,9 @@ export class GameScene extends Phaser.Scene {
       } else if (def.behavior === 'strafer') {
         e.img.setRotation((e.dir ?? 1) * 0.18);
       }
+      // 시트 아이들 애니메이션 (ansimuz 2프레임)
+      const fc = AZ_ENEMY_FRAMES[def.sprite];
+      if (fc && e.flashT <= 0) e.img.setFrame(Math.floor(e.t * 7) % fc);
       // 피격 화이트 플래시
       if (e.flashT > 0) {
         e.flashT -= dt;
@@ -2299,10 +2311,10 @@ export class GameScene extends Phaser.Scene {
       const table: Record<string, string[]> = {
         nebula: ['prop-crystal'],
         protostar: ['prop-emberrock'],
-        mainseq: ['prop-emberrock', 'prop-rock'],
-        asteroids: ['prop-rock'],
-        redgiant: ['prop-emberrock'],
-        supernova: ['prop-rock'],
+        mainseq: ['prop-emberrock', 'az-asteroid-med-a'],
+        asteroids: ['az-asteroid-big-a', 'az-asteroid-big-b', 'az-asteroid-med-a', 'az-asteroid-med-b'],
+        redgiant: ['prop-emberrock', 'az-asteroid-med-b'],
+        supernova: ['az-asteroid-med-a', 'prop-rock'],
         blackhole: ['prop-derelict'],
         inside: ['prop-eye', 'prop-shellswirl', 'prop-derelict'],
       };
@@ -2335,7 +2347,8 @@ export class GameScene extends Phaser.Scene {
       bm.t += dt * 2.4;
       const p = clamp(bm.t, 0, 1);
       const r = (5 + 41 * p) * bm.scale;
-      bm.img.setScale((r * 2) / 64).setAlpha(1 - p);
+      bm.img.setFrame(Math.min(4, Math.floor(p * 5)));
+      bm.img.setScale((1.7 + 0.5 * p) * bm.scale).setAlpha(1 - p * 0.55);
       // 링은 파이어볼보다 빠르게 확장하며 사라진다
       bm.ring.setScale((r * 3.1) / 64).setAlpha((1 - p) * 0.8);
       if (bm.t >= 1) {

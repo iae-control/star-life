@@ -22,7 +22,6 @@ interface MenuEntry {
 export class TitleScene extends Phaser.Scene {
   private starting = false;
   private ship!: Phaser.GameObjects.Image;
-  private flame!: Phaser.GameObjects.Image;
   private orb!: Phaser.GameObjects.Image;
   private spaceBg!: SpaceBackground;
   private t = 0;
@@ -58,17 +57,14 @@ export class TitleScene extends Phaser.Scene {
       repeat: -1,
       ease: 'Sine.easeInOut',
     });
-    this.flame = this.add
-      .image(GAME_WIDTH / 2, 246 + 52, 'engine-flame')
-      .setScale(3)
-      .setBlendMode(Phaser.BlendModes.ADD);
     this.ship = this.add
       .image(
         GAME_WIDTH / 2,
         246,
-        save.settings.pilot === 'parksulhee' ? 'ship-player-ps' : 'ship-player',
+        save.settings.pilot === 'parksulhee' ? 'az-ship-ps' : 'az-ship',
+        0,
       )
-      .setScale(3);
+      .setScale(4);
     this.orb = this.add.image(GAME_WIDTH / 2 + 92, 246, 'orb-P').setScale(1.4);
 
     uiText(this, GAME_WIDTH / 2, 132, '별의 일생', 40, '#dfe8ff', 'center');
@@ -211,7 +207,8 @@ export class TitleScene extends Phaser.Scene {
       s.settings.pilot = s.settings.pilot === 'jungjioo' ? 'parksulhee' : 'jungjioo';
     });
     this.ship.setTexture(
-      loadSave().settings.pilot === 'parksulhee' ? 'ship-player-ps' : 'ship-player',
+      loadSave().settings.pilot === 'parksulhee' ? 'az-ship-ps' : 'az-ship',
+      this.ship.frame.name,
     );
     this.refreshMenu();
   }
@@ -243,8 +240,8 @@ export class TitleScene extends Phaser.Scene {
     this.spaceBg.update(dt, 45);
     const bob = Math.sin(this.t * 2) * 5;
     this.ship.setY(246 + bob);
-    this.flame.setY(246 + bob + 52);
-    this.flame.setScale(3, 3 + Math.sin(this.t * 40) * 0.7);
+    // 엔진 플리커 — 시트 행 전환
+    this.ship.setFrame(2 + (Math.floor(this.t * 12) % 2) * 5);
     this.orb.setPosition(
       GAME_WIDTH / 2 + Math.cos(this.t * 1.6) * 92,
       246 + bob + Math.sin(this.t * 1.6) * 44,

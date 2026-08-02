@@ -18,6 +18,8 @@ const LINES: [string, number, string][] = [
   ['Galmuri — quiple (OFL-1.1)', 10, '#dfe8ff'],
   ['', 8, '#8fa0c8'],
   ['스프라이트 일부', 9, '#8fa0c8'],
+  ['ansimuz — Spaceship Shooter / Starfighter', 10, '#dfe8ff'],
+  ['ansimuz.itch.io', 9, '#8a93b0'],
   ['Kenney Pixel Shmup (CC0)', 10, '#dfe8ff'],
   ['kenney.nl', 9, '#8a93b0'],
   ['', 8, '#8fa0c8'],

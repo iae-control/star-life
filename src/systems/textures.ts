@@ -604,6 +604,36 @@ function kenneyShip(scene: Phaser.Scene, outKey: string, srcKey: string, color: 
   return true;
 }
 
+/** ansimuz 시트 → 팔레트 변형 시트 ('color' 블렌드 = 음영 유지 색상 스왑, 프레임 격자 유지) */
+export function azSheetVariant(
+  scene: Phaser.Scene,
+  outKey: string,
+  srcKey: string,
+  color: string,
+  frameW: number,
+  frameH: number,
+): boolean {
+  if (!scene.textures.exists(srcKey)) return false;
+  const src = scene.textures.get(srcKey).getSourceImage() as HTMLImageElement;
+  const [c, ctx] = canvas(src.width, src.height);
+  ctx.drawImage(src, 0, 0);
+  ctx.globalCompositeOperation = 'color';
+  ctx.fillStyle = color;
+  ctx.fillRect(0, 0, src.width, src.height);
+  ctx.globalCompositeOperation = 'destination-in';
+  ctx.drawImage(src, 0, 0);
+  ctx.globalCompositeOperation = 'source-over';
+  if (scene.textures.exists(outKey)) scene.textures.remove(outKey);
+  const tex = scene.textures.addCanvas(outKey, c);
+  if (!tex) return false;
+  const cols = Math.floor(src.width / frameW);
+  const rows = Math.floor(src.height / frameH);
+  for (let i = 0; i < cols * rows; i++) {
+    tex.add(i, 0, (i % cols) * frameW, Math.floor(i / cols) * frameH, frameW, frameH);
+  }
+  return true;
+}
+
 export function generateTextures(scene: Phaser.Scene): void {
   // 함선
   addCanvasTexture(scene, 'ship-player', enhance(pixmap(PLAYER_MAP, PLAYER_PAL, 2)));
@@ -840,6 +870,8 @@ export function generateTextures(scene: Phaser.Scene): void {
   kenneyShip(scene, 'ship-lancer', 'kship_22', '#3aa8e0');
   kenneyShip(scene, 'ship-ember', 'kship_23', '#ff8a3a');
   kenneyShip(scene, 'ship-cinder', 'kship_20', '#c8401a');
+  // 박설희 전용기 — ansimuz 함선 마젠타 변형
+  azSheetVariant(scene, 'az-ship-ps', 'az-ship', '#ff5ad8', 16, 24);
 
   // 플레이어 탄 (글로우 베이크)
   addCanvasTexture(

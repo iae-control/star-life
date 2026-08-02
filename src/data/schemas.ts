@@ -85,6 +85,9 @@ const behaviorCommon = {
   score: z.number().int(),
   hp: hpCurve,
   onDeath: onDeathSchema,
+  /** 스프라이트 틴트(팔레트 변형) 및 표시 배율 — ansimuz 애니 시트 공용화용 */
+  tint: hex.optional(),
+  scale: z.number().positive().optional(),
 };
 
 const enemyTypeSchema = z.discriminatedUnion('behavior', [
