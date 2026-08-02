@@ -2,6 +2,8 @@
 
 세로형 슈팅 게임 — v4 데모를 프로덕션으로 끌어올리는 프로젝트. 전체 계획은 [PLAN.md](PLAN.md) 참고.
 
+**플레이(웹)**: https://iae-control.github.io/star-life/ — main 푸시 시 GitHub Actions가 자동 배포. 아이폰은 Safari에서 열고 "홈 화면에 추가"하면 앱처럼 실행됩니다.
+
 ## 요구 환경
 
 - Node LTS(20+), npm

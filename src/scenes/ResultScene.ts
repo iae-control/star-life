@@ -10,6 +10,7 @@ import { uiText } from '../ui/text';
 
 export class ResultScene extends Phaser.Scene {
   private restarting = false;
+  private wasComplete = false;
   private t = 0;
   private prompt!: Phaser.GameObjects.Text;
 
@@ -22,6 +23,7 @@ export class ResultScene extends Phaser.Scene {
     this.t = 0;
     const s = data.session;
     const complete = data.mode === 'complete';
+    this.wasComplete = complete;
     playMusic('title');
 
     this.add
@@ -73,6 +75,7 @@ export class ResultScene extends Phaser.Scene {
     this.restarting = true;
     this.scene.stop(SceneKeys.Game);
     this.scene.stop();
-    this.scene.start(SceneKeys.Title);
+    // 완주 엔딩이면 크레딧을 거쳐 타이틀로
+    this.scene.start(this.wasComplete ? SceneKeys.Credits : SceneKeys.Title);
   }
 }

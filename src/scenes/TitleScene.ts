@@ -168,13 +168,21 @@ export class TitleScene extends Phaser.Scene {
     const best = loadBest();
     if (best) uiText(this, GAME_WIDTH / 2, 570, t('title.best', best), 11, '#ffd76a', 'center');
 
-    // 설정 진입
-    uiText(this, GAME_WIDTH / 2, 600, `⚙ ${t('settings.title')}`, 10, '#8fa0c8', 'center');
+    // 설정 · 크레딧 진입
+    uiText(this, GAME_WIDTH / 2 - 60, 600, `⚙ ${t('settings.title')}`, 10, '#8fa0c8', 'center');
     this.add
-      .zone(GAME_WIDTH / 2 - 70, 588, 140, 26)
+      .zone(GAME_WIDTH / 2 - 120, 588, 120, 26)
       .setOrigin(0, 0)
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', () => this.openSettings());
+    uiText(this, GAME_WIDTH / 2 + 60, 600, 'CREDITS', 10, '#8fa0c8', 'center');
+    this.add
+      .zone(GAME_WIDTH / 2 + 10, 588, 120, 26)
+      .setOrigin(0, 0)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => {
+        if (!this.starting) this.scene.start(SceneKeys.Credits);
+      });
 
     const kb = this.input.keyboard;
     kb?.removeAllListeners();
