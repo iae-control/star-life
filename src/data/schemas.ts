@@ -337,6 +337,16 @@ const waveGroupSchema = z.discriminatedUnion('kind', [
     x: z.number(),
     duration: z.number(),
   }),
+  z.object({
+    kind: z.literal('vee'),
+    enemy: z.string(),
+    count: z.number().int().min(3),
+    spacing: z.number(),
+    interval: z.number(),
+    xMin: z.number(),
+    xMax: z.number(),
+    duration: z.number(),
+  }),
 ]);
 
 export const levelsSchema = z.object({

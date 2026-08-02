@@ -158,23 +158,33 @@ interface SuperState {
   acc: number;
   spidSaid: boolean;
 }
-/** 박슬희 필살기 — 거대 배드민턴 채 풀스윙 */
+/** 박설희 필살기 — 거대 배드민턴 채 다중 스윙 (상하좌우 슁슁슁) */
+interface RacketSwing {
+  img: Phaser.GameObjects.Image;
+  dir: 'L' | 'R' | 'T' | 'B';
+  t0: number;
+  lane: number;
+  bossCounted: boolean;
+}
 interface RacketState {
   t: number;
-  img: Phaser.GameObjects.Image;
-  bossHit: boolean;
-  swooshed: boolean;
+  swings: RacketSwing[];
+  spawned: number;
+  bossSwings: number;
 }
 // 대사 표기는 정본 — 변경 금지
 const PS_BUBBLE = 'Hey I am Parksulhee!';
 const PS = {
   bubbleUntil: 1.0,
-  sweepFrom: 1.0,
-  sweepTo: 2.6,
-  endAt: 3.0,
-  bossDamage: 110,
-  partDamage: 90,
+  swingEvery: 0.34,
+  swingDur: 0.6,
+  swingCount: 6,
+  endAt: 3.6,
+  bossDamagePerSwing: 40,
+  partDamagePerSwing: 34,
+  maxBossSwings: 3,
 } as const;
+const PS_DIRS: RacketSwing['dir'][] = ['L', 'R', 'T', 'B', 'L', 'R'];
 
 const DEPTH = {
   bg: 0,
@@ -1366,14 +1376,8 @@ export class GameScene extends Phaser.Scene {
       return;
     this.session.superN--;
     if (this.session.pilot === 'parksulhee') {
-      // 박슬희: 거대 배드민턴 채 일망타진
-      const img = this.add
-        .image(-140, GAME_HEIGHT * 0.46, 'racket')
-        .setDepth(DEPTH.phantom)
-        .setScale(2.1)
-        .setRotation(-0.5)
-        .setVisible(false);
-      this.ps = { t: 0, img, bossHit: false, swooshed: false };
+      // 박설희: 거대 배드민턴 채가 사방에서 연속 스윙
+      this.ps = { t: 0, swings: [], spawned: 0, bossSwings: 0 };
       this.inv = 999;
       this.auraImg.setVisible(true);
       vibrate(80);
@@ -1530,40 +1534,87 @@ export class GameScene extends Phaser.Scene {
     ps.t += dt;
     if (ps.t < PS.bubbleUntil) {
       this.showBubble(PS_BUBBLE, this.px, this.py - 34);
-    } else if (ps.t < PS.sweepTo) {
-      this.bubble.setVisible(false);
-      if (!ps.swooshed) {
-        ps.swooshed = true;
-        ps.img.setVisible(true);
-        SFX.spid();
+      return;
+    }
+    this.bubble.setVisible(false);
+    // 스윙 생성: 상하좌우에서 시차를 두고
+    while (ps.spawned < PS.swingCount && ps.t >= PS.bubbleUntil + ps.spawned * PS.swingEvery) {
+      const dir = PS_DIRS[ps.spawned % PS_DIRS.length] ?? 'L';
+      const lane =
+        dir === 'L' || dir === 'R' ? rnd(140, GAME_HEIGHT - 180) : rnd(70, GAME_WIDTH - 70);
+      const img = this.add
+        .image(0, 0, 'racket')
+        .setDepth(DEPTH.phantom)
+        .setScale(1.8)
+        .setVisible(true);
+      if (dir === 'T') img.setRotation(Math.PI);
+      ps.swings.push({ img, dir, t0: ps.t, lane, bossCounted: false });
+      ps.spawned++;
+      SFX.swoosh();
+      vibrate(30);
+    }
+    // 스윙 진행: 사방에서 슁슁슁 — 지나간 궤적의 적 일망타진
+    for (let i = ps.swings.length - 1; i >= 0; i--) {
+      const sw = ps.swings[i];
+      if (!sw) continue;
+      const p = (ps.t - sw.t0) / PS.swingDur;
+      if (p >= 1) {
+        sw.img.destroy();
+        ps.swings.splice(i, 1);
+        continue;
       }
-      // 풀스윙: 왼쪽 → 오른쪽, 지나간 자리의 적 일망타진
-      const p = (ps.t - PS.sweepFrom) / (PS.sweepTo - PS.sweepFrom);
-      const x = -140 + (GAME_WIDTH + 300) * p;
-      ps.img.setPosition(x, GAME_HEIGHT * 0.46 + Math.sin(p * Math.PI) * -40);
-      ps.img.setRotation(-0.5 + p * 0.85);
-      const front = x + 80;
-      for (const e of this.enemies) {
-        if (!e.dead && e.x < front) this.killEnemy(e);
+      const wob = Math.sin(p * Math.PI) * 0.35;
+      let fx = 0;
+      let fy = 0;
+      if (sw.dir === 'L') {
+        sw.img.setPosition(-140 + (GAME_WIDTH + 300) * p, sw.lane);
+        sw.img.setRotation(-0.5 + p * 0.9 + wob * 0.2);
+        fx = sw.img.x + 70;
+        for (const e of this.enemies) if (!e.dead && e.x < fx) this.killEnemy(e);
+      } else if (sw.dir === 'R') {
+        sw.img.setPosition(GAME_WIDTH + 140 - (GAME_WIDTH + 300) * p, sw.lane);
+        sw.img.setRotation(0.5 - p * 0.9 - wob * 0.2);
+        fx = sw.img.x - 70;
+        for (const e of this.enemies) if (!e.dead && e.x > fx) this.killEnemy(e);
+      } else if (sw.dir === 'T') {
+        sw.img.setPosition(sw.lane, -160 + (GAME_HEIGHT + 340) * p);
+        sw.img.setRotation(Math.PI + (-0.4 + p * 0.8));
+        fy = sw.img.y + 80;
+        for (const e of this.enemies) if (!e.dead && e.y < fy) this.killEnemy(e);
+      } else {
+        sw.img.setPosition(sw.lane, GAME_HEIGHT + 160 - (GAME_HEIGHT + 340) * p);
+        sw.img.setRotation(0.4 - p * 0.8);
+        fy = sw.img.y - 80;
+        for (const e of this.enemies) if (!e.dead && e.y > fy) this.killEnemy(e);
       }
-      this.reapEnemies();
-      for (const b of this.ebullets) this.pool.release(b.img);
-      this.ebullets.length = 0;
+      // 보스 타격: 스윙당 1회, 최대 3회
       const B = this.boss;
-      if (B && !ps.bossHit && B.x < front) {
-        ps.bossHit = true;
-        vibrate(90);
-        this.shake = 7;
-        const shieldParts = B.parts.filter((pp) => pp.alive && pp.def.shield);
-        if (shieldParts.length > 0) {
-          for (const part of shieldParts) this.damagePart(part, B, PS.partDamage);
-        } else {
-          B.flashT = 0.08;
-          this.damageBoss(PS.bossDamage);
+      if (B && !sw.bossCounted && ps.bossSwings < PS.maxBossSwings) {
+        const crossed =
+          (sw.dir === 'L' && B.x < fx) ||
+          (sw.dir === 'R' && B.x > fx) ||
+          (sw.dir === 'T' && B.y < fy) ||
+          (sw.dir === 'B' && B.y > fy);
+        if (crossed) {
+          sw.bossCounted = true;
+          ps.bossSwings++;
+          vibrate(70);
+          this.shake = Math.min(7, this.shake + 4);
+          const shieldParts = B.parts.filter((pp) => pp.alive && pp.def.shield);
+          if (shieldParts.length > 0) {
+            for (const part of shieldParts) this.damagePart(part, B, PS.partDamagePerSwing);
+          } else {
+            B.flashT = 0.08;
+            this.damageBoss(PS.bossDamagePerSwing);
+          }
         }
       }
-    } else if (ps.t >= PS.endAt) {
-      ps.img.destroy();
+    }
+    this.reapEnemies();
+    for (const b of this.ebullets) this.pool.release(b.img);
+    this.ebullets.length = 0;
+
+    if (ps.t >= PS.endAt && ps.swings.length === 0) {
       this.ps = null;
       this.inv = SUPER.endInvuln;
       this.auraImg.setVisible(false);

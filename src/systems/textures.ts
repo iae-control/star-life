@@ -1430,6 +1430,28 @@ export function generateTextures(scene: Phaser.Scene): void {
     addCanvasTexture(scene, 'decor-swirl', c);
   }
 
+  // 테마별 배경 그라디언트 언더레이 — 스테이지 색 정체성 (피드백: 배경 균일함)
+  const grads: Record<string, [string, string, string]> = {
+    nebula: ['#0a0618', '#120c2c', '#0a0618'],
+    protostar: ['#160a06', '#2c1408', '#120806'],
+    mainseq: ['#12100a', '#2a220c', '#141008'],
+    asteroids: ['#0a0a0e', '#181820', '#0a0a0e'],
+    redgiant: ['#1a0606', '#340c08', '#160404'],
+    supernova: ['#140820', '#301238', '#180a24'],
+    blackhole: ['#040408', '#0c0818', '#020204'],
+    inside: ['#160a24', '#0a241c', '#1e0a1e'],
+  };
+  for (const [theme, cols] of Object.entries(grads)) {
+    const [c, ctx] = canvas(GAME_WIDTH, GAME_HEIGHT);
+    const g = ctx.createLinearGradient(0, 0, 0, GAME_HEIGHT);
+    g.addColorStop(0, cols[0]);
+    g.addColorStop(0.5, cols[1]);
+    g.addColorStop(1, cols[2]);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    addCanvasTexture(scene, `bg-grad-${theme}`, c);
+  }
+
   /* ---------- 대형 지형 구조물 (티리안식 흘러가는 지물) ---------- */
   const snap2 = (v: number) => Math.round(v / 2) * 2;
   const bigRock = (key: string, base: string, mid: string, hi: string, crack?: string) => {

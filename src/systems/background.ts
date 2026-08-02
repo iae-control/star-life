@@ -60,6 +60,21 @@ export class SpaceBackground {
       this.decors.push({ img, rot: opts.rot ?? 0, pulse: opts.pulse ?? 0 });
     };
 
+    // 테마 색 정체성: 그라디언트 언더레이 + 별 색조
+    const underlay = scene.add
+      .image(0, 0, `bg-grad-${config.theme}`)
+      .setOrigin(0, 0)
+      .setDepth(baseDepth - 0.05);
+    this.decors.push({ img: underlay, rot: 0, pulse: 0 });
+    const starTint: Record<string, number> = {
+      protostar: 0xffd8b0,
+      mainseq: 0xfff0c0,
+      redgiant: 0xffb8a0,
+      supernova: 0xf0d8ff,
+      inside: 0xc8ffd8,
+    };
+    const tint = starTint[config.theme];
+
     const a = config.nebulaAlpha;
     switch (config.theme) {
       case 'protostar':
@@ -117,6 +132,14 @@ export class SpaceBackground {
         add('bg-nebula', baseDepth, 0.12, a, true);
         add('bg-stars-far', baseDepth + 0.1, 0.35);
         add('bg-stars-near', baseDepth + 0.2, 0.85);
+    }
+    this.applyStarTint(tint);
+  }
+
+  private applyStarTint(tint: number | undefined): void {
+    if (!tint) return;
+    for (const l of this.layers) {
+      if (l.sprite.texture.key.startsWith('bg-stars')) l.sprite.setTint(tint);
     }
   }
 

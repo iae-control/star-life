@@ -52,8 +52,21 @@ function emitGroup(q: SpawnEvent[], g: WaveGroup, t0: number, rng: () => number)
         x: g.xMargin + (span * (i + 0.5)) / g.count,
         opt: {},
       });
-  } else {
+  } else if (g.kind === 'single') {
     q.push({ t: t0, kind: 'enemy', type: g.enemy, x: g.x, opt: {} });
+  } else {
+    // V자 편대: 중앙 선두, 좌우 후열이 시차를 두고 직선 강하
+    const cx = rnd(rng, g.xMin, g.xMax);
+    for (let i = 0; i < g.count; i++) {
+      const k = i - (g.count - 1) / 2;
+      q.push({
+        t: t0 + Math.abs(k) * g.interval,
+        kind: 'enemy',
+        type: g.enemy,
+        x: cx + k * g.spacing,
+        opt: { amp: 0 },
+      });
+    }
   }
   return t0 + g.duration;
 }

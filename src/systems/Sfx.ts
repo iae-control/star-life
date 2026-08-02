@@ -150,6 +150,9 @@ export const SFX = {
     tone('sawtooth', 60, 240, 0.8, 0.12);
     noiseBurst(0.8, 0.1, 400, 3200);
   },
+  swoosh: () => {
+    noiseBurst(0.22, 0.16, 4200, 500);
+  },
   spid: () => {
     noiseBurst(0.5, 0.22, 3600, 500);
     tone('square', 1200, 300, 0.4, 0.08);
