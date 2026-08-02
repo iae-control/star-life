@@ -261,6 +261,8 @@ export class GameScene extends Phaser.Scene {
   private bubbleText!: Phaser.GameObjects.Text;
   private bubbleMsg = '';
 
+  private immuneMsgT = 0;
+
   // 개발용 (?auto ?god) / 디버그 도구 (?debug — PLAN 3장)
   private auto = false;
   private god = false;
@@ -373,6 +375,10 @@ export class GameScene extends Phaser.Scene {
 
     // 데이터 핫리로드 → 세션 유지한 채 현재 웨이브부터 재생
     const onDataReload = (): void => {
+      if (this.scene.isPaused(SceneKeys.Game)) {
+        this.scene.stop(SceneKeys.Pause);
+        this.scene.resume();
+      }
       if (!this.scene.isActive(SceneKeys.Game)) return;
       if (this.pendingShop > 0 && !this.session.campaignDone) {
         // 보스 격파~상점 전환 창: 상점을 건너뛰지 않도록 곧장 상점으로
@@ -404,7 +410,7 @@ export class GameScene extends Phaser.Scene {
       this.session.levelWave--;
       this.session.wave = Math.max(0, this.session.wave - 1);
     }
-    if (!this.auto && !document.hasFocus()) this.togglePause(true);
+    if (!this.auto && !document.hasFocus()) this.time.delayedCall(0, () => this.togglePause(true));
     this.nextWave();
   }
 
@@ -646,7 +652,13 @@ export class GameScene extends Phaser.Scene {
       };
       kb.on('keydown-X', () => this.startSuper());
       kb.on('keydown-B', () => this.startSuper());
-      kb.on('keydown-M', () => this.hudMute.setVisible(toggleMute()));
+      kb.on('keydown-M', () => {
+        const m = toggleMute();
+        this.hudMute.setVisible(m);
+        updateSave((sv) => {
+          sv.settings.muted = m;
+        });
+      });
       kb.on('keydown-P', () => this.togglePause());
       kb.on('keydown-ESC', () => this.togglePause());
     }
@@ -932,8 +944,22 @@ export class GameScene extends Phaser.Scene {
     }
     if (this.boss) {
       const B = this.boss;
-      const d = (B.x - x) * (B.x - x) + (B.y - y) * (B.y - y);
-      if (d < bd) best = B;
+      if (this.coreShielded(B)) {
+        // 실드 페이즈: 무적 코어 대신 살아 있는 파츠를 조준
+        for (const part of B.parts) {
+          if (!part.alive) continue;
+          const px2 = B.x + part.def.dx;
+          const py2 = B.y + part.def.dy;
+          const d = (px2 - x) * (px2 - x) + (py2 - y) * (py2 - y);
+          if (d < bd) {
+            bd = d;
+            best = { x: px2, y: py2 };
+          }
+        }
+      } else {
+        const d = (B.x - x) * (B.x - x) + (B.y - y) * (B.y - y);
+        if (d < bd) best = B;
+      }
     }
     return best;
   }
@@ -1077,6 +1103,9 @@ export class GameScene extends Phaser.Scene {
       this.addBoom(this.px + 11, this.py - 8, 1.4, false);
       this.playerImg.setVisible(false);
       this.flameImg.setVisible(false);
+      this.podL?.setVisible(false);
+      this.podR?.setVisible(false);
+      this.satellite?.setVisible(false);
       this.deathT = 1.4;
     }
   }
@@ -1144,9 +1173,8 @@ export class GameScene extends Phaser.Scene {
           );
           if (this.session.campaignDone) sv.progress.endlessUnlocked = true;
         });
-      } else {
-        this.session.levelWave = 0;
       }
+      // 엔들리스는 levelWave를 계속 누적 — 순환 인덱스(cycle/6)가 진행된다
       this.boss = null;
       this.bossBar.setVisible(false);
       this.bossLabel.setVisible(false);
@@ -1315,7 +1343,11 @@ export class GameScene extends Phaser.Scene {
         )
       ) {
         B.hcd = B.def.hitCooldown;
-        this.damageBoss(SUPER.phantomBossDamage);
+        // 실드 파츠가 살아 있으면 팬텀도 파츠부터 부순다 (코어 무적 우회 방지)
+        const shieldPart =
+          B.parts.find((pp) => pp.alive && pp.def.shield) ?? B.parts.find((pp) => pp.alive);
+        if (shieldPart) this.damagePart(shieldPart, B, SUPER.phantomBossDamage);
+        else this.damageBoss(SUPER.phantomBossDamage);
       }
       if (q.y < -50) {
         this.pool.release(q.img);
@@ -1363,6 +1395,7 @@ export class GameScene extends Phaser.Scene {
       this.bannerText.setAlpha(Math.min(1, this.bannerT * 2));
       if (this.bannerT <= 0) this.bannerText.setVisible(false);
     }
+    if (this.immuneMsgT > 0) this.immuneMsgT -= dt;
     if (this.sp) this.updateSuper(dt);
     if (this.auto) this.updateAutoPilot(dt);
 
@@ -1469,7 +1502,7 @@ export class GameScene extends Phaser.Scene {
       if (!ay) this.pvy *= fr;
     }
     // 블랙홀 중력: 기체도 서서히 끌린다
-    const grav = this.boss?.def.gravity;
+    const grav = this.boss?.entered ? this.boss.def.gravity : undefined;
     if (grav && this.boss && this.alive) {
       const dx = this.boss.x - this.px;
       const dy = this.boss.y - this.py;
@@ -1599,6 +1632,17 @@ export class GameScene extends Phaser.Scene {
       if (!b) continue;
       b.t += dt;
       if (b.homing) {
+        const gh = this.boss?.entered ? this.boss.def.gravity : undefined;
+        if (gh && this.boss) {
+          const dx = this.boss.x - b.x;
+          const dy = this.boss.y - b.y;
+          const L = Math.hypot(dx, dy);
+          if (L < gh.radius && L > 1) {
+            const f = gh.pull * (1 - L / gh.radius);
+            b.vx += (dx / L) * f * dt;
+            b.vy += (dy / L) * f * dt;
+          }
+        }
         const tgt = this.nearestTarget(b.x, b.y);
         if (tgt) {
           const L = Math.hypot(tgt.x - b.x, tgt.y - b.y) || 1;
@@ -1617,7 +1661,7 @@ export class GameScene extends Phaser.Scene {
         b.x = b.x0 + Math.sin(b.t * 22 + (b.ph ?? 0)) * 8;
       } else {
         // 블랙홀 중력: 탄이 보스 쪽으로 끌린다 (탄을 빨아들이는 기믹)
-        const g = this.boss?.def.gravity;
+        const g = this.boss?.entered ? this.boss.def.gravity : undefined;
         if (g && this.boss) {
           const dx = this.boss.x - b.x;
           const dy = this.boss.y - b.y;

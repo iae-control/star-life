@@ -15,6 +15,8 @@ const DIFF_ORDER: Difficulty[] = ['easy', 'normal', 'hard'];
 interface MenuEntry {
   label: string;
   action: () => GameSession;
+  /** 보정 크레딧을 바로 쓸 수 있게 상점을 먼저 연다 */
+  viaShop?: boolean;
 }
 
 export class TitleScene extends Phaser.Scene {
@@ -71,6 +73,7 @@ export class TitleScene extends Phaser.Scene {
       const lv = Math.min(save.progress.unlockedLevel, DATA.levels.levels.length);
       this.menu.push({
         label: t('title.menu.continue', lv),
+        viaShop: true,
         action: () => {
           const s = newSession();
           s.level = lv;
@@ -83,6 +86,7 @@ export class TitleScene extends Phaser.Scene {
     if (save.progress.endlessUnlocked) {
       this.menu.push({
         label: t('title.menu.endless'),
+        viaShop: true,
         action: () => {
           const s = newSession();
           s.endless = true;
@@ -205,6 +209,7 @@ export class TitleScene extends Phaser.Scene {
     if (!entry) return;
     this.starting = true;
     audioResume();
-    this.scene.start(SceneKeys.StageIntro, { session: entry.action() });
+    const session = entry.action();
+    this.scene.start(entry.viaShop ? SceneKeys.Shop : SceneKeys.StageIntro, { session });
   }
 }

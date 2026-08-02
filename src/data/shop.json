@@ -7,15 +7,15 @@
     "base": 300,
     "perOver": 6,
     "step": 20,
-    "cap": 160,
-    "baseStat": 60
+    "cap": 150,
+    "baseStat": 50
   },
   "armor": {
     "base": 300,
     "perOver": 6,
     "step": 20,
-    "cap": 150,
-    "baseStat": 50
+    "cap": 140,
+    "baseStat": 40
   },
   "super": {
     "price": 600,

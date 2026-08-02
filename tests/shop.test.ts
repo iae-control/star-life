@@ -73,22 +73,22 @@ describe('upgrade items (demo price curves)', () => {
     expect(s.rear).toBe('sidecutter');
   });
 
-  it('shield: 300 + (max-60)*6, refills, caps at 160', () => {
+  it('shield: 300 + (max-50)*6, refills, caps at 150', () => {
     const s = state({ shieldMax: 100, shield: 10 });
-    expect(shield?.price(s)).toBe(540);
+    expect(shield?.price(s)).toBe(600);
     itemAction(s, shield!);
     expect(s.shieldMax).toBe(120);
     expect(s.shield).toBe(120);
-    expect(shield?.can(state({ shieldMax: 160 }))).toBe(false);
+    expect(shield?.can(state({ shieldMax: 150 }))).toBe(false);
   });
 
-  it('armor: 300 + (max-50)*6, repairs, caps at 150', () => {
+  it('armor: 300 + (max-40)*6, repairs, caps at 140', () => {
     const s = state({ armorMax: 90, armor: 5 });
-    expect(armor?.price(s)).toBe(540);
+    expect(armor?.price(s)).toBe(600);
     itemAction(s, armor!);
     expect(s.armorMax).toBe(110);
     expect(s.armor).toBe(110);
-    expect(armor?.can(state({ armorMax: 150 }))).toBe(false);
+    expect(armor?.can(state({ armorMax: 140 }))).toBe(false);
   });
 
   it('super: flat 600, caps at 5', () => {

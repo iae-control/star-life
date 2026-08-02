@@ -112,6 +112,25 @@ let nextTime = 0;
 let noiseBuf: AudioBuffer | null = null;
 let musicVol = 1;
 
+// 히든 탭에서는 타이머 스로틀로 음이 뚝뚝 끊기므로 스케줄을 멈춘다
+let visInstalled = false;
+function installVisibilityGuard(): void {
+  if (visInstalled) return;
+  visInstalled = true;
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      if (timer !== null) {
+        clearInterval(timer);
+        timer = null;
+      }
+    } else if (current && timer === null && tickRef) {
+      nextTime = 0;
+      timer = window.setInterval(tickRef, 100);
+    }
+  });
+}
+let tickRef: (() => void) | null = null;
+
 function noise(ctx: AudioContext): AudioBuffer {
   if (!noiseBuf) {
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate / 2, ctx.sampleRate);
@@ -192,6 +211,7 @@ export function playMusic(key: string): void {
   if (!song) return;
   current = key;
   step = 0;
+  installVisibilityGuard();
   const tick = (): void => {
     const ctx = getAudioContext();
     if (!ctx || ctx.state !== 'running' || isMuted()) return;
@@ -204,8 +224,11 @@ export function playMusic(key: string): void {
     }
   };
   nextTime = 0;
-  timer = window.setInterval(tick, 100);
-  tick();
+  tickRef = tick;
+  if (!document.hidden) {
+    timer = window.setInterval(tick, 100);
+    tick();
+  }
 }
 
 export function stopMusic(): void {
@@ -214,6 +237,7 @@ export function stopMusic(): void {
     timer = null;
   }
   current = null;
+  tickRef = null;
 }
 
 export function currentMusic(): string | null {

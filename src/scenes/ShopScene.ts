@@ -199,12 +199,13 @@ export class ShopScene extends Phaser.Scene {
       const it = UPGRADE_ITEMS[sel - N_WPN - N_REAR - N_SIDE];
       if (it) r = itemAction(s, it);
     } else {
-      this.scene.start(SceneKeys.StageIntro, { session: s });
+      // 엔들리스는 레벨 인트로 없이 바로 전장으로
+      this.scene.start(s.endless ? SceneKeys.Game : SceneKeys.StageIntro, { session: s });
       return;
     }
     if (r === 'bought') SFX.buy();
     else if (r === 'equipped') SFX.pow();
-    else if (r === 'denied') SFX.deny();
+    else SFX.deny();
     this.refresh();
   }
 
@@ -287,6 +288,6 @@ export class ShopScene extends Phaser.Scene {
         .setColor(can ? (afford ? '#ffd76a' : '#8b6a3a') : '#5a6178');
     });
     this.detailText.setText(detail);
-    this.goText.setText(t('shop.go.level', s.level));
+    this.goText.setText(s.endless ? t('shop.go', s.wave + 1) : t('shop.go.level', s.level));
   }
 }

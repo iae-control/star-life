@@ -32,6 +32,7 @@ export class ImagePool {
     img.setScale(1);
     img.setRotation(0);
     img.clearTint();
+    img.setFlip(false, false);
     img.setBlendMode(Phaser.BlendModes.NORMAL);
     return img;
   }
