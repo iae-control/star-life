@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">별의 일생</string>
+    <string name="title_activity_main">별의 일생</string>
+    <string name="package_name">com.jsh20907.starlife</string>
+    <string name="custom_url_scheme">com.jsh20907.starlife</string>
+</resources>

@@ -1,0 +1,7 @@
+node_modules/
+dist/
+android/
+legacy/
+package-lock.json
+# 이관 문서 원문 보존 — prettier가 "6~9" 같은 범위 표기를 GFM 취소선으로 오해석함
+PLAN.md

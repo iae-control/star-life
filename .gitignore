@@ -1,0 +1,16 @@
+node_modules/
+dist/
+*.local
+.DS_Store
+.idea/
+.vscode/
+.claude/*
+!.claude/launch.json
+
+# Capacitor / Android build outputs
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+android/app/release/
