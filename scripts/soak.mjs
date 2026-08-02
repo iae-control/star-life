@@ -67,6 +67,9 @@ for (let done = 0; done < totalFrames; done += CHUNK_FRAMES) {
       heapMB: Math.round(mem / 1048576),
       gameScene: !!sc && g.scene.isActive('Game'),
       shopActive: g.scene.isActive('Shop'),
+      resultActive: g.scene.isActive('Result'),
+      level: sc?.session?.level ?? -1,
+      campaignDone: sc?.session?.campaignDone ?? false,
     };
   }, n);
   stats.push(s);
@@ -91,8 +94,14 @@ for (let done = 0; done < totalFrames; done += CHUNK_FRAMES) {
       shop?.act?.(9); // 마지막 행 = 출격
     });
   }
-  const line = `[soak] ${Math.round(((done + n) / totalFrames) * 100)}% simT=${s.simT}s wave=${s.wave} score=${s.score} ent(b=${s.bullets},eb=${s.ebullets},e=${s.enemies},ph=${s.phantoms}) children=${s.children} heap=${s.heapMB}MB${s.boss ? ' BOSS' : ''}${s.superActive ? ' SUPER' : ''}`;
+  const line = `[soak] ${Math.round(((done + n) / totalFrames) * 100)}% simT=${s.simT}s L${s.level} wave=${s.wave} score=${s.score} ent(b=${s.bullets},eb=${s.ebullets},e=${s.enemies},ph=${s.phantoms}) children=${s.children} heap=${s.heapMB}MB${s.boss ? ' BOSS' : ''}${s.superActive ? ' SUPER' : ''}`;
   console.log(line);
+  if (s.campaignDone && s.resultActive) {
+    console.log(
+      `[soak] CAMPAIGN COMPLETE — 총 ${Math.round(((done + n) * FRAME_MS) / 1000)}초(시뮬) 소요`,
+    );
+    break;
+  }
   if (errors.length) break;
 }
 

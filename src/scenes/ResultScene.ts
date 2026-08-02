@@ -15,13 +15,24 @@ export class ResultScene extends Phaser.Scene {
     super(SceneKeys.Result);
   }
 
-  create(data: { session: GameSession }): void {
+  create(data: { session: GameSession; mode?: 'gameover' | 'complete' }): void {
     this.restarting = false;
     this.t = 0;
     const s = data.session;
+    const complete = data.mode === 'complete';
 
     this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x06020a, 0.62).setOrigin(0, 0);
-    uiText(this, GAME_WIDTH / 2, 253, t('result.title'), 28, '#ff8a8a', 'center');
+    uiText(
+      this,
+      GAME_WIDTH / 2,
+      253,
+      complete ? t('result.complete') : t('result.title'),
+      complete ? 22 : 28,
+      complete ? '#7ef7ff' : '#ff8a8a',
+      'center',
+    );
+    if (complete)
+      uiText(this, GAME_WIDTH / 2, 279, t('result.completeSub'), 9, '#8fa0c8', 'center');
     uiText(this, GAME_WIDTH / 2, 301, t('result.score', s.score), 15, '#fff2b0', 'center');
     uiText(this, GAME_WIDTH / 2, 328, t('result.wave', s.wave), 12, '#cfd8ff', 'center');
     if (s.score > 0 && s.score >= loadBest())

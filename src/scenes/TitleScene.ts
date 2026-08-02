@@ -94,6 +94,6 @@ export class TitleScene extends Phaser.Scene {
     this.starting = true;
     audioResume();
     // 새 세션을 명시적으로 전달 — data 없이 start하면 Phaser가 이전 settings.data(죽은 세션)를 재사용한다
-    this.scene.start(SceneKeys.Game, { session: newSession() });
+    this.scene.start(SceneKeys.StageIntro, { session: newSession() });
   }
 }

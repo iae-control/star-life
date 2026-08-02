@@ -38,5 +38,17 @@
   "weapon.light.desc": "지그재그 번개 · 적 1기 관통",
   "weapon.laser.desc": "고속 빔 · 모든 적 관통",
   "level.nebula": "성운",
-  "level.protostar": "원시별"
+  "level.protostar": "원시별",
+  "level.nebula.tag": "별이 태어나는 요람",
+  "level.protostar.tag": "타오르기 시작한 심장",
+  "level.mainseq": "주계열성",
+  "level.mainseq.tag": "코로나의 한가운데",
+  "boss.amoeba": "성운 아메바",
+  "boss.protocore": "원시별 코어",
+  "boss.helios": "헬리오스",
+  "boss.core": "코어 가디언",
+  "stage.level": "LEVEL {0}",
+  "result.complete": "TO BE CONTINUED",
+  "result.completeSub": "L4~L6은 다음 업데이트에서 계속",
+  "shop.go.level": "출격  (LEVEL {0})"
 }

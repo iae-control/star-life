@@ -75,65 +75,95 @@ export const weaponsSchema = z.object({
   ),
 });
 
-const behaviorParams = {
-  sineDescend: z.object({
-    spdMin: z.number(),
-    spdMax: z.number(),
-    spdPerWave: z.number(),
-    ampMin: z.number(),
-    ampMax: z.number(),
-    freqMin: z.number(),
-    freqMax: z.number(),
-    fireFromWave: z.number().int(),
-    fireChancePerSec: z.number(),
-    bulletSpeed: z.number(),
-  }),
-  turret: z.object({
-    spd: z.number(),
-    holdYMin: z.number(),
-    holdYMax: z.number(),
-    coolMin: z.number(),
-    coolMax: z.number(),
-    fireCoolMin: z.number(),
-    fireCoolMax: z.number(),
-    coolReducePerWave: z.number(),
-    coolReduceMax: z.number(),
-    life: z.number(),
-    driftMax: z.number(),
-    driftBoundX: z.number(),
-    leaveSpd: z.number(),
-    bulletSpeedBase: z.number(),
-    bulletSpeedPerWave: z.number(),
-  }),
-  diver: z.object({
-    spdBase: z.number(),
-    spdPerWave: z.number(),
-    homingClamp: z.number(),
-    homingGain: z.number(),
-  }),
+/** 사망 시 파생 스폰 (분열체 등) — 모든 적 타입에 선택적으로 부여 가능 */
+const onDeathSchema = z
+  .object({ spawn: z.object({ type: z.string(), count: z.number().int().min(1).max(6) }) })
+  .optional();
+
+const behaviorCommon = {
+  sprite: z.string(),
+  score: z.number().int(),
+  hp: hpCurve,
+  onDeath: onDeathSchema,
 };
 
 const enemyTypeSchema = z.discriminatedUnion('behavior', [
   z.object({
+    ...behaviorCommon,
     behavior: z.literal('sineDescend'),
-    sprite: z.string(),
-    score: z.number().int(),
-    hp: hpCurve,
-    params: behaviorParams.sineDescend,
+    params: z.object({
+      spdMin: z.number(),
+      spdMax: z.number(),
+      spdPerWave: z.number(),
+      ampMin: z.number(),
+      ampMax: z.number(),
+      freqMin: z.number(),
+      freqMax: z.number(),
+      fireFromWave: z.number().int(),
+      fireChancePerSec: z.number(),
+      bulletSpeed: z.number(),
+      fireMode: z.enum(['aimed', 'spread3']).default('aimed'),
+    }),
   }),
   z.object({
+    ...behaviorCommon,
     behavior: z.literal('turret'),
-    sprite: z.string(),
-    score: z.number().int(),
-    hp: hpCurve,
-    params: behaviorParams.turret,
+    params: z.object({
+      spd: z.number(),
+      holdYMin: z.number(),
+      holdYMax: z.number(),
+      coolMin: z.number(),
+      coolMax: z.number(),
+      fireCoolMin: z.number(),
+      fireCoolMax: z.number(),
+      coolReducePerWave: z.number(),
+      coolReduceMax: z.number(),
+      life: z.number(),
+      driftMax: z.number(),
+      driftBoundX: z.number(),
+      leaveSpd: z.number(),
+      bulletSpeedBase: z.number(),
+      bulletSpeedPerWave: z.number(),
+    }),
   }),
   z.object({
+    ...behaviorCommon,
     behavior: z.literal('diver'),
-    sprite: z.string(),
-    score: z.number().int(),
-    hp: hpCurve,
-    params: behaviorParams.diver,
+    params: z.object({
+      spdBase: z.number(),
+      spdPerWave: z.number(),
+      homingClamp: z.number(),
+      homingGain: z.number(),
+    }),
+  }),
+  z.object({
+    ...behaviorCommon,
+    behavior: z.literal('strafer'),
+    params: z.object({
+      speedX: z.number(),
+      yMin: z.number(),
+      yMax: z.number(),
+      fireEvery: z.number(),
+      bulletSpeed: z.number(),
+      swayAmp: z.number(),
+      swayFreq: z.number(),
+    }),
+  }),
+  z.object({
+    ...behaviorCommon,
+    behavior: z.literal('orbiter'),
+    params: z.object({
+      descendSpd: z.number(),
+      holdYMin: z.number(),
+      holdYMax: z.number(),
+      orbitRadius: z.number(),
+      orbitSpeed: z.number(),
+      centerDriftY: z.number(),
+      fireEvery: z.number(),
+      ringCount: z.number().int().min(3),
+      bulletSpeed: z.number(),
+      life: z.number(),
+    }),
   }),
 ]);
 
@@ -166,12 +196,33 @@ const bossPhaseSchema = z.discriminatedUnion('type', [
     count: z.number().int().min(1),
     angleStep: z.number(),
     speed: z.number(),
+    cool: z.number().optional(),
   }),
   z.object({
     type: z.literal('aimed'),
     speed: z.number(),
     offsetX: z.number(),
     big: z.boolean(),
+    cool: z.number().optional(),
+  }),
+  z.object({
+    type: z.literal('ring'),
+    count: z.number().int().min(4),
+    speed: z.number(),
+    cool: z.number().optional(),
+  }),
+  z.object({
+    type: z.literal('spiral'),
+    arms: z.number().int().min(1),
+    speed: z.number(),
+    rotStep: z.number(),
+    cool: z.number().optional(),
+  }),
+  z.object({
+    type: z.literal('spawn'),
+    enemy: z.string(),
+    count: z.number().int().min(1).max(4),
+    cool: z.number().optional(),
   }),
 ]);
 
@@ -180,16 +231,35 @@ export const bossesSchema = z.object({
     z.string(),
     z.object({
       sprite: z.string(),
+      nameKey: z.string(),
       hp: hpCurve,
       hitbox: z.object({ w: z.number(), h: z.number() }),
       entryY: z.number(),
       entrySpd: z.number(),
-      patrol: z.object({
-        base: z.number(),
-        perWave: z.number(),
-        minX: z.number(),
-        maxX: z.number(),
-      }),
+      movement: z.discriminatedUnion('type', [
+        z.object({
+          type: z.literal('patrol'),
+          base: z.number(),
+          perWave: z.number(),
+          minX: z.number(),
+          maxX: z.number(),
+        }),
+        z.object({
+          type: z.literal('wander'),
+          speed: z.number(),
+          minX: z.number(),
+          maxX: z.number(),
+          minY: z.number(),
+          maxY: z.number(),
+        }),
+        z.object({
+          type: z.literal('sway'),
+          amp: z.number(),
+          freq: z.number(),
+          bobAmp: z.number(),
+          bobFreq: z.number(),
+        }),
+      ]),
       cool: waveCurve,
       fireOffsetY: z.number(),
       phases: z.array(bossPhaseSchema).min(1),
@@ -201,6 +271,7 @@ export const bossesSchema = z.object({
   ),
 });
 
+/** 레벨 웨이브를 구성하는 스폰 그룹 (순차 실행, duration 후 다음 그룹) */
 const waveGroupSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('column'),
@@ -225,36 +296,45 @@ const waveGroupSchema = z.discriminatedUnion('kind', [
     duration: z.number(),
   }),
   z.object({
-    kind: z.literal('dropPair'),
+    kind: z.literal('drop'),
     enemy: z.string(),
+    count: z.number().int().min(1).max(4),
+    interval: z.number(),
     xMin: z.number(),
     xMax: z.number(),
-    secondFromWave: z.number().int(),
-    secondDelay: z.number(),
+    duration: z.number(),
+  }),
+  z.object({
+    kind: z.literal('row'),
+    enemy: z.string(),
+    count: z.number().int().min(2),
+    xMargin: z.number(),
+    duration: z.number(),
+  }),
+  z.object({
+    kind: z.literal('single'),
+    enemy: z.string(),
+    x: z.number(),
     duration: z.number(),
   }),
 ]);
 
-export const wavesSchema = z.object({
-  bossEvery: z.number().int().min(2),
-  bossId: z.string(),
-  bossDelay: z.number(),
-  clearDelay: z.number(),
-  reps: z.object({ base: z.number().int(), per2Waves: z.number().int(), max: z.number().int() }),
-  groups: z.array(waveGroupSchema).min(1),
-});
-
 export const levelsSchema = z.object({
+  clearDelay: z.number(),
+  bossDelay: z.number(),
   levels: z
     .array(
       z.object({
         id: z.number().int().min(1),
         nameKey: z.string(),
+        taglineKey: z.string(),
         background: z.object({
-          theme: z.enum(['space', 'asteroids']),
+          theme: z.enum(['nebula', 'protostar', 'mainseq', 'asteroids']),
           nebulaAlpha: z.number().min(0).max(1),
         }),
         scroll: z.object({ base: z.number(), perWave: z.number(), boss: z.number() }),
+        waves: z.array(z.array(waveGroupSchema).min(1)).min(1),
+        boss: z.string(),
       }),
     )
     .min(1),
@@ -288,7 +368,7 @@ export type EnemyTypeData = z.infer<typeof enemyTypeSchema>;
 export type BossesData = z.infer<typeof bossesSchema>;
 export type BossData = BossesData['bosses'][string];
 export type BossPhase = z.infer<typeof bossPhaseSchema>;
-export type WavesData = z.infer<typeof wavesSchema>;
+export type WaveGroup = z.infer<typeof waveGroupSchema>;
 export type LevelsData = z.infer<typeof levelsSchema>;
 export type LevelData = LevelsData['levels'][number];
 export type ShopData = z.infer<typeof shopSchema>;

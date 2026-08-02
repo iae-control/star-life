@@ -1,16 +1,766 @@
 {
+  "clearDelay": 1.6,
+  "bossDelay": 1.2,
   "levels": [
     {
       "id": 1,
       "nameKey": "level.nebula",
-      "background": { "theme": "space", "nebulaAlpha": 0.85 },
-      "scroll": { "base": 45, "perWave": 2.7, "boss": 16 }
+      "taglineKey": "level.nebula.tag",
+      "background": {
+        "theme": "nebula",
+        "nebulaAlpha": 0.95
+      },
+      "scroll": {
+        "base": 45,
+        "perWave": 2.7,
+        "boss": 16
+      },
+      "waves": [
+        [
+          {
+            "kind": "column",
+            "enemy": "e1",
+            "count": 4,
+            "interval": 0.3,
+            "xMin": 70,
+            "xMax": 290,
+            "ampMin": 34,
+            "ampMax": 60,
+            "duration": 2.4
+          },
+          {
+            "kind": "column",
+            "enemy": "nb_wisp",
+            "count": 4,
+            "interval": 0.32,
+            "xMin": 60,
+            "xMax": 300,
+            "ampMin": 70,
+            "ampMax": 110,
+            "duration": 2.8
+          }
+        ],
+        [
+          {
+            "kind": "column",
+            "enemy": "nb_wisp",
+            "count": 5,
+            "interval": 0.28,
+            "xMin": 60,
+            "xMax": 300,
+            "ampMin": 70,
+            "ampMax": 120,
+            "duration": 2.6
+          },
+          {
+            "kind": "sideRush",
+            "enemy": "nb_mite",
+            "count": 5,
+            "interval": 0.2,
+            "vxMin": 120,
+            "vxMax": 165,
+            "rowYBase": 40,
+            "rowYStep": 32,
+            "duration": 2.2
+          },
+          {
+            "kind": "column",
+            "enemy": "e1",
+            "count": 5,
+            "interval": 0.28,
+            "xMin": 70,
+            "xMax": 290,
+            "ampMin": 34,
+            "ampMax": 68,
+            "duration": 2.6
+          }
+        ],
+        [
+          {
+            "kind": "drop",
+            "enemy": "e2",
+            "count": 1,
+            "interval": 0.5,
+            "xMin": 80,
+            "xMax": 280,
+            "duration": 2.2
+          },
+          {
+            "kind": "single",
+            "enemy": "nb_spore",
+            "x": 120,
+            "duration": 1.6
+          },
+          {
+            "kind": "column",
+            "enemy": "nb_wisp",
+            "count": 5,
+            "interval": 0.26,
+            "xMin": 60,
+            "xMax": 300,
+            "ampMin": 80,
+            "ampMax": 120,
+            "duration": 2.8
+          },
+          {
+            "kind": "sideRush",
+            "enemy": "nb_mite",
+            "count": 4,
+            "interval": 0.22,
+            "vxMin": 130,
+            "vxMax": 170,
+            "rowYBase": 50,
+            "rowYStep": 34,
+            "duration": 2.0
+          }
+        ],
+        [
+          {
+            "kind": "single",
+            "enemy": "nb_spore",
+            "x": 90,
+            "duration": 1.0
+          },
+          {
+            "kind": "single",
+            "enemy": "nb_spore",
+            "x": 270,
+            "duration": 1.6
+          },
+          {
+            "kind": "column",
+            "enemy": "nb_wisp",
+            "count": 6,
+            "interval": 0.24,
+            "xMin": 60,
+            "xMax": 300,
+            "ampMin": 80,
+            "ampMax": 125,
+            "duration": 2.8
+          },
+          {
+            "kind": "drop",
+            "enemy": "e2",
+            "count": 2,
+            "interval": 0.5,
+            "xMin": 80,
+            "xMax": 280,
+            "duration": 2.4
+          },
+          {
+            "kind": "sideRush",
+            "enemy": "nb_mite",
+            "count": 6,
+            "interval": 0.18,
+            "vxMin": 135,
+            "vxMax": 175,
+            "rowYBase": 40,
+            "rowYStep": 30,
+            "duration": 2.2
+          }
+        ],
+        [
+          {
+            "kind": "row",
+            "enemy": "nb_wisp",
+            "count": 4,
+            "xMargin": 60,
+            "duration": 1.6
+          },
+          {
+            "kind": "single",
+            "enemy": "nb_spore",
+            "x": 180,
+            "duration": 1.4
+          },
+          {
+            "kind": "sideRush",
+            "enemy": "nb_mite",
+            "count": 5,
+            "interval": 0.2,
+            "vxMin": 130,
+            "vxMax": 170,
+            "rowYBase": 45,
+            "rowYStep": 32,
+            "duration": 2.2
+          },
+          {
+            "kind": "column",
+            "enemy": "e1",
+            "count": 5,
+            "interval": 0.26,
+            "xMin": 70,
+            "xMax": 290,
+            "ampMin": 36,
+            "ampMax": 70,
+            "duration": 2.6
+          },
+          {
+            "kind": "drop",
+            "enemy": "e2",
+            "count": 1,
+            "interval": 0.5,
+            "xMin": 80,
+            "xMax": 280,
+            "duration": 2.0
+          }
+        ],
+        [
+          {
+            "kind": "column",
+            "enemy": "nb_wisp",
+            "count": 6,
+            "interval": 0.22,
+            "xMin": 60,
+            "xMax": 300,
+            "ampMin": 85,
+            "ampMax": 125,
+            "duration": 2.6
+          },
+          {
+            "kind": "single",
+            "enemy": "nb_spore",
+            "x": 100,
+            "duration": 0.8
+          },
+          {
+            "kind": "single",
+            "enemy": "nb_spore",
+            "x": 260,
+            "duration": 1.4
+          },
+          {
+            "kind": "row",
+            "enemy": "e1",
+            "count": 5,
+            "xMargin": 50,
+            "duration": 1.8
+          },
+          {
+            "kind": "sideRush",
+            "enemy": "nb_mite",
+            "count": 7,
+            "interval": 0.16,
+            "vxMin": 140,
+            "vxMax": 180,
+            "rowYBase": 40,
+            "rowYStep": 28,
+            "duration": 2.4
+          },
+          {
+            "kind": "drop",
+            "enemy": "e2",
+            "count": 2,
+            "interval": 0.6,
+            "xMin": 80,
+            "xMax": 280,
+            "duration": 2.4
+          }
+        ]
+      ],
+      "boss": "amoeba"
     },
     {
       "id": 2,
       "nameKey": "level.protostar",
-      "background": { "theme": "asteroids", "nebulaAlpha": 0.6 },
-      "scroll": { "base": 45, "perWave": 2.7, "boss": 16 }
+      "taglineKey": "level.protostar.tag",
+      "background": {
+        "theme": "protostar",
+        "nebulaAlpha": 0.85
+      },
+      "scroll": {
+        "base": 50,
+        "perWave": 2.7,
+        "boss": 16
+      },
+      "waves": [
+        [
+          {
+            "kind": "column",
+            "enemy": "pr_shard",
+            "count": 5,
+            "interval": 0.24,
+            "xMin": 70,
+            "xMax": 290,
+            "ampMin": 30,
+            "ampMax": 50,
+            "duration": 2.4
+          },
+          {
+            "kind": "single",
+            "enemy": "pr_ember",
+            "x": -18,
+            "duration": 1.8
+          },
+          {
+            "kind": "column",
+            "enemy": "pr_shard",
+            "count": 5,
+            "interval": 0.24,
+            "xMin": 70,
+            "xMax": 290,
+            "ampMin": 30,
+            "ampMax": 55,
+            "duration": 2.6
+          }
+        ],
+        [
+          {
+            "kind": "single",
+            "enemy": "pr_ember",
+            "x": -18,
+            "duration": 0.8
+          },
+          {
+            "kind": "single",
+            "enemy": "pr_ember",
+            "x": 378,
+            "duration": 1.6
+          },
+          {
+            "kind": "sideRush",
+            "enemy": "e3",
+            "count": 4,
+            "interval": 0.22,
+            "vxMin": 135,
+            "vxMax": 180,
+            "rowYBase": 40,
+            "rowYStep": 35,
+            "duration": 2.4
+          },
+          {
+            "kind": "column",
+            "enemy": "pr_shard",
+            "count": 6,
+            "interval": 0.22,
+            "xMin": 70,
+            "xMax": 290,
+            "ampMin": 32,
+            "ampMax": 58,
+            "duration": 2.6
+          }
+        ],
+        [
+          {
+            "kind": "drop",
+            "enemy": "pr_orbiter",
+            "count": 1,
+            "interval": 0.5,
+            "xMin": 110,
+            "xMax": 250,
+            "duration": 2.2
+          },
+          {
+            "kind": "column",
+            "enemy": "pr_shard",
+            "count": 5,
+            "interval": 0.22,
+            "xMin": 70,
+            "xMax": 290,
+            "ampMin": 32,
+            "ampMax": 58,
+            "duration": 2.4
+          },
+          {
+            "kind": "single",
+            "enemy": "pr_ember",
+            "x": 378,
+            "duration": 1.4
+          },
+          {
+            "kind": "drop",
+            "enemy": "e2",
+            "count": 1,
+            "interval": 0.5,
+            "xMin": 90,
+            "xMax": 270,
+            "duration": 2.0
+          }
+        ],
+        [
+          {
+            "kind": "drop",
+            "enemy": "pr_orbiter",
+            "count": 2,
+            "interval": 0.7,
+            "xMin": 100,
+            "xMax": 260,
+            "duration": 2.6
+          },
+          {
+            "kind": "single",
+            "enemy": "pr_ember",
+            "x": -18,
+            "duration": 0.7
+          },
+          {
+            "kind": "single",
+            "enemy": "pr_ember",
+            "x": 378,
+            "duration": 1.5
+          },
+          {
+            "kind": "column",
+            "enemy": "pr_shard",
+            "count": 6,
+            "interval": 0.2,
+            "xMin": 70,
+            "xMax": 290,
+            "ampMin": 34,
+            "ampMax": 60,
+            "duration": 2.6
+          },
+          {
+            "kind": "sideRush",
+            "enemy": "e3",
+            "count": 5,
+            "interval": 0.2,
+            "vxMin": 140,
+            "vxMax": 185,
+            "rowYBase": 45,
+            "rowYStep": 32,
+            "duration": 2.2
+          }
+        ],
+        [
+          {
+            "kind": "row",
+            "enemy": "pr_shard",
+            "count": 5,
+            "xMargin": 55,
+            "duration": 1.6
+          },
+          {
+            "kind": "single",
+            "enemy": "pr_ember",
+            "x": -18,
+            "duration": 0.7
+          },
+          {
+            "kind": "single",
+            "enemy": "pr_ember",
+            "x": 378,
+            "duration": 1.4
+          },
+          {
+            "kind": "drop",
+            "enemy": "pr_orbiter",
+            "count": 1,
+            "interval": 0.5,
+            "xMin": 110,
+            "xMax": 250,
+            "duration": 2.0
+          },
+          {
+            "kind": "sideRush",
+            "enemy": "e3",
+            "count": 5,
+            "interval": 0.2,
+            "vxMin": 140,
+            "vxMax": 185,
+            "rowYBase": 42,
+            "rowYStep": 32,
+            "duration": 2.4
+          }
+        ],
+        [
+          {
+            "kind": "drop",
+            "enemy": "pr_orbiter",
+            "count": 2,
+            "interval": 0.6,
+            "xMin": 100,
+            "xMax": 260,
+            "duration": 2.2
+          },
+          {
+            "kind": "column",
+            "enemy": "pr_shard",
+            "count": 6,
+            "interval": 0.2,
+            "xMin": 70,
+            "xMax": 290,
+            "ampMin": 34,
+            "ampMax": 60,
+            "duration": 2.4
+          },
+          {
+            "kind": "row",
+            "enemy": "pr_shard",
+            "count": 6,
+            "xMargin": 45,
+            "duration": 1.6
+          },
+          {
+            "kind": "single",
+            "enemy": "pr_ember",
+            "x": -18,
+            "duration": 0.6
+          },
+          {
+            "kind": "single",
+            "enemy": "pr_ember",
+            "x": 378,
+            "duration": 1.2
+          },
+          {
+            "kind": "drop",
+            "enemy": "e2",
+            "count": 2,
+            "interval": 0.5,
+            "xMin": 90,
+            "xMax": 270,
+            "duration": 2.4
+          }
+        ]
+      ],
+      "boss": "protocore"
+    },
+    {
+      "id": 3,
+      "nameKey": "level.mainseq",
+      "taglineKey": "level.mainseq.tag",
+      "background": {
+        "theme": "mainseq",
+        "nebulaAlpha": 0.8
+      },
+      "scroll": {
+        "base": 55,
+        "perWave": 2.7,
+        "boss": 16
+      },
+      "waves": [
+        [
+          {
+            "kind": "column",
+            "enemy": "ms_prominence",
+            "count": 4,
+            "interval": 0.3,
+            "xMin": 70,
+            "xMax": 290,
+            "ampMin": 55,
+            "ampMax": 85,
+            "duration": 2.6
+          },
+          {
+            "kind": "sideRush",
+            "enemy": "ms_flare",
+            "count": 4,
+            "interval": 0.22,
+            "vxMin": 140,
+            "vxMax": 185,
+            "rowYBase": 42,
+            "rowYStep": 34,
+            "duration": 2.4
+          }
+        ],
+        [
+          {
+            "kind": "drop",
+            "enemy": "ms_sentinel",
+            "count": 1,
+            "interval": 0.5,
+            "xMin": 90,
+            "xMax": 270,
+            "duration": 2.0
+          },
+          {
+            "kind": "column",
+            "enemy": "ms_prominence",
+            "count": 5,
+            "interval": 0.28,
+            "xMin": 70,
+            "xMax": 290,
+            "ampMin": 55,
+            "ampMax": 90,
+            "duration": 2.8
+          },
+          {
+            "kind": "sideRush",
+            "enemy": "ms_flare",
+            "count": 5,
+            "interval": 0.2,
+            "vxMin": 150,
+            "vxMax": 195,
+            "rowYBase": 42,
+            "rowYStep": 30,
+            "duration": 2.2
+          }
+        ],
+        [
+          {
+            "kind": "drop",
+            "enemy": "ms_sentinel",
+            "count": 2,
+            "interval": 0.6,
+            "xMin": 90,
+            "xMax": 270,
+            "duration": 2.4
+          },
+          {
+            "kind": "single",
+            "enemy": "pr_ember",
+            "x": -18,
+            "duration": 0.7
+          },
+          {
+            "kind": "single",
+            "enemy": "pr_ember",
+            "x": 378,
+            "duration": 1.4
+          },
+          {
+            "kind": "column",
+            "enemy": "ms_prominence",
+            "count": 5,
+            "interval": 0.26,
+            "xMin": 70,
+            "xMax": 290,
+            "ampMin": 60,
+            "ampMax": 95,
+            "duration": 2.8
+          }
+        ],
+        [
+          {
+            "kind": "drop",
+            "enemy": "ms_sentinel",
+            "count": 2,
+            "interval": 0.5,
+            "xMin": 90,
+            "xMax": 270,
+            "duration": 2.2
+          },
+          {
+            "kind": "drop",
+            "enemy": "pr_orbiter",
+            "count": 1,
+            "interval": 0.5,
+            "xMin": 120,
+            "xMax": 240,
+            "duration": 1.8
+          },
+          {
+            "kind": "sideRush",
+            "enemy": "ms_flare",
+            "count": 6,
+            "interval": 0.18,
+            "vxMin": 150,
+            "vxMax": 200,
+            "rowYBase": 40,
+            "rowYStep": 28,
+            "duration": 2.4
+          },
+          {
+            "kind": "column",
+            "enemy": "ms_prominence",
+            "count": 6,
+            "interval": 0.24,
+            "xMin": 70,
+            "xMax": 290,
+            "ampMin": 60,
+            "ampMax": 95,
+            "duration": 2.8
+          },
+          {
+            "kind": "single",
+            "enemy": "nb_spore",
+            "x": 180,
+            "duration": 1.6
+          }
+        ],
+        [
+          {
+            "kind": "row",
+            "enemy": "ms_prominence",
+            "count": 4,
+            "xMargin": 60,
+            "duration": 1.8
+          },
+          {
+            "kind": "drop",
+            "enemy": "ms_sentinel",
+            "count": 2,
+            "interval": 0.5,
+            "xMin": 90,
+            "xMax": 270,
+            "duration": 2.2
+          },
+          {
+            "kind": "sideRush",
+            "enemy": "ms_flare",
+            "count": 6,
+            "interval": 0.18,
+            "vxMin": 150,
+            "vxMax": 200,
+            "rowYBase": 40,
+            "rowYStep": 28,
+            "duration": 2.4
+          },
+          {
+            "kind": "single",
+            "enemy": "nb_spore",
+            "x": 180,
+            "duration": 1.4
+          }
+        ],
+        [
+          {
+            "kind": "drop",
+            "enemy": "ms_sentinel",
+            "count": 2,
+            "interval": 0.5,
+            "xMin": 90,
+            "xMax": 270,
+            "duration": 2.0
+          },
+          {
+            "kind": "drop",
+            "enemy": "pr_orbiter",
+            "count": 2,
+            "interval": 0.6,
+            "xMin": 110,
+            "xMax": 250,
+            "duration": 2.2
+          },
+          {
+            "kind": "column",
+            "enemy": "ms_prominence",
+            "count": 6,
+            "interval": 0.22,
+            "xMin": 70,
+            "xMax": 290,
+            "ampMin": 60,
+            "ampMax": 95,
+            "duration": 2.8
+          },
+          {
+            "kind": "row",
+            "enemy": "ms_flare",
+            "count": 5,
+            "xMargin": 55,
+            "duration": 1.6
+          },
+          {
+            "kind": "sideRush",
+            "enemy": "ms_flare",
+            "count": 6,
+            "interval": 0.16,
+            "vxMin": 155,
+            "vxMax": 205,
+            "rowYBase": 38,
+            "rowYStep": 26,
+            "duration": 2.4
+          },
+          {
+            "kind": "single",
+            "enemy": "pr_ember",
+            "x": -18,
+            "duration": 1.0
+          }
+        ]
+      ],
+      "boss": "helios"
     }
   ]
 }

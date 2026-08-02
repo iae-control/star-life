@@ -38,5 +38,17 @@
   "weapon.light.desc": "Zigzag lightning · pierces one enemy",
   "weapon.laser.desc": "Fast beam · pierces everything",
   "level.nebula": "Nebula",
-  "level.protostar": "Protostar"
+  "level.protostar": "Protostar",
+  "level.nebula.tag": "Cradle of newborn stars",
+  "level.protostar.tag": "A heart beginning to burn",
+  "level.mainseq": "Main Sequence",
+  "level.mainseq.tag": "Into the corona",
+  "boss.amoeba": "Nebula Amoeba",
+  "boss.protocore": "Proto Core",
+  "boss.helios": "Helios",
+  "boss.core": "Core Guardian",
+  "stage.level": "LEVEL {0}",
+  "result.complete": "TO BE CONTINUED",
+  "result.completeSub": "L4-L6 arrive in the next update",
+  "shop.go.level": "LAUNCH  (LEVEL {0})"
 }

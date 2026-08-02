@@ -1,6 +1,8 @@
-// 웨이브 스크립트 빌더 — waves.json의 그룹 정의를 해석하는 순수 로직 (vitest 대상).
+// 레벨 웨이브 빌더 — levels.json의 그룹 시퀀스를 스폰 타임라인으로 해석 (vitest 대상).
+// 그룹은 순차 실행: 각 그룹의 duration이 지난 뒤 다음 그룹이 시작된다 (데모 buildWave 방식).
 import { GAME_WIDTH } from '../../config';
 import { DATA } from '../../data';
+import type { WaveGroup } from '../../data/schemas';
 
 export type SpawnEvent =
   | { t: number; kind: 'boss' }
@@ -14,50 +16,65 @@ export type SpawnEvent =
 
 const rnd = (rng: () => number, a: number, b: number) => a + rng() * (b - a);
 
-export function buildWave(n: number, rng: () => number = Math.random): SpawnEvent[] {
-  const W = DATA.waves;
+function emitGroup(q: SpawnEvent[], g: WaveGroup, t0: number, rng: () => number): number {
+  if (g.kind === 'column') {
+    const bx = rnd(rng, g.xMin, g.xMax);
+    const amp = rnd(rng, g.ampMin, g.ampMax);
+    for (let i = 0; i < g.count; i++)
+      q.push({ t: t0 + i * g.interval, kind: 'enemy', type: g.enemy, x: bx, opt: { amp } });
+  } else if (g.kind === 'sideRush') {
+    const side = rng() < 0.5 ? -1 : 1;
+    for (let i = 0; i < g.count; i++) {
+      q.push({
+        t: t0 + i * g.interval,
+        kind: 'enemy',
+        type: g.enemy,
+        x: side < 0 ? -18 : GAME_WIDTH + 18,
+        opt: { vx: -side * rnd(rng, g.vxMin, g.vxMax), y: g.rowYBase + i * g.rowYStep },
+      });
+    }
+  } else if (g.kind === 'drop') {
+    for (let i = 0; i < g.count; i++)
+      q.push({
+        t: t0 + i * g.interval,
+        kind: 'enemy',
+        type: g.enemy,
+        x: rnd(rng, g.xMin, g.xMax),
+        opt: {},
+      });
+  } else if (g.kind === 'row') {
+    const span = GAME_WIDTH - g.xMargin * 2;
+    for (let i = 0; i < g.count; i++)
+      q.push({
+        t: t0,
+        kind: 'enemy',
+        type: g.enemy,
+        x: g.xMargin + (span * (i + 0.5)) / g.count,
+        opt: {},
+      });
+  } else {
+    q.push({ t: t0, kind: 'enemy', type: g.enemy, x: g.x, opt: {} });
+  }
+  return t0 + g.duration;
+}
+
+/**
+ * levelIdx: 0-based 레벨 인덱스, waveIdx: 레벨 내 0-based 웨이브 인덱스.
+ * waveIdx가 레벨 웨이브 수를 넘으면 보스 이벤트를 반환한다.
+ */
+export function buildLevelWave(
+  levelIdx: number,
+  waveIdx: number,
+  rng: () => number = Math.random,
+): SpawnEvent[] {
+  const level = DATA.levels.levels[levelIdx];
   const q: SpawnEvent[] = [];
-  let t = 1.0;
-  if (n % W.bossEvery === 0) {
-    q.push({ t: t + W.bossDelay, kind: 'boss' });
+  if (!level) return q;
+  if (waveIdx >= level.waves.length) {
+    q.push({ t: 1.0 + DATA.levels.bossDelay, kind: 'boss' });
     return q;
   }
-  const reps = Math.min(W.reps.max, W.reps.base + Math.floor(n / 2) * W.reps.per2Waves);
-  for (let r = 0; r < reps; r++) {
-    const g = W.groups[(r + n) % W.groups.length];
-    if (!g) continue;
-    if (g.kind === 'column') {
-      const bx = rnd(rng, g.xMin, g.xMax);
-      const amp = rnd(rng, g.ampMin, g.ampMax);
-      for (let i = 0; i < g.count; i++) {
-        q.push({ t: t + i * g.interval, kind: 'enemy', type: g.enemy, x: bx, opt: { amp } });
-      }
-      t += g.duration;
-    } else if (g.kind === 'sideRush') {
-      const side = rng() < 0.5 ? -1 : 1;
-      for (let i = 0; i < g.count; i++) {
-        q.push({
-          t: t + i * g.interval,
-          kind: 'enemy',
-          type: g.enemy,
-          x: side < 0 ? -18 : GAME_WIDTH + 18,
-          opt: { vx: -side * rnd(rng, g.vxMin, g.vxMax), y: g.rowYBase + i * g.rowYStep },
-        });
-      }
-      t += g.duration;
-    } else {
-      q.push({ t, kind: 'enemy', type: g.enemy, x: rnd(rng, g.xMin, g.xMax), opt: {} });
-      if (n > g.secondFromWave - 1) {
-        q.push({
-          t: t + g.secondDelay,
-          kind: 'enemy',
-          type: g.enemy,
-          x: rnd(rng, g.xMin, g.xMax),
-          opt: {},
-        });
-      }
-      t += g.duration;
-    }
-  }
+  let t = 1.0;
+  for (const g of level.waves[waveIdx] ?? []) t = emitGroup(q, g, t, rng);
   return q;
 }

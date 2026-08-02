@@ -10,25 +10,21 @@ import {
   i18nSchema,
   levelsSchema,
   shopSchema,
-  wavesSchema,
   weaponsSchema,
   type BossesData,
   type EnemiesData,
   type I18nData,
   type LevelsData,
   type ShopData,
-  type WavesData,
   type WeaponsData,
 } from './schemas';
 import rawShop from './shop.json';
-import rawWaves from './waves.json';
 import rawWeapons from './weapons.json';
 
 export interface GameData {
   weapons: WeaponsData;
   enemies: EnemiesData;
   bosses: BossesData;
-  waves: WavesData;
   levels: LevelsData;
   shop: ShopData;
   i18n: { ko: I18nData; en: I18nData };
@@ -39,7 +35,6 @@ function parseAll(): GameData {
     weapons: weaponsSchema.parse(rawWeapons),
     enemies: enemiesSchema.parse(rawEnemies),
     bosses: bossesSchema.parse(rawBosses),
-    waves: wavesSchema.parse(rawWaves),
     levels: levelsSchema.parse(rawLevels),
     shop: shopSchema.parse(rawShop),
     i18n: { ko: i18nSchema.parse(rawKo), en: i18nSchema.parse(rawEn) },
@@ -94,19 +89,17 @@ if (import.meta.hot) {
       './weapons.json',
       './enemies.json',
       './bosses.json',
-      './waves.json',
       './levels.json',
       './shop.json',
       './i18n/ko.json',
       './i18n/en.json',
     ],
     (mods) => {
-      const [w, e, b, wv, lv, sh, ko, en] = mods;
+      const [w, e, b, lv, sh, ko, en] = mods;
       try {
         if (w) DATA.weapons = weaponsSchema.parse(w.default);
         if (e) DATA.enemies = enemiesSchema.parse(e.default);
         if (b) DATA.bosses = bossesSchema.parse(b.default);
-        if (wv) DATA.waves = wavesSchema.parse(wv.default);
         if (lv) DATA.levels = levelsSchema.parse(lv.default);
         if (sh) DATA.shop = shopSchema.parse(sh.default);
         if (ko) DATA.i18n.ko = i18nSchema.parse(ko.default);

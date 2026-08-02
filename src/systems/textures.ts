@@ -38,22 +38,24 @@ function pixmap(rows: string[], palette: Record<string, string>, scale: number):
 /* ---------- 함선 픽셀맵 ---------- */
 
 const PLAYER_MAP = [
-  '......OO......',
-  '.....OGGO.....',
-  '.....OGgO.....',
-  '....OCGgCO....',
-  '....OCBBCO....',
-  '...OCBBBBCO...',
-  '...OCBDDBCO...',
-  '..OCBBDDBBCO..',
-  '..OCBBDDBBCO..',
-  '.OCCBBBBBBCCO.',
-  '.OCBBBOOBBBCO.',
-  'OCCBBO..OBBCCO',
-  'OCBBO....OBBCO',
-  'OBBO..EE..OBBO',
-  '.OO..OEeO..OO.',
-  '.....OEeO.....',
+  '.......OO.......',
+  '......OGGO......',
+  '......OGgO......',
+  '.....OCGgCO.....',
+  '.....OCBBCO.....',
+  '....OCBBBBCO....',
+  '....OCBDDBCO....',
+  '...OCBBDDBBCO...',
+  '...OCBBDDBBCO...',
+  '..OCCBBBBBBCCO..',
+  '..OCBWBBBBWBCO..',
+  '.OCCBBBOOBBBCCO.',
+  '.OCBBBO..OBBBCO.',
+  'OCCBBO....OBBCCO',
+  'OCBBO..EE..OBBCO',
+  'OBBO..OEeO..OBBO',
+  '.OO...OEeO...OO.',
+  '......OEeO......',
 ];
 const PLAYER_PAL = {
   O: '#0a1226',
@@ -160,6 +162,166 @@ const BOSS_PAL = {
   t: '#58e8d8',
 };
 
+/* ---------- L1~L3 신규 적 (M3) ---------- */
+
+// 성운 해파리 — 유령빛 시안
+const WISP_MAP = [
+  '...OOOO...',
+  '..OTggTO..',
+  '.OTgGGgTO.',
+  '.OTgGGgTO.',
+  '.OTggggTO.',
+  '..OTggTO..',
+  '..OT..TO..',
+  '.OT.OO.TO.',
+  '.OT.OO.TO.',
+  '..O....O..',
+];
+const WISP_PAL = { O: '#062430', T: '#2a8a9a', g: '#5ad8d8', G: '#c8fff4' };
+
+// 성운 포자 — 분열체 (죽으면 마이트 방출)
+const SPORE_MAP = [
+  '...OOOOOO...',
+  '..OPpppppO..',
+  '.OPpGGGGpPO.',
+  'OPpGgggggpPO',
+  'OPpGgOOggpPO',
+  'OPpGgOOggpPO',
+  'OPpGgggggpPO',
+  '.OPpGGGGpPO.',
+  '..OPpppppO..',
+  '...OOOOOO...',
+];
+const SPORE_PAL = { O: '#101c14', P: '#5aa070', p: '#357a50', G: '#8ae0a0', g: '#4aa868' };
+
+// 원시별 불씨 — 측면 소사
+const EMBER_MAP = [
+  '....OO....',
+  '...OYYO...',
+  '..OYffYO..',
+  '.OYffffYO.',
+  '.OYfrrfYO.',
+  '.OYfrrfYO.',
+  '..OYffYO..',
+  '..OrOOrO..',
+  '.OrO..OrO.',
+  '.OO....OO.',
+];
+const EMBER_PAL = { O: '#2a0c04', Y: '#ffd75e', f: '#ff8a3a', r: '#c8401a' };
+
+// 궤도병 — 공전하며 링 사격
+const ORBITER_MAP = [
+  '...OOOOOO...',
+  '..OmMMMMmO..',
+  '.OmMwwwwMmO.',
+  'OmMwCCCCwMmO',
+  'OmMwCddCwMmO',
+  'OmMwCddCwMmO',
+  'OmMwCCCCwMmO',
+  '.OmMwwwwMmO.',
+  '..OmMMMMmO..',
+  '...OOOOOO...',
+];
+const ORBITER_PAL = {
+  O: '#180a24',
+  m: '#6a3aa0',
+  M: '#9a5ae0',
+  w: '#d8c8f0',
+  C: '#ff5a8a',
+  d: '#8a1030',
+};
+
+// 홍염 — 3방향 확산 사격 사인 강하
+const PROM_MAP = [
+  '.....OO.....',
+  '....OYYO....',
+  '...OYffYO...',
+  'OO.OYffYO.OO',
+  'OfOYfrrfYOfO',
+  'OffYfrrfYffO',
+  '.OffrrrrffO.',
+  '..OffrrffO..',
+  '...OffffO...',
+  '....OOOO....',
+];
+const PROM_PAL = { O: '#2a0808', Y: '#ffe28a', f: '#ff9a3a', r: '#d84a1a' };
+
+/* ---------- 보스 3종 (M3) ---------- */
+
+// L1 성운 아메바 — 핵이 여럿 박힌 반투명 덩어리
+const AMOEBA_MAP = [
+  '.....OOOO..OOO......',
+  '...OOggggOOgggOO....',
+  '..OggGGggggGGggO....',
+  '.OgGGgggggggggGgO...',
+  'OgGgggNNgggggggGO...',
+  'OggggNNNNggNNggggO..',
+  'OggggNNNNgNNNNgggO..',
+  '.OgggggNNggNNgggggO.',
+  '.OggGggggggggggGggO.',
+  'OggGGgggNNNgggGGggO.',
+  'OgGggggNNNNNggggGgO.',
+  'OggggggNNNNNggggggO.',
+  '.OggggggNNNggggggO..',
+  '.OgGGggggggggGGgO...',
+  '..OggGGggggGGggO....',
+  '...OOggggggggOO.....',
+  '.....OOggggOO.......',
+  '.......OOOO.........',
+];
+const AMOEBA_PAL = { O: '#0c2418', g: '#3a8a5a', G: '#7ad89a', N: '#d8ff8a' };
+
+// L2 원시별 코어 — 강착 원반을 두른 용융핵
+const PROTOCORE_MAP = [
+  '.......OOOOOO.......',
+  '.....OOrrrrrrOO.....',
+  '....OrrffffffrrO....',
+  '..OOrrffYYYYffrrOO..',
+  '.OaarffYYccYYfraaO..',
+  'OaaarfYYccccYYfaaaO.',
+  'OaaarfYccWWccYfaaaO.',
+  '.OaarfYccWWccYfraaO.',
+  '..OrrfYYccccYYfrrO..',
+  '..OrrffYYccYYffrrO..',
+  '.OaarrffYYYYffrraaO.',
+  'OaaarrffffffffrraaaO',
+  'OaaaOrrffffffrrOaaaO',
+  '.OaO.OOrrrrrrOO.OaO.',
+  '..O....OOOOOO....O..',
+];
+const PROTOCORE_PAL = {
+  O: '#240a04',
+  r: '#c84a1a',
+  f: '#ff8a3a',
+  Y: '#ffd75e',
+  c: '#ffefb0',
+  W: '#ffffff',
+  a: '#6a2a10',
+};
+
+// L3 헬리오스 — 코로나 스파이크를 두른 항성체
+const HELIOS_MAP = [
+  '....O....OO....O....',
+  '...OYO..OYYO..OYO...',
+  '..OYYO.OYffYO.OYYO..',
+  '.OYffYOYffffYOYffY..',
+  'OYffffYffccffYffffYO',
+  '.OYffcccccccccffYO..',
+  '..OfccccWWccccfO....',
+  'OYfccccWWWWccccfYO..',
+  'OYfcccWWWWWWcccfYO..',
+  'OYfcccWWWWWWcccfYO..',
+  'OYfccccWWWWccccfYO..',
+  '..OfccccccccccfO....',
+  '.OYffcccccccffYO....',
+  'OYffffYffccffYffffYO',
+  '.OYffYOYffffYOYffY..',
+  '..OYYO.OYffYO.OYYO..',
+  '...OYO..OYYO..OYO...',
+  '....O....OO....O....',
+];
+const HELIOS_PAL = { O: '#3a1804', Y: '#ffd75e', f: '#ff9a3a', c: '#ffe8a0', W: '#fffff0' };
+
 function tinted(rows: string[], scale: number, color: string, alpha: number): HTMLCanvasElement {
   const h = rows.length;
   const w = Math.max(...rows.map((r) => r.length));
@@ -205,6 +367,48 @@ export function generateTextures(scene: Phaser.Scene): void {
   addCanvasTexture(scene, 'ship-boss', pixmap(BOSS_MAP, BOSS_PAL, 3));
   // 환영 함선(Jungjioo 러시): 플레이어 실루엣 청백 틴트
   addCanvasTexture(scene, 'ship-ghost', tinted(PLAYER_MAP, 2, 'rgb(150,225,255)', 0.88));
+
+  // L1~L3 신규 적 (신규 맵 + 팔레트 스왑 변형)
+  addCanvasTexture(scene, 'ship-wisp', pixmap(WISP_MAP, WISP_PAL, 2));
+  addCanvasTexture(scene, 'ship-spore', pixmap(SPORE_MAP, SPORE_PAL, 2));
+  addCanvasTexture(
+    scene,
+    'ship-mite',
+    pixmap(E1_MAP, { O: '#08282a', W: '#c8fff4', R: '#3ac8b8', r: '#1f8a80', d: '#0c4a48' }, 1),
+  );
+  addCanvasTexture(scene, 'ship-ember', pixmap(EMBER_MAP, EMBER_PAL, 2));
+  addCanvasTexture(
+    scene,
+    'ship-shard',
+    pixmap(E3_MAP, { O: '#2a0424', W: '#ffd8f4', Y: '#ff8ad8', o: '#c83a9a', d: '#701858' }, 2),
+  );
+  addCanvasTexture(scene, 'ship-orbiter', pixmap(ORBITER_MAP, ORBITER_PAL, 2));
+  addCanvasTexture(
+    scene,
+    'ship-flare',
+    pixmap(E3_MAP, { O: '#3a2404', W: '#ffffff', Y: '#ffefb0', o: '#ffc83a', d: '#e6862a' }, 2),
+  );
+  addCanvasTexture(
+    scene,
+    'ship-sentinel',
+    pixmap(
+      E2_MAP,
+      {
+        O: '#241404',
+        W: '#ffe8c8',
+        P: '#e0a03a',
+        p: '#9a6a1a',
+        d: '#684a10',
+        C: '#ff4a3a',
+        c: '#ffc0a0',
+      },
+      2,
+    ),
+  );
+  addCanvasTexture(scene, 'ship-prominence', pixmap(PROM_MAP, PROM_PAL, 2));
+  addCanvasTexture(scene, 'boss-amoeba', pixmap(AMOEBA_MAP, AMOEBA_PAL, 3));
+  addCanvasTexture(scene, 'boss-protocore', pixmap(PROTOCORE_MAP, PROTOCORE_PAL, 3));
+  addCanvasTexture(scene, 'boss-helios', pixmap(HELIOS_MAP, HELIOS_PAL, 3));
 
   // 플레이어 탄 (글로우 베이크)
   addCanvasTexture(
@@ -639,5 +843,75 @@ export function generateTextures(scene: Phaser.Scene): void {
     for (let i = 0; i < 12; i++)
       drawAsteroid(Math.random() * GAME_WIDTH, Math.random() * TILE_H, 5 + Math.random() * 12);
     addCanvasTexture(scene, 'bg-asteroids', c);
+  }
+  {
+    // 웜 성운 (원시별/주계열성 테마)
+    const [c, ctx] = canvas(GAME_WIDTH, TILE_H);
+    for (let i = 0; i < 8; i++) {
+      const x = Math.random() * GAME_WIDTH;
+      const y = Math.random() * TILE_H;
+      const r = 80 + Math.random() * 120;
+      const hue = [
+        'rgba(200,90,30,A)',
+        'rgba(180,50,60,A)',
+        'rgba(220,140,40,A)',
+        'rgba(150,40,90,A)',
+      ][i % 4] as string;
+      const a = 0.08 + Math.random() * 0.08;
+      for (const yy of [y - TILE_H, y, y + TILE_H]) {
+        const g = ctx.createRadialGradient(x, yy, 0, x, yy, r);
+        g.addColorStop(0, hue.replace('A', String(a)));
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(x - r, yy - r, r * 2, r * 2);
+      }
+    }
+    addCanvasTexture(scene, 'bg-nebula-warm', c);
+  }
+  {
+    // 잔파편 (원시별 강착 원반 조각들) — 전속 스크롤 레이어
+    const [c, ctx] = canvas(GAME_WIDTH, TILE_H);
+    for (let i = 0; i < 26; i++) {
+      const x = Math.floor(Math.random() * GAME_WIDTH);
+      const y = Math.floor(Math.random() * TILE_H);
+      const w = 3 + Math.floor(Math.random() * 6);
+      const h = 2 + Math.floor(Math.random() * 4);
+      for (const yy of [y - TILE_H, y, y + TILE_H]) {
+        ctx.fillStyle = '#241410';
+        ctx.fillRect(x + 1, yy + 1, w, h);
+        ctx.fillStyle = '#584034';
+        ctx.fillRect(x, yy, w, h);
+        ctx.fillStyle = '#8a6a50';
+        ctx.fillRect(x, yy, Math.max(1, w - 2), Math.max(1, h - 2));
+      }
+    }
+    addCanvasTexture(scene, 'bg-debris', c);
+  }
+  {
+    // 코로나 광선 (주계열성 테마) — 세로 광선 + 광점
+    const [c, ctx] = canvas(GAME_WIDTH, TILE_H);
+    for (let i = 0; i < 9; i++) {
+      const x = Math.random() * GAME_WIDTH;
+      const w = 10 + Math.random() * 26;
+      const g = ctx.createLinearGradient(x, 0, x + w, 0);
+      g.addColorStop(0, 'rgba(255,200,90,0)');
+      g.addColorStop(0.5, `rgba(255,214,94,${0.04 + Math.random() * 0.05})`);
+      g.addColorStop(1, 'rgba(255,200,90,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(x, 0, w, TILE_H);
+    }
+    for (let i = 0; i < 12; i++) {
+      const x = Math.random() * GAME_WIDTH;
+      const y = Math.random() * TILE_H;
+      const r = 20 + Math.random() * 50;
+      for (const yy of [y - TILE_H, y, y + TILE_H]) {
+        const g = ctx.createRadialGradient(x, yy, 0, x, yy, r);
+        g.addColorStop(0, `rgba(255,230,150,${0.05 + Math.random() * 0.06})`);
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(x - r, yy - r, r * 2, r * 2);
+      }
+    }
+    addCanvasTexture(scene, 'bg-sunstreaks', c);
   }
 }

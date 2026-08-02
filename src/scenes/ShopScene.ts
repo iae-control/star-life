@@ -184,7 +184,7 @@ export class ShopScene extends Phaser.Scene {
         else SFX.buy();
       }
     } else {
-      this.scene.start(SceneKeys.Game, { session: this.session });
+      this.scene.start(SceneKeys.StageIntro, { session: this.session });
       return;
     }
     this.refresh();
@@ -244,6 +244,6 @@ export class ShopScene extends Phaser.Scene {
         .setText(can ? t('shop.price', it.price(s)) : t('shop.max'))
         .setColor(can ? (afford ? '#ffd76a' : '#8b6a3a') : '#5a6178');
     }
-    this.goText.setText(t('shop.go', s.wave + 1));
+    this.goText.setText(t('shop.go.level', s.level));
   }
 }

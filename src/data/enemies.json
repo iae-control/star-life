@@ -34,7 +34,8 @@
         "freqMax": 2.6,
         "fireFromWave": 3,
         "fireChancePerSec": 0.15,
-        "bulletSpeed": 147
+        "bulletSpeed": 147,
+        "fireMode": "aimed"
       }
     },
     "e2": {
@@ -70,6 +71,166 @@
         "spdPerWave": 11,
         "homingClamp": 337,
         "homingGain": 1.2
+      }
+    },
+
+    "nb_wisp": {
+      "behavior": "sineDescend",
+      "sprite": "ship-wisp",
+      "score": 120,
+      "hp": { "base": 2.5, "perWave": 0.4 },
+      "params": {
+        "spdMin": 70,
+        "spdMax": 100,
+        "spdPerWave": 3,
+        "ampMin": 70,
+        "ampMax": 120,
+        "freqMin": 1.0,
+        "freqMax": 1.6,
+        "fireFromWave": 1,
+        "fireChancePerSec": 0.12,
+        "bulletSpeed": 135,
+        "fireMode": "aimed"
+      }
+    },
+    "nb_spore": {
+      "behavior": "sineDescend",
+      "sprite": "ship-spore",
+      "score": 250,
+      "hp": { "base": 7, "perWave": 0.8 },
+      "onDeath": { "spawn": { "type": "nb_mite", "count": 3 } },
+      "params": {
+        "spdMin": 45,
+        "spdMax": 60,
+        "spdPerWave": 2,
+        "ampMin": 20,
+        "ampMax": 40,
+        "freqMin": 0.7,
+        "freqMax": 1.1,
+        "fireFromWave": 99,
+        "fireChancePerSec": 0,
+        "bulletSpeed": 0,
+        "fireMode": "aimed"
+      }
+    },
+    "nb_mite": {
+      "behavior": "diver",
+      "sprite": "ship-mite",
+      "score": 60,
+      "hp": { "base": 1, "perWave": 0.2 },
+      "params": {
+        "spdBase": 150,
+        "spdPerWave": 8,
+        "homingClamp": 250,
+        "homingGain": 1.6
+      }
+    },
+
+    "pr_ember": {
+      "behavior": "strafer",
+      "sprite": "ship-ember",
+      "score": 200,
+      "hp": { "base": 4, "perWave": 0.6 },
+      "params": {
+        "speedX": 130,
+        "yMin": 80,
+        "yMax": 220,
+        "fireEvery": 1.3,
+        "bulletSpeed": 160,
+        "swayAmp": 18,
+        "swayFreq": 3.2
+      }
+    },
+    "pr_shard": {
+      "behavior": "sineDescend",
+      "sprite": "ship-shard",
+      "score": 160,
+      "hp": { "base": 3, "perWave": 0.5 },
+      "params": {
+        "spdMin": 140,
+        "spdMax": 175,
+        "spdPerWave": 5,
+        "ampMin": 30,
+        "ampMax": 55,
+        "freqMin": 2.6,
+        "freqMax": 3.6,
+        "fireFromWave": 99,
+        "fireChancePerSec": 0,
+        "bulletSpeed": 0,
+        "fireMode": "aimed"
+      }
+    },
+    "pr_orbiter": {
+      "behavior": "orbiter",
+      "sprite": "ship-orbiter",
+      "score": 350,
+      "hp": { "base": 8, "perWave": 1.0 },
+      "params": {
+        "descendSpd": 70,
+        "holdYMin": 110,
+        "holdYMax": 190,
+        "orbitRadius": 42,
+        "orbitSpeed": 2.4,
+        "centerDriftY": 12,
+        "fireEvery": 2.2,
+        "ringCount": 6,
+        "bulletSpeed": 120,
+        "life": 12
+      }
+    },
+
+    "ms_flare": {
+      "behavior": "diver",
+      "sprite": "ship-flare",
+      "score": 180,
+      "hp": { "base": 2.5, "perWave": 0.5 },
+      "params": {
+        "spdBase": 250,
+        "spdPerWave": 12,
+        "homingClamp": 400,
+        "homingGain": 1.5
+      }
+    },
+    "ms_sentinel": {
+      "behavior": "turret",
+      "sprite": "ship-sentinel",
+      "score": 420,
+      "hp": { "base": 11, "perWave": 1.5 },
+      "params": {
+        "spd": 50,
+        "holdYMin": 90,
+        "holdYMax": 180,
+        "coolMin": 0.7,
+        "coolMax": 1.3,
+        "fireCoolMin": 0.9,
+        "fireCoolMax": 1.6,
+        "coolReducePerWave": 0.04,
+        "coolReduceMax": 0.5,
+        "life": 13,
+        "driftMax": 32,
+        "driftBoundX": 34,
+        "leaveSpd": 80,
+        "bulletSpeedBase": 175,
+        "bulletSpeedPerWave": 6
+      }
+    },
+    "ms_prominence": {
+      "behavior": "sineDescend",
+      "sprite": "ship-prominence",
+      "score": 300,
+      "hp": { "base": 5, "perWave": 0.8 },
+      "params": {
+        "spdMin": 85,
+        "spdMax": 110,
+        "spdPerWave": 3,
+        "ampMin": 50,
+        "ampMax": 90,
+        "freqMin": 1.4,
+        "freqMax": 2.0,
+        "fireFromWave": 1,
+        "fireChancePerSec": 0.22,
+        "bulletSpeed": 150,
+        "fireMode": "spread3"
       }
     }
   }
