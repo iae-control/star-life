@@ -8,6 +8,7 @@ import { aabb, applyDamage } from '../game/logic/damage';
 import { firePattern, type ShotSpec } from '../game/logic/weapons';
 import { buildWave, type SpawnEvent } from '../game/logic/waves';
 import { newSession, saveBest, weaponLevel, type GameSession } from '../game/session';
+import { SpaceBackground } from '../systems/background';
 import { ImagePool } from '../systems/Pool';
 import { audioResume, isMuted, SFX, toggleMute } from '../systems/Sfx';
 import { uiText } from '../ui/text';
@@ -37,6 +38,7 @@ interface Enemy {
   hcd: number;
   dead: boolean;
   score: number;
+  flashT: number;
   // e1
   spd?: number;
   amp?: number;
@@ -61,7 +63,9 @@ interface BossState {
   cool: number;
   hcd: number;
   dir: number;
+  flashT: number;
   img: Phaser.GameObjects.Image;
+  glow: Phaser.GameObjects.Image;
 }
 interface Boom {
   x: number;
@@ -69,6 +73,11 @@ interface Boom {
   t: number;
   scale: number;
   img: Phaser.GameObjects.Image;
+  ring: Phaser.GameObjects.Image;
+}
+interface Flash {
+  img: Phaser.GameObjects.Image;
+  t: number;
 }
 interface Spark {
   img: Phaser.GameObjects.Image;
@@ -174,10 +183,12 @@ export class GameScene extends Phaser.Scene {
   private fxPool!: ImagePool;
 
   // 배경/카메라
-  private bg!: Phaser.GameObjects.TileSprite;
+  private spaceBg!: SpaceBackground;
   private scrollSpd = 45;
   private shake = 0;
   private worldT = 0;
+  private flashes: Flash[] = [];
+  private thrustT = 0;
 
   // 입력
   private touchOn = false;
@@ -256,15 +267,14 @@ export class GameScene extends Phaser.Scene {
     this.pvx = 0;
     this.pvy = 0;
 
-    this.bg = this.add
-      .tileSprite(0, 0, GAME_WIDTH, GAME_HEIGHT, 'bg-tiles')
-      .setOrigin(0, 0)
-      .setAlpha(0.6)
-      .setDepth(DEPTH.bg);
+    this.spaceBg = new SpaceBackground(this, DEPTH.bg);
+    this.flashes = [];
+    this.thrustT = 0;
+    // 비네트 — 게임플레이 위, HUD 아래
     this.add
-      .rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x020412, 0.38)
+      .image(0, 0, 'vignette')
       .setOrigin(0, 0)
-      .setDepth(DEPTH.bg + 0.5);
+      .setDepth(DEPTH.hud - 1);
 
     this.pool = new ImagePool(this, 'b-pulse', DEPTH.bullet, 64);
     this.fxPool = new ImagePool(this, 'boom', DEPTH.boom, 16);
@@ -289,17 +299,25 @@ export class GameScene extends Phaser.Scene {
 
   /* ---------- HUD ---------- */
   private createHud(): void {
-    this.add.rectangle(0, 0, GAME_WIDTH, 30, 0x040814, 0.66).setOrigin(0, 0).setDepth(DEPTH.hud);
+    this.add.rectangle(0, 0, GAME_WIDTH, 30, 0x040814, 0.88).setOrigin(0, 0).setDepth(DEPTH.hud);
     this.add.rectangle(0, 30, GAME_WIDTH, 1, 0x78b4ff, 0.25).setOrigin(0, 0).setDepth(DEPTH.hud);
 
     uiText(this, 7, 9, 'SHD', 9, '#7ecbff').setDepth(DEPTH.hud + 1);
-    this.add.rectangle(33, 5, 72, 8, 0x000000, 0.55).setOrigin(0, 0).setDepth(DEPTH.hud);
+    this.add
+      .rectangle(33, 5, 72, 8, 0x18243a, 0.95)
+      .setOrigin(0, 0)
+      .setStrokeStyle(1, 0x3a4a6a, 0.9)
+      .setDepth(DEPTH.hud);
     this.hudShieldBar = this.add
       .rectangle(34, 6, 70, 6, 0x5ab4ec)
       .setOrigin(0, 0)
       .setDepth(DEPTH.hud + 1);
     uiText(this, 7, 22, 'ARM', 9, '#ffd18a').setDepth(DEPTH.hud + 1);
-    this.add.rectangle(33, 17, 72, 8, 0x000000, 0.55).setOrigin(0, 0).setDepth(DEPTH.hud);
+    this.add
+      .rectangle(33, 17, 72, 8, 0x18243a, 0.95)
+      .setOrigin(0, 0)
+      .setStrokeStyle(1, 0x3a4a6a, 0.9)
+      .setDepth(DEPTH.hud);
     this.hudArmorBar = this.add
       .rectangle(34, 18, 70, 6, 0xe8a84a)
       .setOrigin(0, 0)
@@ -322,7 +340,7 @@ export class GameScene extends Phaser.Scene {
       DEPTH.hud + 1,
     );
     // 터치용 일시정지 버튼 (히트 존은 setupInput의 pointerdown에서 처리)
-    uiText(this, 244, 15, 'II', 12, '#8fa0c8', 'center').setDepth(DEPTH.hud + 1);
+    this.add.image(244, 15, 'pause-btn').setDepth(DEPTH.hud + 1);
     this.hudMute = uiText(this, 216, 22, 'MUTE', 8, '#8a93b0')
       .setDepth(DEPTH.hud + 1)
       .setVisible(isMuted());
@@ -339,11 +357,7 @@ export class GameScene extends Phaser.Scene {
     // 슈퍼 버튼 (우하단)
     const bx = GAME_WIDTH - 31;
     const by = GAME_HEIGHT - 43;
-    const g = this.add.graphics();
-    g.fillStyle(0x2a1a5f, 1);
-    g.fillCircle(0, 0, 24);
-    g.lineStyle(1.5, 0x8f7aff, 1);
-    g.strokeCircle(0, 0, 24);
+    const g = this.add.image(0, 0, 'super-btn');
     const label = uiText(this, 0, -4, 'S', 15, '#cfc2ff', 'center');
     this.superCount = uiText(this, 0, 12, '', 8, '#cfc2ff', 'center');
     this.superBtn = this.add.container(bx, by, [g, label, this.superCount]).setDepth(DEPTH.hud + 1);
@@ -420,7 +434,7 @@ export class GameScene extends Phaser.Scene {
         this.startSuper();
         return;
       }
-      if (p.worldY < 30 && p.worldX > 226 && p.worldX < 262) {
+      if (p.worldY < 34 && p.worldX > 220 && p.worldX < 268) {
         this.togglePause();
         return;
       }
@@ -480,7 +494,7 @@ export class GameScene extends Phaser.Scene {
   /* ---------- 웨이브 ---------- */
   private nextWave(): void {
     this.session.wave++;
-    this.banner(`WAVE ${this.session.wave}`, 1.6, '#e8ecff');
+    this.banner(`WAVE ${this.session.wave}`, 1.6, '#ffd75e');
     this.scrollSpd = SCROLL.base(this.session.wave);
     this.spawnQ = buildWave(this.session.wave);
     this.waveT = 0;
@@ -490,6 +504,9 @@ export class GameScene extends Phaser.Scene {
   private banner(msg: string, dur: number, color: string): void {
     this.bannerText.setText(msg).setColor(color).setVisible(true).setAlpha(1);
     this.bannerT = dur;
+    // 팝인 연출
+    this.bannerText.setScale(1.35);
+    this.tweens.add({ targets: this.bannerText, scale: 1, duration: 260, ease: 'Back.easeOut' });
   }
 
   /* ---------- 스폰 ---------- */
@@ -506,6 +523,7 @@ export class GameScene extends Phaser.Scene {
       hp: 1,
       hcd: 0,
       dead: false,
+      flashT: 0,
     };
     const w = this.session.wave;
     let e: Enemy;
@@ -550,8 +568,10 @@ export class GameScene extends Phaser.Scene {
   private spawnBoss(): void {
     const w = this.session.wave;
     const hp = BOSS.hp(w);
-    const img = this.pool.get('ship-e2', GAME_WIDTH / 2, -80);
-    img.setDepth(DEPTH.enemy).setScale(2.4);
+    const glow = this.pool.get('boss-glow', GAME_WIDTH / 2, -80);
+    glow.setDepth(DEPTH.enemy - 0.2).setBlendMode(Phaser.BlendModes.ADD);
+    const img = this.pool.get('ship-boss', GAME_WIDTH / 2, -80);
+    img.setDepth(DEPTH.enemy);
     this.boss = {
       x: GAME_WIDTH / 2,
       y: -80,
@@ -562,7 +582,9 @@ export class GameScene extends Phaser.Scene {
       cool: 1.2,
       hcd: 0,
       dir: 1,
+      flashT: 0,
       img,
+      glow,
     };
     this.banner('!! WARNING !!', 2.2, '#ff6a6a');
     SFX.warn();
@@ -578,10 +600,15 @@ export class GameScene extends Phaser.Scene {
     const shots = firePattern(this.session.cur, level, this.px, this.py, this.vseq);
     for (const s of shots) {
       const img = this.pool.get(`b-${s.kind}`, s.x, s.y);
-      img.setDepth(DEPTH.bullet);
-      if (s.kind === 'laser' || s.kind === 'pulse') img.setBlendMode(Phaser.BlendModes.ADD);
+      img.setDepth(DEPTH.bullet).setBlendMode(Phaser.BlendModes.ADD);
+      // 세로 궤적감: 직선 고속탄은 살짝 늘인다
+      if (s.kind === 'laser' || s.kind === 'pulse') img.setScale(1, 1.3);
       this.bullets.push({ ...s, t: 0, img });
     }
+    // 총구 화염
+    const mz = this.fxPool.get('muzzle', this.px, this.py - 19);
+    mz.setDepth(DEPTH.bullet + 0.5).setBlendMode(Phaser.BlendModes.ADD);
+    this.flashes.push({ img: mz, t: 0 });
     SFX.shoot[this.session.cur]();
   }
 
@@ -671,7 +698,9 @@ export class GameScene extends Phaser.Scene {
       this.session.score += BOSS.killScore;
       this.session.credits += BOSS.killScore;
       this.addFloatText(bx, by, `+${BOSS.killScore}`, '#7ef7ff');
+      B.img.clearTint();
       this.pool.release(B.img);
+      this.pool.release(B.glow);
       this.boss = null;
       this.bossBar.setVisible(false);
       this.bossLabel.setVisible(false);
@@ -687,7 +716,12 @@ export class GameScene extends Phaser.Scene {
       .setDepth(DEPTH.boom)
       .setBlendMode(Phaser.BlendModes.ADD)
       .setScale(0.1 * scale);
-    this.booms.push({ x, y, t: 0, scale, img });
+    const ring = this.fxPool.get('boom-ring', x, y);
+    ring
+      .setDepth(DEPTH.boom + 0.1)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setScale(0.1 * scale);
+    this.booms.push({ x, y, t: 0, scale, img, ring });
     for (let k = 0; k < 7; k++) {
       const a = rnd(0, 6.283);
       const sp = rnd(40, 130) * scale;
@@ -868,7 +902,7 @@ export class GameScene extends Phaser.Scene {
     const dt = Math.min(0.05, deltaMs / 1000);
     this.worldT += dt;
 
-    this.bg.tilePositionY -= this.scrollSpd * dt;
+    this.spaceBg.update(dt, this.scrollSpd);
     if (this.bannerT > 0) {
       this.bannerT -= dt;
       this.bannerText.setAlpha(Math.min(1, this.bannerT * 2));
@@ -978,6 +1012,17 @@ export class GameScene extends Phaser.Scene {
       this.fireCd = WEAPONS[this.session.cur].cd(weaponLevel(this.session));
     }
     if (this.inv > 0 && !this.sp) this.inv -= dt;
+    // 엔진 궤적 파티클
+    this.thrustT += dt;
+    if (this.thrustT > 0.028 && this.playerImg.visible) {
+      this.thrustT = 0;
+      const s = this.fxPool.get('spark-cyan', this.px + rnd(-3, 3), this.py + 18);
+      s.setDepth(DEPTH.player - 0.6)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setAlpha(0.9)
+        .setScale(rnd(0.8, 1.6));
+      this.sparks.push({ img: s, vx: rnd(-10, 10), vy: rnd(120, 190), t: 0.15 });
+    }
     this.regenT += dt;
     if (this.regenT > PLAYER.shieldRegenDelay && this.session.shield < this.session.shieldMax) {
       this.session.shield = Math.min(
@@ -1094,12 +1139,19 @@ export class GameScene extends Phaser.Scene {
         e.y += (e.spd ?? 0) * dt;
       }
       e.img.setPosition(e.x, e.y);
+      // 피격 화이트 플래시
+      if (e.flashT > 0) {
+        e.flashT -= dt;
+        e.img.setTintFill(0xffffff);
+        if (e.flashT <= 0) e.img.clearTint();
+      }
 
       for (let j = this.bullets.length - 1; j >= 0; j--) {
         const b = this.bullets[j];
         if (!b) continue;
         if (aabb(b.x, b.y, b.w, b.h, e.x, e.y, ENEMY.hitW, ENEMY.hitH)) {
           e.hp -= b.dmg;
+          e.flashT = 0.05;
           if (b.pierce > 0) b.pierce--;
           else {
             this.pool.release(b.img);
@@ -1161,6 +1213,14 @@ export class GameScene extends Phaser.Scene {
       }
     }
     B.img.setPosition(B.x, B.y);
+    // 코어 글로우 펄스
+    B.glow.setPosition(B.x, B.y + 2);
+    B.glow.setAlpha(0.45 + Math.sin(B.t * 4) * 0.2).setScale(1.15 + Math.sin(B.t * 4) * 0.08);
+    if (B.flashT > 0) {
+      B.flashT -= dt;
+      B.img.setTintFill(0xffffff);
+      if (B.flashT <= 0) B.img.clearTint();
+    }
 
     for (let j = this.bullets.length - 1; j >= 0; j--) {
       const b = this.bullets[j];
@@ -1171,6 +1231,7 @@ export class GameScene extends Phaser.Scene {
           this.pool.release(b.img);
           this.bullets.splice(j, 1);
         }
+        B.flashT = 0.05;
         this.damageBoss(b.dmg);
         if (!this.boss) return;
       }
@@ -1243,9 +1304,22 @@ export class GameScene extends Phaser.Scene {
       const p = clamp(bm.t, 0, 1);
       const r = (5 + 41 * p) * bm.scale;
       bm.img.setScale((r * 2) / 64).setAlpha(1 - p);
+      // 링은 파이어볼보다 빠르게 확장하며 사라진다
+      bm.ring.setScale((r * 3.1) / 64).setAlpha((1 - p) * 0.8);
       if (bm.t >= 1) {
         this.fxPool.release(bm.img);
+        this.fxPool.release(bm.ring);
         this.booms.splice(i, 1);
+      }
+    }
+    for (let i = this.flashes.length - 1; i >= 0; i--) {
+      const f = this.flashes[i];
+      if (!f) continue;
+      f.t += dt;
+      f.img.setAlpha(1 - f.t / 0.07).setScale(1 + f.t * 8);
+      if (f.t >= 0.07) {
+        this.fxPool.release(f.img);
+        this.flashes.splice(i, 1);
       }
     }
     for (let i = this.sparks.length - 1; i >= 0; i--) {
@@ -1277,11 +1351,16 @@ export class GameScene extends Phaser.Scene {
     this.hudArmorBar.setScale(clamp(s.armor / s.armorMax, 0, 1), 1);
     this.hudWpn.setText(WEAPONS[s.cur].short);
     const lvl = weaponLevel(s);
-    this.hudPips.forEach((p, i) => p.setAlpha(i < lvl ? 1 : 0.15));
+    this.hudPips.forEach((p, i) => p.setFillStyle(i < lvl ? 0x8aff8a : 0x37543f));
     this.hudWaveT.setText(`WAVE ${s.wave}`);
     this.hudScore.setText(String(s.score).padStart(7, '0'));
     this.hudCredits.setText(`CR ${s.credits}`);
-    this.superBtn.setAlpha(s.superN > 0 ? 0.92 : 0.35);
+    // 하단 탄막을 가리지 않게 반투명 유지, 사용 가능 시 펄스
+    if (s.superN > 0) {
+      this.superBtn.setAlpha(0.66).setScale(1 + Math.sin(this.worldT * 4.5) * 0.05);
+    } else {
+      this.superBtn.setAlpha(0.28).setScale(1);
+    }
     this.superCount.setText(`x${s.superN}`);
     const B = this.boss;
     if (B) this.bossBar.setScale(clamp(B.hp / B.hpMax, 0, 1), 1);

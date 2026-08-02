@@ -41,6 +41,8 @@ export interface WeaponDef {
   name: string;
   short: string;
   price: number;
+  desc: string;
+  color: number;
   cd: (level: number) => number;
 }
 
@@ -49,12 +51,42 @@ export const WEAPONS: Record<WeaponKey, WeaponDef> = {
     name: 'PULSE CANNON',
     short: 'PULSE',
     price: 0,
+    desc: '균형 잡힌 기본 캐논 · 레벨업 시 확산',
+    color: 0x4db8ff,
     cd: (l) => Math.max(0.11, 0.2 - l * 0.012),
   },
-  vulcan: { name: 'VULCAN', short: 'VULCN', price: 800, cd: (l) => 0.062 - l * 0.002 },
-  proton: { name: 'PROTON SPREAD', short: 'PROTN', price: 1500, cd: (l) => 0.27 - l * 0.008 },
-  light: { name: 'LIGHTNING GUN', short: 'LIGHT', price: 2400, cd: (l) => 0.17 - l * 0.005 },
-  laser: { name: 'MEGA LASER', short: 'LASER', price: 3600, cd: (l) => 0.13 - l * 0.004 },
+  vulcan: {
+    name: 'VULCAN',
+    short: 'VULCN',
+    price: 800,
+    desc: '초고속 연사 · 탄이 좌우로 흩뿌려짐',
+    color: 0xffe28a,
+    cd: (l) => 0.062 - l * 0.002,
+  },
+  proton: {
+    name: 'PROTON SPREAD',
+    short: 'PROTN',
+    price: 1500,
+    desc: '광각 산탄 · 최대 6방향 부채꼴',
+    color: 0x59e659,
+    cd: (l) => 0.27 - l * 0.008,
+  },
+  light: {
+    name: 'LIGHTNING GUN',
+    short: 'LIGHT',
+    price: 2400,
+    desc: '지그재그 번개 · 적 1기 관통',
+    color: 0xaef4ff,
+    cd: (l) => 0.17 - l * 0.005,
+  },
+  laser: {
+    name: 'MEGA LASER',
+    short: 'LASER',
+    price: 3600,
+    desc: '고속 빔 · 모든 적 관통',
+    color: 0xff6a6a,
+    cd: (l) => 0.13 - l * 0.004,
+  },
 };
 
 export const MAX_WEAPON_LEVEL = 6;

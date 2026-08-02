@@ -5,6 +5,7 @@ import { GAME_HEIGHT, GAME_WIDTH, SceneKeys } from '../config';
 import { WEAPONS } from '../game/logic/balance';
 import { itemAction, SHOP_WEAPON_KEYS, UPGRADE_ITEMS, weaponAction } from '../game/logic/shop';
 import type { GameSession } from '../game/session';
+import { SpaceBackground } from '../systems/background';
 import { audioResume, SFX } from '../systems/Sfx';
 import { uiText } from '../ui/text';
 
@@ -23,18 +24,25 @@ export class ShopScene extends Phaser.Scene {
   private creditsText!: Phaser.GameObjects.Text;
   private wpnTexts: {
     name: Phaser.GameObjects.Text;
+    desc: Phaser.GameObjects.Text;
     lv: Phaser.GameObjects.Text;
     right: Phaser.GameObjects.Text;
   }[] = [];
+  private selAccent!: Phaser.GameObjects.Rectangle;
   private itmTexts: {
     name: Phaser.GameObjects.Text;
     stat: Phaser.GameObjects.Text;
     right: Phaser.GameObjects.Text;
   }[] = [];
   private goText!: Phaser.GameObjects.Text;
+  private spaceBg!: SpaceBackground;
 
   constructor() {
     super(SceneKeys.Shop);
+  }
+
+  update(_time: number, deltaMs: number): void {
+    this.spaceBg.update(deltaMs / 1000, 18);
   }
 
   create(data: { session: GameSession }): void {
@@ -45,8 +53,9 @@ export class ShopScene extends Phaser.Scene {
     // 상점 진입 시 실드 완충 (데모 enterShop)
     this.session.shield = this.session.shieldMax;
 
-    this.add.tileSprite(0, 0, GAME_WIDTH, GAME_HEIGHT, 'bg-tiles').setOrigin(0, 0).setAlpha(0.6);
-    this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x030510, 0.8).setOrigin(0, 0);
+    // 배경은 UI 아래로 (별이 텍스트 위에 비치지 않게)
+    this.spaceBg = new SpaceBackground(this, -10);
+    this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x060a18, 0.9).setOrigin(0, 0).setDepth(-5);
     const frame = this.add.graphics();
     frame.lineStyle(1, 0x8caaff, 0.35);
     frame.strokeRoundedRect(9, 42, GAME_WIDTH - 18, GAME_HEIGHT - 80, 8);
@@ -55,15 +64,22 @@ export class ShopScene extends Phaser.Scene {
     this.creditsText = uiText(this, GAME_WIDTH / 2, 102, '', 14, '#ffd76a', 'center');
 
     this.selBox = this.add
-      .rectangle(GAME_WIDTH / 2, 0, GAME_WIDTH - 32, ROW_H - 4, 0x5a78dc, 0.22)
+      .rectangle(GAME_WIDTH / 2, 0, GAME_WIDTH - 32, ROW_H - 4, 0x5a78dc, 0.32)
       .setVisible(false);
+    this.selAccent = this.add.rectangle(19, 0, 3, ROW_H - 4, 0x8fd3ff).setVisible(false);
 
     uiText(this, 20, 130, 'FRONT WEAPON — 구매 / 장착', 9, '#8fa0c8');
     for (let i = 0; i < N_WPN; i++) {
       const y = wpnRowY(i);
+      const key = SHOP_WEAPON_KEYS[i];
+      if (key) {
+        // 탄환 색 스와치 — 무기 정체성 시각화
+        this.add.rectangle(31, y + 4, 10, 10, WEAPONS[key].color).setStrokeStyle(1, 0x0a1226, 1);
+      }
       this.wpnTexts.push({
-        name: uiText(this, 25, y + 8, '', 10, '#dfe8ff'),
-        lv: uiText(this, 190, y + 8, '', 9, '#7fd2a8'),
+        name: uiText(this, 42, y + 3, '', 10, '#dfe8ff'),
+        desc: uiText(this, 42, y + 17, '', 7, '#6a7a9a'),
+        lv: uiText(this, 196, y + 3, '', 9, '#9fe8b8'),
         right: uiText(this, GAME_WIDTH - 25, y + 8, '', 10, '#ffd76a', 'right'),
       });
       this.hitZone(25, y - 6, GAME_WIDTH - 50, ROW_H - 2, () => this.act(i));
@@ -98,7 +114,7 @@ export class ShopScene extends Phaser.Scene {
       this,
       GAME_WIDTH / 2,
       GAME_HEIGHT - 46,
-      '↑↓ 선택 · ENTER 구매/장착 · 터치 가능',
+      '↑↓·ENTER 또는 행을 탭: 구매/장착',
       9,
       '#8fa0c8',
       'center',
@@ -190,6 +206,7 @@ export class ShopScene extends Phaser.Scene {
     } else {
       this.selBox.setVisible(false);
     }
+    this.selAccent.setVisible(this.selBox.visible).setY(this.selBox.y);
     this.goBox.setFillStyle(0x3c5a46, this.sel === N_ROWS - 1 ? 0.45 : 0.25);
 
     for (let i = 0; i < N_WPN; i++) {
@@ -201,6 +218,7 @@ export class ShopScene extends Phaser.Scene {
       const equipped = s.cur === key;
       const afford = s.credits >= def.price;
       row.name.setText(def.name).setColor(owned ? '#dfe8ff' : afford ? '#aeb8d8' : '#5a6178');
+      row.desc.setText(def.desc);
       row.lv.setText(owned ? `Lv${s.weapons[key]}` : '');
       row.right
         .setText(equipped ? '[장착중]' : owned ? '장착' : `${def.price} CR`)

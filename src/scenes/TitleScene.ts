@@ -3,15 +3,17 @@ import Phaser from 'phaser';
 
 import { GAME_HEIGHT, GAME_WIDTH, SceneKeys } from '../config';
 import { loadBest, newSession } from '../game/session';
+import { SpaceBackground } from '../systems/background';
 import { audioResume } from '../systems/Sfx';
 import { uiText } from '../ui/text';
 
 export class TitleScene extends Phaser.Scene {
   private starting = false;
   private ship!: Phaser.GameObjects.Image;
+  private flame!: Phaser.GameObjects.Image;
   private orb!: Phaser.GameObjects.Image;
   private prompt!: Phaser.GameObjects.Text;
-  private bg!: Phaser.GameObjects.TileSprite;
+  private spaceBg!: SpaceBackground;
   private t = 0;
 
   constructor() {
@@ -22,16 +24,26 @@ export class TitleScene extends Phaser.Scene {
     this.starting = false;
     this.t = 0;
 
-    this.bg = this.add
-      .tileSprite(0, 0, GAME_WIDTH, GAME_HEIGHT, 'bg-tiles')
-      .setOrigin(0, 0)
-      .setAlpha(0.6);
-    this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x020410, 0.45).setOrigin(0, 0);
+    this.spaceBg = new SpaceBackground(this, -10);
+    this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x020410, 0.28).setOrigin(0, 0).setDepth(-5);
 
     const glow = this.add.image(GAME_WIDTH / 2, 262, 'super-aura');
     glow.setBlendMode(Phaser.BlendModes.ADD).setScale(3).setAlpha(0.7);
+    this.tweens.add({
+      targets: glow,
+      alpha: 0.35,
+      scale: 3.4,
+      duration: 1400,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+    this.flame = this.add
+      .image(GAME_WIDTH / 2, 262 + 52, 'engine-flame')
+      .setScale(3)
+      .setBlendMode(Phaser.BlendModes.ADD);
     this.ship = this.add.image(GAME_WIDTH / 2, 262, 'ship-player').setScale(3);
-    this.orb = this.add.image(GAME_WIDTH / 2 + 79, 262, 'orb-P').setScale(1.4);
+    this.orb = this.add.image(GAME_WIDTH / 2 + 92, 262, 'orb-P').setScale(1.4);
 
     uiText(this, GAME_WIDTH / 2, 144, '별의 일생', 40, '#dfe8ff', 'center');
     uiText(this, GAME_WIDTH / 2, 186, '— vertical shooter —', 10, '#8a93b0', 'center');
@@ -80,12 +92,14 @@ export class TitleScene extends Phaser.Scene {
   update(_time: number, deltaMs: number): void {
     const dt = deltaMs / 1000;
     this.t += dt;
-    this.bg.tilePositionY -= 45 * dt;
+    this.spaceBg.update(dt, 45);
     const bob = Math.sin(this.t * 2) * 5;
     this.ship.setY(262 + bob);
+    this.flame.setY(262 + bob + 52);
+    this.flame.setScale(3, 3 + Math.sin(this.t * 40) * 0.7);
     this.orb.setPosition(
-      GAME_WIDTH / 2 + Math.cos(this.t * 1.6) * 79,
-      262 + bob + Math.sin(this.t * 1.6) * 35,
+      GAME_WIDTH / 2 + Math.cos(this.t * 1.6) * 92,
+      262 + bob + Math.sin(this.t * 1.6) * 44,
     );
     this.prompt.setVisible(Math.floor(this.t * 1.4) % 2 === 0);
   }
