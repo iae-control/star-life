@@ -27,11 +27,14 @@ export class ResultScene extends Phaser.Scene {
       uiText(this, GAME_WIDTH / 2, 357, 'NEW RECORD!', 12, '#8aff8a', 'center');
     this.prompt = uiText(this, GAME_WIDTH / 2, 427, '탭 / ENTER — 재도전', 12, '#e8ecff', 'center');
 
-    // 즉시 재시작 오입력 방지로 짧은 지연 후 입력 활성화
+    // 즉시 재시작 오입력 방지: 짧은 지연 + e.repeat 가드(발사키 홀드 자동반복 차단)
     this.time.delayedCall(400, () => {
       this.input.once('pointerdown', () => this.restart());
-      this.input.keyboard?.once('keydown-ENTER', () => this.restart());
-      this.input.keyboard?.once('keydown-SPACE', () => this.restart());
+      const onKey = (e: KeyboardEvent): void => {
+        if (!e.repeat) this.restart();
+      };
+      this.input.keyboard?.on('keydown-ENTER', onKey);
+      this.input.keyboard?.on('keydown-SPACE', onKey);
     });
   }
 

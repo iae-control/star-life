@@ -2,7 +2,7 @@
 import Phaser from 'phaser';
 
 import { GAME_HEIGHT, GAME_WIDTH, SceneKeys } from '../config';
-import { loadBest } from '../game/session';
+import { loadBest, newSession } from '../game/session';
 import { audioResume } from '../systems/Sfx';
 import { uiText } from '../ui/text';
 
@@ -69,8 +69,12 @@ export class TitleScene extends Phaser.Scene {
 
     this.input.keyboard?.removeAllListeners();
     this.input.once('pointerdown', () => this.startGame());
-    this.input.keyboard?.once('keydown-ENTER', () => this.startGame());
-    this.input.keyboard?.once('keydown-SPACE', () => this.startGame());
+    // e.repeat 가드: 발사키를 누른 채 사망→타이틀로 온 경우 자동반복으로 즉시 재시작되는 것 방지
+    const onKey = (e: KeyboardEvent): void => {
+      if (!e.repeat) this.startGame();
+    };
+    this.input.keyboard?.on('keydown-ENTER', onKey);
+    this.input.keyboard?.on('keydown-SPACE', onKey);
   }
 
   update(_time: number, deltaMs: number): void {
@@ -90,6 +94,7 @@ export class TitleScene extends Phaser.Scene {
     if (this.starting) return;
     this.starting = true;
     audioResume();
-    this.scene.start(SceneKeys.Game);
+    // 새 세션을 명시적으로 전달 — data 없이 start하면 Phaser가 이전 settings.data(죽은 세션)를 재사용한다
+    this.scene.start(SceneKeys.Game, { session: newSession() });
   }
 }

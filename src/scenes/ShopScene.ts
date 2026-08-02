@@ -104,14 +104,38 @@ export class ShopScene extends Phaser.Scene {
       'center',
     );
 
+    // 발사키(SPACE/Z)를 누른 채 상점에 진입한 경우: 자동반복·잔여 입력이
+    // 진입 즉시 act()를 발동하지 않도록 250ms 무장 지연 + e.repeat 가드
+    const armedAt = this.time.now + 250;
+    const guarded =
+      (fn: () => void) =>
+      (e: KeyboardEvent): void => {
+        if (e.repeat || this.time.now < armedAt) return;
+        fn();
+      };
     const kb = this.input.keyboard;
     if (kb) {
       kb.removeAllListeners();
-      kb.on('keydown-UP', () => this.move(-1));
-      kb.on('keydown-DOWN', () => this.move(1));
-      kb.on('keydown-ENTER', () => this.act(this.sel));
-      kb.on('keydown-SPACE', () => this.act(this.sel));
-      kb.on('keydown-Z', () => this.act(this.sel));
+      kb.on(
+        'keydown-UP',
+        guarded(() => this.move(-1)),
+      );
+      kb.on(
+        'keydown-DOWN',
+        guarded(() => this.move(1)),
+      );
+      kb.on(
+        'keydown-ENTER',
+        guarded(() => this.act(this.sel)),
+      );
+      kb.on(
+        'keydown-SPACE',
+        guarded(() => this.act(this.sel)),
+      );
+      kb.on(
+        'keydown-Z',
+        guarded(() => this.act(this.sel)),
+      );
     }
     this.input.on('pointerdown', () => audioResume());
 

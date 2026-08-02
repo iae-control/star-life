@@ -130,6 +130,7 @@ export const BOSS = {
 export const EBULLET = {
   smallSize: 6, // (5)
   bigSize: 9, // (7)
+  fanSize: 7, // (6) — 보스 부채꼴 탄은 소형탄보다 의도적으로 큼
   smallDamage: 8,
   bigDamage: 14,
 } as const;

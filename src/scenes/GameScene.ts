@@ -25,6 +25,7 @@ interface EBul {
   vx: number;
   vy: number;
   big: boolean;
+  size: number;
   img: Phaser.GameObjects.Image;
 }
 interface Enemy {
@@ -157,6 +158,7 @@ export class GameScene extends Phaser.Scene {
   private sparks: Spark[] = [];
   private orbs: OrbEnt[] = [];
   private texts: FloatText[] = [];
+  private textPool: Phaser.GameObjects.Text[] = [];
   private boss: BossState | null = null;
   private sp: SuperState | null = null;
 
@@ -179,6 +181,7 @@ export class GameScene extends Phaser.Scene {
 
   // 입력
   private touchOn = false;
+  private dragPointerId = -1;
   private touchTx = 0;
   private touchTy = 0;
   private keyMap!: Record<string, Phaser.Input.Keyboard.Key>;
@@ -223,6 +226,7 @@ export class GameScene extends Phaser.Scene {
     this.sparks = [];
     this.orbs = [];
     this.texts = [];
+    this.textPool = [];
     this.boss = null;
     this.sp = null;
     this.spawnQ = [];
@@ -237,6 +241,8 @@ export class GameScene extends Phaser.Scene {
     this.shake = 0;
     this.worldT = 0;
     this.touchOn = false;
+    this.dragPointerId = -1;
+    this.bubbleMsg = '';
     this.hudPips = [];
 
     if (import.meta.env.DEV) {
@@ -315,6 +321,8 @@ export class GameScene extends Phaser.Scene {
     this.hudCredits = uiText(this, GAME_WIDTH - 7, 22, '', 9, '#ffd76a', 'right').setDepth(
       DEPTH.hud + 1,
     );
+    // 터치용 일시정지 버튼 (히트 존은 setupInput의 pointerdown에서 처리)
+    uiText(this, 244, 15, 'II', 12, '#8fa0c8', 'center').setDepth(DEPTH.hud + 1);
     this.hudMute = uiText(this, 216, 22, 'MUTE', 8, '#8a93b0')
       .setDepth(DEPTH.hud + 1)
       .setVisible(isMuted());
@@ -403,6 +411,7 @@ export class GameScene extends Phaser.Scene {
       kb.on('keydown-ESC', () => this.togglePause());
     }
 
+    // 멀티터치: 첫 손가락이 드래그를 잡고, 다른 손가락은 슈퍼 버튼 등 별개 처리
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       audioResume();
       const bx = GAME_WIDTH - 31;
@@ -411,24 +420,48 @@ export class GameScene extends Phaser.Scene {
         this.startSuper();
         return;
       }
-      this.touchOn = true;
-      this.touchTx = p.worldX;
-      this.touchTy = p.worldY + PLAYER.touchOffsetY;
+      if (p.worldY < 30 && p.worldX > 226 && p.worldX < 262) {
+        this.togglePause();
+        return;
+      }
+      if (this.dragPointerId === -1) {
+        this.dragPointerId = p.id;
+        this.touchOn = true;
+        this.touchTx = p.worldX;
+        this.touchTy = p.worldY + PLAYER.touchOffsetY;
+      }
     });
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
-      if (!this.touchOn) return;
+      if (!this.touchOn || p.id !== this.dragPointerId) return;
       this.touchTx = p.worldX;
       this.touchTy = p.worldY + PLAYER.touchOffsetY;
     });
-    this.input.on('pointerup', () => {
-      this.touchOn = false;
-    });
+    const onUp = (p: Phaser.Input.Pointer): void => {
+      if (p.id === this.dragPointerId) this.releaseTouch();
+    };
+    this.input.on('pointerup', onUp);
+    this.input.on('pointerupoutside', onUp);
 
-    // 백그라운드 전환 시 자동 일시정지 (데모 visibilitychange 대응)
+    // 백그라운드 전환 시 자동 일시정지 — BLUR(데스크톱)와 HIDDEN(iOS 사파리/PWA) 모두
     this.game.events.on(Phaser.Core.Events.BLUR, this.onBlur, this);
+    this.game.events.on(Phaser.Core.Events.HIDDEN, this.onBlur, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.game.events.off(Phaser.Core.Events.BLUR, this.onBlur, this);
+      this.game.events.off(Phaser.Core.Events.HIDDEN, this.onBlur, this);
     });
+    // 일시정지 중 놓친 pointerup 대비 — 재개 시 입력 상태를 통째로 리셋
+    this.events.on(Phaser.Scenes.Events.RESUME, () => {
+      this.releaseTouch();
+      if (this.keyMap) for (const key of Object.values(this.keyMap)) key.reset();
+    });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.events.off(Phaser.Scenes.Events.RESUME);
+    });
+  }
+
+  private releaseTouch(): void {
+    this.touchOn = false;
+    this.dragPointerId = -1;
   }
 
   private onBlur = (): void => {
@@ -438,6 +471,7 @@ export class GameScene extends Phaser.Scene {
   private togglePause(forcePause = false): void {
     if (this.scene.isPaused(SceneKeys.Game)) return;
     if (!forcePause || this.scene.isActive(SceneKeys.Game)) {
+      this.releaseTouch();
       this.scene.launch(SceneKeys.Pause);
       this.scene.pause();
     }
@@ -557,7 +591,15 @@ export class GameScene extends Phaser.Scene {
     const L = Math.hypot(dx, dy) || 1;
     const img = this.pool.get(big ? 'eb-big' : 'eb-small', x, y);
     img.setDepth(DEPTH.ebullet);
-    this.ebullets.push({ x, y, vx: (dx / L) * spd, vy: (dy / L) * spd, big, img });
+    this.ebullets.push({
+      x,
+      y,
+      vx: (dx / L) * spd,
+      vy: (dy / L) * spd,
+      big,
+      size: big ? EBULLET.bigSize : EBULLET.smallSize,
+      img,
+    });
     SFX.eshoot();
   }
 
@@ -574,6 +616,7 @@ export class GameScene extends Phaser.Scene {
         vx: Math.cos(ang) * BOSS.fanSpeed,
         vy: Math.sin(ang) * BOSS.fanSpeed,
         big: false,
+        size: EBULLET.fanSize,
         img,
       });
     }
@@ -658,7 +701,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   private addFloatText(x: number, y: number, s: string, color: string): void {
-    const obj = uiText(this, x, y, s, 10, color, 'center').setDepth(DEPTH.floatText);
+    // Text 객체 풀링 — 킬마다 생성/파괴하면 모바일에서 텍스처 업로드·GC 부담
+    const obj =
+      this.textPool.pop() ??
+      uiText(this, 0, 0, '', 10, '#ffffff', 'center').setDepth(DEPTH.floatText);
+    obj.setText(s).setColor(color).setPosition(x, y).setAlpha(1).setVisible(true);
     this.texts.push({ obj, t: 0 });
   }
 
@@ -674,7 +721,8 @@ export class GameScene extends Phaser.Scene {
 
   /* ---------- 슈퍼 Jungjioo ---------- */
   private startSuper(): void {
-    if (!this.alive || this.sp || this.session.superN <= 0) return;
+    // pendingShop 카운트다운 중 발동하면 상점 전환으로 즉시 소멸되므로 차단
+    if (!this.alive || this.sp || this.session.superN <= 0 || this.pendingShop > 0) return;
     this.session.superN--;
     const n = 3 + (Math.random() < 0.5 ? 1 : 0);
     const holes: Hole[] = [];
@@ -847,7 +895,8 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    if (this.pendingShop > 0) {
+    // 슈퍼 진행 중에는 상점 전환을 보류 (연출 강제 절단 방지)
+    if (this.pendingShop > 0 && !this.sp) {
       this.pendingShop -= dt;
       if (this.pendingShop <= 0 && this.alive) {
         this.scene.start(SceneKeys.Shop, { session: this.session });
@@ -991,7 +1040,7 @@ export class GameScene extends Phaser.Scene {
       b.x += b.vx * dt;
       b.y += b.vy * dt;
       b.img.setPosition(b.x, b.y);
-      const size = b.big ? EBULLET.bigSize : EBULLET.smallSize;
+      const size = b.size;
       if (b.y > GAME_HEIGHT + 25 || b.y < -25 || b.x < -25 || b.x > GAME_WIDTH + 25) {
         this.pool.release(b.img);
         this.ebullets.splice(i, 1);
@@ -1215,7 +1264,8 @@ export class GameScene extends Phaser.Scene {
       t.t += dt;
       t.obj.setY(t.obj.y - 32 * dt).setAlpha(1 - t.t / 0.9);
       if (t.t > 0.9) {
-        t.obj.destroy();
+        t.obj.setVisible(false);
+        this.textPool.push(t.obj);
         this.texts.splice(i, 1);
       }
     }

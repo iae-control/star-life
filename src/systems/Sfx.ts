@@ -13,7 +13,23 @@ export function audioInit(): void {
 
 export function audioResume(): void {
   audioInit();
-  if (actx && actx.state === 'suspended') void actx.resume();
+  // iOS는 전화/Siri/잠금 후 'interrupted' 같은 비표준 상태가 되므로 running이 아니면 항상 재개 시도
+  if (actx && actx.state !== 'running') void actx.resume();
+}
+
+/** iOS WebAudio 잠금 해제 — 실제 제스처(touchend/click 등)에서 resume될 때까지 문서 레벨로 시도 */
+export function installAudioUnlock(): void {
+  const tryUnlock = (): void => {
+    audioResume();
+    if (actx && actx.state === 'running') {
+      for (const evt of EVTS) document.removeEventListener(evt, tryUnlock);
+    }
+  };
+  const EVTS = ['pointerup', 'touchend', 'click', 'keydown'] as const;
+  for (const evt of EVTS) document.addEventListener(evt, tryUnlock);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) audioResume();
+  });
 }
 
 export function toggleMute(): boolean {
@@ -51,15 +67,21 @@ function tone(
   o.stop(t0 + dur + 0.05);
 }
 
+let noiseBuf: AudioBuffer | null = null;
+
 function noiseBurst(dur: number, peak: number, fc0: number, fc1: number, delay = 0): void {
   if (!actx || muted) return;
   const t0 = actx.currentTime + delay;
-  const n = Math.floor(actx.sampleRate * dur);
-  const buf = actx.createBuffer(1, n, actx.sampleRate);
-  const d = buf.getChannelData(0);
-  for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+  // 노이즈 버퍼는 1초짜리 하나를 재사용 (호출마다 할당하면 모바일 GC 부담)
+  if (!noiseBuf) {
+    const n = actx.sampleRate;
+    noiseBuf = actx.createBuffer(1, n, actx.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+  }
   const src = actx.createBufferSource();
-  src.buffer = buf;
+  src.buffer = noiseBuf;
+  src.loop = true;
   const f = actx.createBiquadFilter();
   f.type = 'lowpass';
   f.frequency.setValueAtTime(fc0, t0);
@@ -68,6 +90,7 @@ function noiseBurst(dur: number, peak: number, fc0: number, fc1: number, delay =
   env(g, t0, 0.005, dur, peak);
   src.connect(f).connect(g).connect(actx.destination);
   src.start(t0);
+  src.stop(t0 + dur + 0.05);
 }
 
 export const SFX = {
