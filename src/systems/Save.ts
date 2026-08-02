@@ -13,7 +13,7 @@ export interface SaveData {
     musicVol: number;
     sfxVol: number;
     vibration: boolean;
-    pilot: 'jungjioo' | 'parksulhee';
+    pilot: 'jungjioo' | 'parksulhee' | 'youngjioo';
   };
   progress: {
     /** 도달한 최고 레벨 (이어하기 시작점) */

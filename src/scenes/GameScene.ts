@@ -189,6 +189,40 @@ const PS = {
 } as const;
 const PS_DIRS: RacketSwing['dir'][] = ['L', 'R', 'T', 'B', 'L', 'R'];
 
+/** 어린지우 필살기 — "비켜!" 초록 산 배경 + 앵무새떼 급강하 (위→아래 전화면) */
+interface Parrot {
+  img: Phaser.GameObjects.Image;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  flap: number;
+  bossCounted: boolean;
+}
+interface JiwooState {
+  t: number;
+  parrots: Parrot[];
+  spawned: number;
+  bossHits: number;
+  yellN: number;
+  yellT: number;
+  bg: Phaser.GameObjects.TileSprite;
+}
+// 대사 표기는 정본 — 변경 금지
+const JW_BUBBLE = '비켜!';
+const JW_YELLS = ['비켜!!!', '비켜!', '비켜!!!!'] as const;
+const JW = {
+  bubbleUntil: 0.9,
+  bgFade: 0.45,
+  parrotCount: 26,
+  spawnDur: 1.8,
+  endAt: 4.0,
+  yellEvery: 0.13,
+  bossDamagePerHit: 24,
+  partDamagePerHit: 20,
+  maxBossHits: 5,
+} as const;
+
 const DEPTH = {
   bg: 0,
   hole: 2,
@@ -236,6 +270,7 @@ export class GameScene extends Phaser.Scene {
   private boss: BossState | null = null;
   private sp: SuperState | null = null;
   private ps: RacketState | null = null;
+  private jw: JiwooState | null = null;
 
   // 웨이브
   private spawnQ: SpawnEvent[] = [];
@@ -342,6 +377,7 @@ export class GameScene extends Phaser.Scene {
     this.boss = null;
     this.sp = null;
     this.ps = null;
+    this.jw = null;
     this.spawnQ = [];
     this.waveClearT = -1;
     this.pendingShop = -1;
@@ -412,7 +448,13 @@ export class GameScene extends Phaser.Scene {
       .setBlendMode(Phaser.BlendModes.ADD)
       .setVisible(false);
     this.playerImg = this.add
-      .image(this.px, this.py, this.session.pilot === 'parksulhee' ? 'az-ship-ps' : 'az-ship', 0)
+      .image(
+        this.px,
+        this.py,
+        { parksulhee: 'az-ship-ps', youngjioo: 'az-ship-jw' }[this.session.pilot as string] ??
+          'az-ship',
+        0,
+      )
       .setScale(2)
       .setDepth(DEPTH.player);
     // 엔진 화염은 시트에 포함(행 플리커) — 별도 화염 이미지는 끈다
@@ -1384,9 +1426,31 @@ export class GameScene extends Phaser.Scene {
   /* ---------- 슈퍼 Jungjioo ---------- */
   private startSuper(): void {
     // pendingShop 카운트다운 중 발동하면 상점 전환으로 즉시 소멸되므로 차단
-    if (!this.alive || this.sp || this.ps || this.session.superN <= 0 || this.pendingShop > 0)
+    if (
+      !this.alive ||
+      this.sp ||
+      this.ps ||
+      this.jw ||
+      this.session.superN <= 0 ||
+      this.pendingShop > 0
+    )
       return;
     this.session.superN--;
+    if (this.session.pilot === 'youngjioo') {
+      // 어린지우: "비켜!" — 초록 산에서 앵무새떼가 부와아아악 쏟아진다
+      const bg = this.add
+        .tileSprite(0, 0, GAME_WIDTH, GAME_HEIGHT, 'jw-mountains')
+        .setOrigin(0, 0)
+        .setDepth(DEPTH.hole - 0.5)
+        .setAlpha(0);
+      this.jw = { t: 0, parrots: [], spawned: 0, bossHits: 0, yellN: 0, yellT: 0, bg };
+      this.inv = 999;
+      this.auraImg.setVisible(true);
+      vibrate(80);
+      SFX.superOn();
+      this.shake = 5;
+      return;
+    }
     if (this.session.pilot === 'parksulhee') {
       // 박설희: 거대 배드민턴 채가 사방에서 연속 스윙
       this.ps = { t: 0, swings: [], spawned: 0, bossSwings: 0 };
@@ -1634,6 +1698,102 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private updateJW(dt: number): void {
+    const jw = this.jw;
+    if (!jw) return;
+    jw.t += dt;
+    // 초록 산 배경 페이드 인/아웃 — 배경은 정지 화면 (사용자 지시: 스크롤 없음)
+    const fadeIn = Math.min(1, jw.t / JW.bgFade);
+    const fadeOut = Math.min(1, Math.max(0, (JW.endAt + 0.4 - jw.t) / JW.bgFade));
+    jw.bg.setAlpha(0.93 * fadeIn * fadeOut);
+    if (jw.t < JW.bubbleUntil) {
+      this.showBubble(JW_BUBBLE, this.px, this.py - 34);
+      return;
+    }
+    this.bubble.setVisible(false);
+    // 앵무새 생성: spawnDur 동안 위에서 부와아아악
+    const target = Math.min(
+      JW.parrotCount,
+      Math.floor(((jw.t - JW.bubbleUntil) / JW.spawnDur) * JW.parrotCount) + 1,
+    );
+    while (jw.spawned < target) {
+      const img = this.add
+        .image(0, 0, Math.random() < 0.5 ? 'parrot-g' : 'parrot-r')
+        .setDepth(DEPTH.phantom)
+        .setScale(rnd(1.0, 1.5));
+      jw.parrots.push({
+        img,
+        x: rnd(16, GAME_WIDTH - 16),
+        y: -30 - rnd(0, 50),
+        vx: rnd(-70, 70),
+        vy: rnd(520, 820),
+        flap: rnd(0, 6.28),
+        bossCounted: false,
+      });
+      jw.spawned++;
+      if (jw.spawned % 4 === 1) SFX.chirp();
+    }
+    // "비켜!!!" 외침 — 정본 3종 순환
+    jw.yellT += dt;
+    if (jw.yellT >= JW.yellEvery && jw.parrots.length > 0) {
+      jw.yellT = 0;
+      const pr = jw.parrots[Math.floor(Math.random() * jw.parrots.length)];
+      if (pr && pr.y > -10 && pr.y < GAME_HEIGHT - 60) {
+        const msg = JW_YELLS[jw.yellN % JW_YELLS.length] ?? '비켜!';
+        jw.yellN++;
+        this.addFloatText(pr.x + rnd(-12, 12), pr.y + rnd(-8, 4), msg, '#eaffe0');
+      }
+    }
+    // 앵무새 진행: 급강하 + 날갯짓, 닿는 적 일망타진
+    const B = this.boss;
+    for (let i = jw.parrots.length - 1; i >= 0; i--) {
+      const pr = jw.parrots[i];
+      if (!pr) continue;
+      pr.flap += dt * 26;
+      pr.x = clamp(pr.x + pr.vx * dt, 10, GAME_WIDTH - 10);
+      pr.y += pr.vy * dt;
+      pr.img.setPosition(pr.x, pr.y);
+      pr.img.setRotation(pr.vx * 0.002 + Math.sin(pr.flap * 0.5) * 0.1);
+      const sy = pr.img.scaleY;
+      pr.img.setScale(sy * (0.82 + 0.24 * Math.abs(Math.sin(pr.flap))), sy);
+      for (const e of this.enemies) {
+        if (!e.dead && Math.abs(e.x - pr.x) < 32 && Math.abs(e.y - pr.y) < 34) this.killEnemy(e);
+      }
+      // 보스 타격: 앵무새당 1회, 총 5회 상한
+      if (B && B.entered && !pr.bossCounted && jw.bossHits < JW.maxBossHits) {
+        const hb = B.def.hitbox;
+        if (Math.abs(B.x - pr.x) < hb.w / 2 + 14 && Math.abs(B.y - pr.y) < hb.h / 2 + 16) {
+          pr.bossCounted = true;
+          jw.bossHits++;
+          vibrate(50);
+          this.shake = Math.min(7, this.shake + 3);
+          const shieldParts = B.parts.filter((pp) => pp.alive && pp.def.shield);
+          if (shieldParts.length > 0) {
+            for (const part of shieldParts) this.damagePart(part, B, JW.partDamagePerHit);
+          } else {
+            B.flashT = 0.08;
+            this.damageBoss(JW.bossDamagePerHit);
+          }
+        }
+      }
+      if (pr.y > GAME_HEIGHT + 50) {
+        pr.img.destroy();
+        jw.parrots.splice(i, 1);
+      }
+    }
+    this.reapEnemies();
+    for (const b of this.ebullets) this.pool.release(b.img);
+    this.ebullets.length = 0;
+
+    if (jw.t >= JW.endAt + 0.4 && jw.parrots.length === 0) {
+      jw.bg.destroy();
+      this.jw = null;
+      this.inv = SUPER.endInvuln;
+      this.auraImg.setVisible(false);
+      this.bubble.setVisible(false);
+    }
+  }
+
   private reapEnemies(): void {
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const e = this.enemies[i];
@@ -1665,6 +1825,7 @@ export class GameScene extends Phaser.Scene {
     if (this.immuneMsgT > 0) this.immuneMsgT -= dt;
     if (this.sp) this.updateSuper(dt);
     if (this.ps) this.updatePS(dt);
+    if (this.jw) this.updateJW(dt);
     if (this.auto) this.updateAutoPilot(dt);
 
     this.updatePlayer(dt);
@@ -1687,7 +1848,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     // 슈퍼 진행 중에는 상점 전환을 보류 (연출 강제 절단 방지)
-    if (this.pendingShop > 0 && !this.sp && !this.ps) {
+    if (this.pendingShop > 0 && !this.sp && !this.ps && !this.jw) {
       this.pendingShop -= dt;
       if (this.pendingShop <= 0 && this.alive) {
         if (this.session.campaignDone) {
@@ -1790,7 +1951,7 @@ export class GameScene extends Phaser.Scene {
       this.playerFire();
       this.fireCd = cooldownFor(this.session.cur, weaponLevel(this.session));
     }
-    if (this.inv > 0 && !this.sp && !this.ps) this.inv -= dt;
+    if (this.inv > 0 && !this.sp && !this.ps && !this.jw) this.inv -= dt;
 
     // 후방무기 (피드백 4 — 무기 체계 확장)
     const rear = this.session.rear ? DATA.equipment.rear[this.session.rear] : undefined;
@@ -1868,9 +2029,15 @@ export class GameScene extends Phaser.Scene {
     const flick = Math.floor(this.worldT * 14) % 2;
     this.playerImg.setFrame(flick * 5 + bank);
     this.playerImg.setVisible(
-      !(this.inv > 0 && !this.sp && Math.floor(this.worldT * 20) % 2 === 1),
+      !(
+        this.inv > 0 &&
+        !this.sp &&
+        !this.ps &&
+        !this.jw &&
+        Math.floor(this.worldT * 20) % 2 === 1
+      ),
     );
-    if (this.sp || this.ps) this.auraImg.setPosition(this.px, this.py);
+    if (this.sp || this.ps || this.jw) this.auraImg.setPosition(this.px, this.py);
   }
 
   private updateWaves(dt: number): void {

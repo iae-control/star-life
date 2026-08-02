@@ -28,7 +28,7 @@ export interface GameSession {
   sidekick: string | null;
   difficulty: Difficulty;
   /** 조종사: 정지우(블랙홀 팬텀 러시) / 박슬희(배드민턴 일망타진) */
-  pilot: 'jungjioo' | 'parksulhee';
+  pilot: 'jungjioo' | 'parksulhee' | 'youngjioo';
   /** 엔들리스 모드 여부 (캠페인 완주 후 해금) */
   endless: boolean;
 }

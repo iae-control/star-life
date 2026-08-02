@@ -150,6 +150,10 @@ export const SFX = {
     tone('sawtooth', 60, 240, 0.8, 0.12);
     noiseBurst(0.8, 0.1, 400, 3200);
   },
+  chirp: () => {
+    tone('square', 1500, 950, 0.06, 0.05);
+    tone('square', 1900, 1200, 0.05, 0.04, 0.06);
+  },
   swoosh: () => {
     noiseBurst(0.22, 0.16, 4200, 500);
   },

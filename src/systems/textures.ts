@@ -634,6 +634,80 @@ export function azSheetVariant(
   return true;
 }
 
+/* ---------- 어린지우 필살기: 앵무새 + 초록 산 ---------- */
+// 아래로 급강하하는 앵무새 (날개 활짝) — 팔레트 스왑으로 색 변형
+const PARROT_MAP = [
+  '......t......',
+  '......tt.....',
+  '.wb.......bw.',
+  'wbbb.....bbbw',
+  '.bbbbbbbbbbb.',
+  '..bbbbbbbbb..',
+  '...bbbbbbb...',
+  '....bbbbb....',
+  '....hhhhh....',
+  '....hehge....',
+  '.....yyy.....',
+  '......y......',
+];
+const PARROT_PAL_G: Record<string, string> = {
+  t: '#2f9c46',
+  w: '#bfefff',
+  b: '#3fd45a',
+  h: '#ff5340',
+  e: '#1a2030',
+  g: '#ff5340',
+  y: '#ffd23a',
+};
+const PARROT_PAL_R: Record<string, string> = {
+  t: '#c03a2a',
+  w: '#ffe9b0',
+  b: '#ff6a4a',
+  h: '#3f9cff',
+  e: '#1a2030',
+  g: '#3f9cff',
+  y: '#ffd23a',
+};
+
+/** 초록 산 배경 — 필살기 중 정지 화면(사용자 지시: 스크롤 없음), 화면 크기 640px 한 장 */
+function jwMountains(): HTMLCanvasElement {
+  const W = 360;
+  const H = 640;
+  const [c, ctx] = canvas(W, H);
+  // 하늘 → 능선 기저색 (그라디언트는 시각 검증된 톤 유지)
+  const sky = ctx.createLinearGradient(0, 0, 0, 1280);
+  sky.addColorStop(0, '#aee8ff');
+  sky.addColorStop(0.28, '#cef0c8');
+  sky.addColorStop(0.5, '#8fd48a');
+  sky.addColorStop(1, '#1b4a2c');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, H);
+  // 산등성이 3겹 (멀수록 밝게) — 픽셀 계단으로 도트 느낌
+  const ridges: [number, string, number, number][] = [
+    [300, '#7cc47a', 70, 0],
+    [400, '#4da45c', 95, 40],
+    [520, '#2e7c46', 120, 90],
+  ];
+  for (const [baseY, col, amp, ph] of ridges) {
+    ctx.fillStyle = col;
+    for (let x = 0; x < W; x += 4) {
+      const y =
+        baseY -
+        Math.abs(Math.sin((x + ph) * 0.021)) * amp -
+        Math.abs(Math.sin((x + ph) * 0.053)) * amp * 0.35;
+      ctx.fillRect(x, Math.round(y / 4) * 4, 4, H);
+    }
+  }
+  // 능선 나무 점
+  ctx.fillStyle = '#153c24';
+  for (let i = 0; i < 90; i++) {
+    const x = Math.floor(Math.random() * W);
+    const y = 430 + Math.floor(Math.random() * 206);
+    ctx.fillRect(x, y, 3, 4);
+  }
+  return c;
+}
+
 export function generateTextures(scene: Phaser.Scene): void {
   // 함선
   addCanvasTexture(scene, 'ship-player', enhance(pixmap(PLAYER_MAP, PLAYER_PAL, 2)));
@@ -872,6 +946,12 @@ export function generateTextures(scene: Phaser.Scene): void {
   kenneyShip(scene, 'ship-cinder', 'kship_20', '#c8401a');
   // 박설희 전용기 — ansimuz 함선 마젠타 변형
   azSheetVariant(scene, 'az-ship-ps', 'az-ship', '#ff5ad8', 16, 24);
+  // 어린지우 전용기 — 초록 변형
+  azSheetVariant(scene, 'az-ship-jw', 'az-ship', '#63d97a', 16, 24);
+  // 앵무새떼 + 초록 산 (어린지우 필살기)
+  addCanvasTexture(scene, 'parrot-g', enhance(pixmap(PARROT_MAP, PARROT_PAL_G, 2)));
+  addCanvasTexture(scene, 'parrot-r', enhance(pixmap(PARROT_MAP, PARROT_PAL_R, 2)));
+  addCanvasTexture(scene, 'jw-mountains', jwMountains());
 
   // 플레이어 탄 (글로우 베이크)
   addCanvasTexture(
