@@ -2,6 +2,7 @@
 import Phaser from 'phaser';
 
 import { GAME_HEIGHT, GAME_WIDTH, SceneKeys } from '../config';
+import { t } from '../data';
 import { loadBest, newSession } from '../game/session';
 import { SpaceBackground } from '../systems/background';
 import { audioResume } from '../systems/Sfx';
@@ -46,38 +47,22 @@ export class TitleScene extends Phaser.Scene {
     this.orb = this.add.image(GAME_WIDTH / 2 + 92, 262, 'orb-P').setScale(1.4);
 
     uiText(this, GAME_WIDTH / 2, 144, '별의 일생', 40, '#dfe8ff', 'center');
-    uiText(this, GAME_WIDTH / 2, 186, '— vertical shooter —', 10, '#8a93b0', 'center');
+    uiText(this, GAME_WIDTH / 2, 186, t('title.subtitle'), 10, '#8a93b0', 'center');
 
     const best = loadBest();
     this.prompt = uiText(
       this,
       GAME_WIDTH / 2,
       384,
-      best ? '다시 출격: 탭 / ENTER' : '탭 또는 ENTER로 출격',
+      best ? t('title.restart') : t('title.start'),
       13,
       '#fff2b0',
       'center',
     );
-    uiText(
-      this,
-      GAME_WIDTH / 2,
-      420,
-      '이동: 방향키·WASD·드래그 / 발사: SPACE·Z (터치 자동)',
-      8,
-      '#9aa6c8',
-      'center',
-    );
-    uiText(
-      this,
-      GAME_WIDTH / 2,
-      438,
-      '슈퍼무기: X·B 또는 S버튼 / 상점: 보스 격파 후',
-      8,
-      '#9aa6c8',
-      'center',
-    );
-    uiText(this, GAME_WIDTH / 2, 456, 'P·ESC 일시정지 · M 음소거', 8, '#9aa6c8', 'center');
-    if (best) uiText(this, GAME_WIDTH / 2, 492, `BEST ${best}`, 12, '#ffd76a', 'center');
+    uiText(this, GAME_WIDTH / 2, 420, t('title.help1'), 8, '#9aa6c8', 'center');
+    uiText(this, GAME_WIDTH / 2, 438, t('title.help2'), 8, '#9aa6c8', 'center');
+    uiText(this, GAME_WIDTH / 2, 456, t('title.help3'), 8, '#9aa6c8', 'center');
+    if (best) uiText(this, GAME_WIDTH / 2, 492, t('title.best', best), 12, '#ffd76a', 'center');
 
     this.input.keyboard?.removeAllListeners();
     this.input.once('pointerdown', () => this.startGame());

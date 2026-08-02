@@ -1,6 +1,6 @@
 // 게임 세션 상태 — Game/Shop/Result 씬이 공유하는 런 단위 상태 (데모의 G/P 전역 대응).
 // 영속 저장(진행도)은 M4에서 SaveSystem으로 정식 도입. 지금은 BEST만 localStorage.
-import { PLAYER, type WeaponKey } from './logic/balance';
+import { PLAYER } from './logic/balance';
 
 export interface GameSession {
   score: number;
@@ -8,8 +8,8 @@ export interface GameSession {
   wave: number;
   kills: number;
   orbCount: number;
-  weapons: Partial<Record<WeaponKey, number>>;
-  cur: WeaponKey;
+  weapons: Partial<Record<string, number>>;
+  cur: string;
   shield: number;
   shieldMax: number;
   armor: number;

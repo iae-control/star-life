@@ -93,16 +93,21 @@ function noiseBurst(dur: number, peak: number, fc0: number, fc1: number, delay =
   src.stop(t0 + dur + 0.05);
 }
 
+const shootTable: Record<string, () => void> = {
+  pulse: () => tone('square', 860, 320, 0.07, 0.05),
+  vulcan: () => tone('square', 520, 240, 0.045, 0.035),
+  proton: () => tone('sine', 340, 140, 0.12, 0.07),
+  light: () => {
+    noiseBurst(0.06, 0.05, 5000, 1500);
+    tone('square', 1400, 700, 0.05, 0.03);
+  },
+  laser: () => tone('sawtooth', 1500, 500, 0.08, 0.045),
+};
+
 export const SFX = {
-  shoot: {
-    pulse: () => tone('square', 860, 320, 0.07, 0.05),
-    vulcan: () => tone('square', 520, 240, 0.045, 0.035),
-    proton: () => tone('sine', 340, 140, 0.12, 0.07),
-    light: () => {
-      noiseBurst(0.06, 0.05, 5000, 1500);
-      tone('square', 1400, 700, 0.05, 0.03);
-    },
-    laser: () => tone('sawtooth', 1500, 500, 0.08, 0.045),
+  /** 무기 키로 발사음 조회 — 신규 데이터 무기는 pulse 음으로 폴백 */
+  shoot(kind: string): void {
+    (shootTable[kind] ?? shootTable.pulse)?.();
   },
   eshoot: () => tone('square', 300, 180, 0.09, 0.04),
   boom: () => {

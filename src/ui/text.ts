@@ -10,9 +10,12 @@ export function uiText(
   color: string,
   align: 'left' | 'center' | 'right' = 'left',
 ): Phaser.GameObjects.Text {
+  // 한글 픽셀 폰트: 9px 이하는 Galmuri9, 그 외 Galmuri11 (로드 실패 시 모노스페이스 폴백)
+  const family =
+    size <= 9 ? 'Galmuri9, "Courier New", monospace' : 'Galmuri11, "Courier New", monospace';
   const t = scene.add.text(x, y, s, {
-    fontFamily: '"Courier New", monospace',
-    fontStyle: 'bold',
+    fontFamily: family,
+    fontStyle: size <= 9 ? 'normal' : 'bold',
     fontSize: `${size}px`,
     color,
   });

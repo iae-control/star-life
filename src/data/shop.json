@@ -1,0 +1,6 @@
+{
+  "power": { "base": 250, "perLevel": 250 },
+  "shield": { "base": 300, "perOver": 6, "step": 20, "cap": 160, "baseStat": 60 },
+  "armor": { "base": 300, "perOver": 6, "step": 20, "cap": 150, "baseStat": 50 },
+  "super": { "price": 600, "cap": 5 }
+}

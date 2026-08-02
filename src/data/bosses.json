@@ -1,0 +1,23 @@
+{
+  "bosses": {
+    "core": {
+      "sprite": "ship-boss",
+      "hp": { "base": 55, "perWave": 22 },
+      "hitbox": { "w": 50, "h": 67 },
+      "entryY": 104,
+      "entrySpd": 61,
+      "patrol": { "base": 38, "perWave": 2.25, "minX": 68, "maxX": 292 },
+      "cool": { "base": 1.5, "min": 0.7, "perWave": -0.05 },
+      "fireOffsetY": 24,
+      "phases": [
+        { "type": "fan", "count": 7, "angleStep": 0.24, "speed": 135 },
+        { "type": "aimed", "speed": 202, "offsetX": 16, "big": true },
+        { "type": "fan", "count": 7, "angleStep": 0.24, "speed": 135 }
+      ],
+      "killScore": 5000,
+      "shopDelay": 1.5,
+      "hitCooldown": 0.05,
+      "touchDamage": 20
+    }
+  }
+}

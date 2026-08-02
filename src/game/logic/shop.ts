@@ -1,10 +1,10 @@
-// 상점 로직 — 순수 (vitest 대상). 데모 ITEMS/shopAct() 이식.
-import { MAX_WEAPON_LEVEL, PLAYER, SHOP, WEAPON_KEYS, WEAPONS, type WeaponKey } from './balance';
+// 상점 로직 — shop.json 가격 곡선 기반 순수 로직 (vitest 대상). 표시 문자열은 씬에서 i18n.
+import { DATA, MAX_WEAPON_LEVEL, WEAPON_KEYS } from '../../data';
 
 export interface ShopPlayerState {
   credits: number;
-  weapons: Partial<Record<WeaponKey, number>>;
-  cur: WeaponKey;
+  weapons: Partial<Record<string, number>>;
+  cur: string;
   shieldMax: number;
   armorMax: number;
   shield: number;
@@ -14,7 +14,6 @@ export interface ShopPlayerState {
 
 export interface UpgradeItem {
   id: 'power' | 'shield' | 'armor' | 'super';
-  name: (s: ShopPlayerState) => string;
   price: (s: ShopPlayerState) => number;
   can: (s: ShopPlayerState) => boolean;
   stat: (s: ShopPlayerState) => string;
@@ -26,8 +25,7 @@ export const curLevel = (s: ShopPlayerState): number => s.weapons[s.cur] ?? 1;
 export const UPGRADE_ITEMS: UpgradeItem[] = [
   {
     id: 'power',
-    name: (s) => `${WEAPONS[s.cur].name} 파워 +1`,
-    price: (s) => SHOP.powerPrice(curLevel(s)),
+    price: (s) => DATA.shop.power.base + curLevel(s) * DATA.shop.power.perLevel,
     can: (s) => curLevel(s) < MAX_WEAPON_LEVEL,
     stat: (s) => `Lv ${curLevel(s)}/${MAX_WEAPON_LEVEL}`,
     apply: (s) => {
@@ -36,31 +34,30 @@ export const UPGRADE_ITEMS: UpgradeItem[] = [
   },
   {
     id: 'shield',
-    name: () => 'SHIELD 최대치 +20 · 완충',
-    price: (s) => SHOP.shieldPrice(s.shieldMax),
-    can: (s) => s.shieldMax < SHOP.shieldCap,
+    price: (s) =>
+      DATA.shop.shield.base + (s.shieldMax - DATA.shop.shield.baseStat) * DATA.shop.shield.perOver,
+    can: (s) => s.shieldMax < DATA.shop.shield.cap,
     stat: (s) => `SHD ${s.shieldMax}`,
     apply: (s) => {
-      s.shieldMax += SHOP.shieldStep;
+      s.shieldMax += DATA.shop.shield.step;
       s.shield = s.shieldMax;
     },
   },
   {
     id: 'armor',
-    name: () => 'ARMOR 최대치 +20 · 수리',
-    price: (s) => SHOP.armorPrice(s.armorMax),
-    can: (s) => s.armorMax < SHOP.armorCap,
+    price: (s) =>
+      DATA.shop.armor.base + (s.armorMax - DATA.shop.armor.baseStat) * DATA.shop.armor.perOver,
+    can: (s) => s.armorMax < DATA.shop.armor.cap,
     stat: (s) => `ARM ${s.armorMax}`,
     apply: (s) => {
-      s.armorMax += SHOP.armorStep;
+      s.armorMax += DATA.shop.armor.step;
       s.armor = s.armorMax;
     },
   },
   {
     id: 'super',
-    name: () => 'SUPER "Jungjioo" +1',
-    price: () => SHOP.superPrice,
-    can: (s) => s.superN < PLAYER.superMax,
+    price: () => DATA.shop.super.price,
+    can: (s) => s.superN < DATA.shop.super.cap,
     stat: (s) => `S x${s.superN}`,
     apply: (s) => {
       s.superN++;
@@ -71,11 +68,12 @@ export const UPGRADE_ITEMS: UpgradeItem[] = [
 export type ShopActionResult = 'bought' | 'equipped' | 'denied' | 'noop';
 
 /** 무기 행 액션: 미보유면 구매+장착, 보유면 장착 전환. */
-export function weaponAction(s: ShopPlayerState, key: WeaponKey): ShopActionResult {
+export function weaponAction(s: ShopPlayerState, key: string): ShopActionResult {
+  const def = DATA.weapons.weapons[key];
+  if (!def) return 'noop';
   if (s.weapons[key] === undefined) {
-    const price = WEAPONS[key].price;
-    if (s.credits < price) return 'denied';
-    s.credits -= price;
+    if (s.credits < def.price) return 'denied';
+    s.credits -= def.price;
     s.weapons[key] = 1;
     s.cur = key;
     return 'bought';

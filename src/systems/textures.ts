@@ -577,4 +577,67 @@ export function generateTextures(scene: Phaser.Scene): void {
     }
     addCanvasTexture(scene, 'bg-stars-near', c);
   }
+  {
+    // 소행성대 지형 레이어 (티리안식 "지형 위 비행") — levels.json theme: 'asteroids'
+    const [c, ctx] = canvas(GAME_WIDTH, TILE_H);
+    const snap = (v: number) => Math.round(v / 2) * 2;
+    const drawAsteroid = (cx: number, cy: number, r: number) => {
+      const verts: [number, number][] = [];
+      const n = 9 + Math.floor(Math.random() * 4);
+      const seed = Math.random() * 6.28;
+      for (let i = 0; i < n; i++) {
+        const a = seed + (i / n) * Math.PI * 2;
+        const rr = r * (0.72 + Math.random() * 0.42);
+        verts.push([snap(cx + Math.cos(a) * rr), snap(cy + Math.sin(a) * rr)]);
+      }
+      const poly = (offX: number, offY: number, shrink: number) => {
+        ctx.beginPath();
+        verts.forEach(([vx, vy], i) => {
+          const px = cx + (vx - cx) * shrink + offX;
+          const py = cy + (vy - cy) * shrink + offY;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        });
+        ctx.closePath();
+      };
+      for (const yy of [-TILE_H, 0, TILE_H]) {
+        ctx.save();
+        ctx.translate(0, yy);
+        ctx.fillStyle = '#2e2622';
+        poly(2, 3, 1);
+        ctx.fill();
+        ctx.fillStyle = '#584a40';
+        poly(0, 0, 1);
+        ctx.fill();
+        ctx.fillStyle = '#7a685a';
+        poly(-r * 0.12, -r * 0.14, 0.72);
+        ctx.fill();
+        ctx.fillStyle = '#948270';
+        poly(-r * 0.2, -r * 0.24, 0.4);
+        ctx.fill();
+        // 크레이터
+        const craters = 1 + Math.floor(r / 14);
+        for (let k = 0; k < craters; k++) {
+          const ca = Math.random() * 6.28;
+          const cd = r * 0.45 * Math.random();
+          ctx.fillStyle = 'rgba(30,24,20,0.55)';
+          ctx.beginPath();
+          ctx.arc(
+            snap(cx + Math.cos(ca) * cd),
+            snap(cy + Math.sin(ca) * cd),
+            Math.max(2, r * 0.16),
+            0,
+            7,
+          );
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+    };
+    for (let i = 0; i < 5; i++)
+      drawAsteroid(Math.random() * GAME_WIDTH, Math.random() * TILE_H, 22 + Math.random() * 26);
+    for (let i = 0; i < 12; i++)
+      drawAsteroid(Math.random() * GAME_WIDTH, Math.random() * TILE_H, 5 + Math.random() * 12);
+    addCanvasTexture(scene, 'bg-asteroids', c);
+  }
 }

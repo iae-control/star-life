@@ -1,0 +1,76 @@
+{
+  "hitbox": { "w": 20, "h": 27 },
+  "spawnY": -27,
+  "orb": {
+    "chance": 0.16,
+    "chanceTurret": 0.45,
+    "fallSpeed": 61,
+    "magnetRadius": 86,
+    "magnetPull": 220,
+    "everyNthIsShield": 4,
+    "shieldArmorBonus": 18,
+    "maxPowerBonusScore": 500
+  },
+  "ebullet": {
+    "smallSize": 6,
+    "bigSize": 9,
+    "fanSize": 7,
+    "smallDamage": 8,
+    "bigDamage": 14
+  },
+  "types": {
+    "e1": {
+      "behavior": "sineDescend",
+      "sprite": "ship-e1",
+      "score": 100,
+      "hp": { "base": 2, "perWave": 0.4 },
+      "params": {
+        "spdMin": 93,
+        "spdMax": 127,
+        "spdPerWave": 4,
+        "ampMin": 34,
+        "ampMax": 79,
+        "freqMin": 1.6,
+        "freqMax": 2.6,
+        "fireFromWave": 3,
+        "fireChancePerSec": 0.15,
+        "bulletSpeed": 147
+      }
+    },
+    "e2": {
+      "behavior": "turret",
+      "sprite": "ship-e2",
+      "score": 300,
+      "hp": { "base": 6, "perWave": 1.2 },
+      "params": {
+        "spd": 56,
+        "holdYMin": 93,
+        "holdYMax": 200,
+        "coolMin": 0.8,
+        "coolMax": 1.6,
+        "fireCoolMin": 1.1,
+        "fireCoolMax": 2.0,
+        "coolReducePerWave": 0.05,
+        "coolReduceMax": 0.6,
+        "life": 11,
+        "driftMax": 25,
+        "driftBoundX": 34,
+        "leaveSpd": 80,
+        "bulletSpeedBase": 159,
+        "bulletSpeedPerWave": 7
+      }
+    },
+    "e3": {
+      "behavior": "diver",
+      "sprite": "ship-e3",
+      "score": 150,
+      "hp": { "base": 2, "perWave": 0.4 },
+      "params": {
+        "spdBase": 200,
+        "spdPerWave": 11,
+        "homingClamp": 337,
+        "homingGain": 1.2
+      }
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "levels": [
+    {
+      "id": 1,
+      "nameKey": "level.nebula",
+      "background": { "theme": "space", "nebulaAlpha": 0.85 },
+      "scroll": { "base": 45, "perWave": 2.7, "boss": 16 }
+    },
+    {
+      "id": 2,
+      "nameKey": "level.protostar",
+      "background": { "theme": "asteroids", "nebulaAlpha": 0.6 },
+      "scroll": { "base": 45, "perWave": 2.7, "boss": 16 }
+    }
+  ]
+}

@@ -20,7 +20,9 @@
   "dependencies": {
     "@capacitor/android": "^6.1.0",
     "@capacitor/core": "^6.1.0",
-    "phaser": "^3.87.0"
+    "galmuri": "^2.40.3",
+    "phaser": "^3.87.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@capacitor/cli": "^6.1.0",

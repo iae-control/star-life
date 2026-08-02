@@ -1,8 +1,8 @@
-// 상점 — 보스 격파 후 진입. 로직은 game/logic/shop.ts, 여기는 UI만.
+// 상점 — 보스 격파 후 진입. 가격 로직은 game/logic/shop.ts, 표시는 i18n, 여기는 UI만.
 import Phaser from 'phaser';
 
 import { GAME_HEIGHT, GAME_WIDTH, SceneKeys } from '../config';
-import { WEAPONS } from '../game/logic/balance';
+import { DATA, t } from '../data';
 import { itemAction, SHOP_WEAPON_KEYS, UPGRADE_ITEMS, weaponAction } from '../game/logic/shop';
 import type { GameSession } from '../game/session';
 import { SpaceBackground } from '../systems/background';
@@ -28,13 +28,13 @@ export class ShopScene extends Phaser.Scene {
     lv: Phaser.GameObjects.Text;
     right: Phaser.GameObjects.Text;
   }[] = [];
-  private selAccent!: Phaser.GameObjects.Rectangle;
   private itmTexts: {
     name: Phaser.GameObjects.Text;
     stat: Phaser.GameObjects.Text;
     right: Phaser.GameObjects.Text;
   }[] = [];
   private goText!: Phaser.GameObjects.Text;
+  private selAccent!: Phaser.GameObjects.Rectangle;
   private spaceBg!: SpaceBackground;
 
   constructor() {
@@ -60,7 +60,7 @@ export class ShopScene extends Phaser.Scene {
     frame.lineStyle(1, 0x8caaff, 0.35);
     frame.strokeRoundedRect(9, 42, GAME_WIDTH - 18, GAME_HEIGHT - 80, 8);
 
-    uiText(this, GAME_WIDTH / 2, 74, 'WEAPON SHOP', 20, '#e8ecff', 'center');
+    uiText(this, GAME_WIDTH / 2, 74, t('shop.title'), 20, '#e8ecff', 'center');
     this.creditsText = uiText(this, GAME_WIDTH / 2, 102, '', 14, '#ffd76a', 'center');
 
     this.selBox = this.add
@@ -68,13 +68,16 @@ export class ShopScene extends Phaser.Scene {
       .setVisible(false);
     this.selAccent = this.add.rectangle(19, 0, 3, ROW_H - 4, 0x8fd3ff).setVisible(false);
 
-    uiText(this, 20, 130, 'FRONT WEAPON — 구매 / 장착', 9, '#8fa0c8');
+    uiText(this, 20, 130, t('shop.front'), 9, '#8fa0c8');
     for (let i = 0; i < N_WPN; i++) {
       const y = wpnRowY(i);
       const key = SHOP_WEAPON_KEYS[i];
-      if (key) {
+      const def = key ? DATA.weapons.weapons[key] : undefined;
+      if (def) {
         // 탄환 색 스와치 — 무기 정체성 시각화
-        this.add.rectangle(31, y + 4, 10, 10, WEAPONS[key].color).setStrokeStyle(1, 0x0a1226, 1);
+        this.add
+          .rectangle(31, y + 4, 10, 10, parseInt(def.color.slice(1), 16))
+          .setStrokeStyle(1, 0x0a1226, 1);
       }
       this.wpnTexts.push({
         name: uiText(this, 42, y + 3, '', 10, '#dfe8ff'),
@@ -85,7 +88,7 @@ export class ShopScene extends Phaser.Scene {
       this.hitZone(25, y - 6, GAME_WIDTH - 50, ROW_H - 2, () => this.act(i));
     }
 
-    uiText(this, 20, 348, 'UPGRADE / SUPPLY', 9, '#8fa0c8');
+    uiText(this, 20, 348, t('shop.upgrade'), 9, '#8fa0c8');
     for (let i = 0; i < UPGRADE_ITEMS.length; i++) {
       const y = itmRowY(i);
       this.itmTexts.push({
@@ -110,15 +113,7 @@ export class ShopScene extends Phaser.Scene {
     this.goText = uiText(this, GAME_WIDTH / 2, GO_Y + 14, '', 12, '#c8ffd8', 'center');
     this.hitZone(65, GO_Y - 6, GAME_WIDTH - 130, 40, () => this.act(N_ROWS - 1));
 
-    uiText(
-      this,
-      GAME_WIDTH / 2,
-      GAME_HEIGHT - 46,
-      '↑↓·ENTER 또는 행을 탭: 구매/장착',
-      9,
-      '#8fa0c8',
-      'center',
-    );
+    uiText(this, GAME_WIDTH / 2, GAME_HEIGHT - 46, t('shop.help'), 9, '#8fa0c8', 'center');
 
     // 발사키(SPACE/Z)를 누른 채 상점에 진입한 경우: 자동반복·잔여 입력이
     // 진입 즉시 act()를 발동하지 않도록 250ms 무장 지연 + e.repeat 가드
@@ -195,9 +190,17 @@ export class ShopScene extends Phaser.Scene {
     this.refresh();
   }
 
+  private itemName(id: string): string {
+    if (id === 'power') {
+      const wpn = DATA.weapons.weapons[this.session.cur];
+      return t('shop.item.power', wpn?.name ?? this.session.cur);
+    }
+    return t(`shop.item.${id}`);
+  }
+
   private refresh(): void {
     const s = this.session;
-    this.creditsText.setText(`CR ${s.credits}`);
+    this.creditsText.setText(t('hud.credits', s.credits));
 
     if (this.sel < N_WPN) {
       this.selBox.setVisible(true).setY(wpnRowY(this.sel) + 9);
@@ -213,15 +216,18 @@ export class ShopScene extends Phaser.Scene {
       const key = SHOP_WEAPON_KEYS[i];
       const row = this.wpnTexts[i];
       if (!key || !row) continue;
-      const def = WEAPONS[key];
+      const def = DATA.weapons.weapons[key];
+      if (!def) continue;
       const owned = s.weapons[key] !== undefined;
       const equipped = s.cur === key;
       const afford = s.credits >= def.price;
       row.name.setText(def.name).setColor(owned ? '#dfe8ff' : afford ? '#aeb8d8' : '#5a6178');
-      row.desc.setText(def.desc);
+      row.desc.setText(t(def.descKey));
       row.lv.setText(owned ? `Lv${s.weapons[key]}` : '');
       row.right
-        .setText(equipped ? '[장착중]' : owned ? '장착' : `${def.price} CR`)
+        .setText(
+          equipped ? t('shop.equipped') : owned ? t('shop.equip') : t('shop.price', def.price),
+        )
         .setColor(equipped ? '#8aff8a' : owned ? '#7ecbff' : afford ? '#ffd76a' : '#8b6a3a');
     }
     for (let i = 0; i < UPGRADE_ITEMS.length; i++) {
@@ -230,12 +236,14 @@ export class ShopScene extends Phaser.Scene {
       if (!it || !row) continue;
       const can = it.can(s);
       const afford = can && s.credits >= it.price(s);
-      row.name.setText(it.name(s)).setColor(can ? (afford ? '#dfe8ff' : '#8b93ad') : '#5a6178');
+      row.name
+        .setText(this.itemName(it.id))
+        .setColor(can ? (afford ? '#dfe8ff' : '#8b93ad') : '#5a6178');
       row.stat.setText(it.stat(s));
       row.right
-        .setText(can ? `${it.price(s)} CR` : 'MAX')
+        .setText(can ? t('shop.price', it.price(s)) : t('shop.max'))
         .setColor(can ? (afford ? '#ffd76a' : '#8b6a3a') : '#5a6178');
     }
-    this.goText.setText(`출격  (WAVE ${s.wave + 1})`);
+    this.goText.setText(t('shop.go', s.wave + 1));
   }
 }

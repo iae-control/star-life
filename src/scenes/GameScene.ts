@@ -1,11 +1,13 @@
 // 메인 게임플레이 — v4 데모의 update()/draw()를 Phaser로 이식.
-// 순수 로직(무기 패턴·웨이브·데미지)은 src/game/logic/*, 여기는 씬 글루와 렌더.
+// 콘텐츠 수치는 전부 src/data/*.json (M2 데이터 주도화), 여기는 해석·렌더 글루.
 import Phaser from 'phaser';
 
 import { GAME_HEIGHT, GAME_WIDTH, SceneKeys } from '../config';
-import { BOSS, EBULLET, ENEMY, ORB, PLAYER, SCROLL, SUPER, WEAPONS } from '../game/logic/balance';
+import { DATA, t } from '../data';
+import type { BossData, BossPhase, EnemyTypeData, LevelData } from '../data/schemas';
+import { PLAYER, SUPER } from '../game/logic/balance';
 import { aabb, applyDamage } from '../game/logic/damage';
-import { firePattern, type ShotSpec } from '../game/logic/weapons';
+import { cooldownFor, firePattern, type ShotSpec } from '../game/logic/weapons';
 import { buildWave, type SpawnEvent } from '../game/logic/waves';
 import { newSession, saveBest, weaponLevel, type GameSession } from '../game/session';
 import { SpaceBackground } from '../systems/background';
@@ -30,7 +32,8 @@ interface EBul {
   img: Phaser.GameObjects.Image;
 }
 interface Enemy {
-  type: 'e1' | 'e2' | 'e3';
+  type: string;
+  def: EnemyTypeData;
   x: number;
   y: number;
   t: number;
@@ -39,21 +42,22 @@ interface Enemy {
   dead: boolean;
   score: number;
   flashT: number;
-  // e1
+  // sineDescend
   spd?: number;
   amp?: number;
   f?: number;
   bx?: number;
-  // e2
+  // turret
   holdY?: number;
   cool?: number;
   life?: number;
   drift?: number;
-  // e3
+  // diver
   vx?: number;
   img: Phaser.GameObjects.Image;
 }
 interface BossState {
+  def: BossData;
   x: number;
   y: number;
   t: number;
@@ -140,10 +144,12 @@ const DEPTH = {
   bubble: 11,
   hud: 20,
   banner: 21,
+  debug: 30,
 };
 
 export class GameScene extends Phaser.Scene {
   private session!: GameSession;
+  private level!: LevelData;
 
   // 플레이어
   private px = 0;
@@ -217,11 +223,16 @@ export class GameScene extends Phaser.Scene {
   private bubbleText!: Phaser.GameObjects.Text;
   private bubbleMsg = '';
 
-  // 개발용
+  // 개발용 (?auto ?god) / 디버그 도구 (?debug — PLAN 3장)
   private auto = false;
   private god = false;
   private autoSuperT = 0;
   private fpsTitleT = 0;
+  private debug = false;
+  private debugHitbox = false;
+  private debugGfx!: Phaser.GameObjects.Graphics;
+  private debugText!: Phaser.GameObjects.Text;
+  private levelIdx = 0;
 
   constructor() {
     super(SceneKeys.Game);
@@ -255,21 +266,24 @@ export class GameScene extends Phaser.Scene {
     this.dragPointerId = -1;
     this.bubbleMsg = '';
     this.hudPips = [];
+    this.flashes = [];
+    this.thrustT = 0;
 
     if (import.meta.env.DEV) {
       const q = new URLSearchParams(window.location.search);
       this.auto = q.get('auto') === '1';
       this.god = this.auto || q.get('god') === '1';
+      this.debug = q.get('debug') !== null;
     }
+
+    this.level = DATA.levels.levels[this.levelIdx] ?? DATA.levels.levels[0]!;
 
     this.px = PLAYER.startX;
     this.py = PLAYER.startY;
     this.pvx = 0;
     this.pvy = 0;
 
-    this.spaceBg = new SpaceBackground(this, DEPTH.bg);
-    this.flashes = [];
-    this.thrustT = 0;
+    this.spaceBg = new SpaceBackground(this, DEPTH.bg, this.level.background);
     // 비네트 — 게임플레이 위, HUD 아래
     this.add
       .image(0, 0, 'vignette')
@@ -293,6 +307,16 @@ export class GameScene extends Phaser.Scene {
     this.createHud();
     this.createBubble();
     this.setupInput();
+    if (this.debug) this.createDebug();
+
+    // 데이터 핫리로드 → 세션 유지한 채 씬 재시작
+    const onDataReload = (): void => {
+      if (this.scene.isActive(SceneKeys.Game)) this.scene.restart({ session: this.session });
+    };
+    this.game.events.on('data-reloaded', onDataReload);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.game.events.off('data-reloaded', onDataReload);
+    });
 
     this.nextWave();
   }
@@ -339,7 +363,6 @@ export class GameScene extends Phaser.Scene {
     this.hudCredits = uiText(this, GAME_WIDTH - 7, 22, '', 9, '#ffd76a', 'right').setDepth(
       DEPTH.hud + 1,
     );
-    // 터치용 일시정지 버튼 (히트 존은 setupInput의 pointerdown에서 처리)
     this.add.image(244, 15, 'pause-btn').setDepth(DEPTH.hud + 1);
     this.hudMute = uiText(this, 216, 22, 'MUTE', 8, '#8a93b0')
       .setDepth(DEPTH.hud + 1)
@@ -371,7 +394,7 @@ export class GameScene extends Phaser.Scene {
     this.bubbleBg = this.add.graphics();
     this.bubbleText = this.add
       .text(0, 0, '', {
-        fontFamily: '"Courier New", monospace',
+        fontFamily: 'Galmuri11, "Courier New", monospace',
         fontStyle: 'bold',
         fontSize: '11px',
         color: '#101638',
@@ -399,6 +422,95 @@ export class GameScene extends Phaser.Scene {
     const w = this.bubbleText.width + 16;
     this.bubble.setPosition(clamp(bx - w / 2, 4, GAME_WIDTH - w - 4), by - 29);
     this.bubble.setVisible(true);
+  }
+
+  /* ---------- 디버그 도구 (?debug) ---------- */
+  private createDebug(): void {
+    this.debugGfx = this.add.graphics().setDepth(DEPTH.debug);
+    this.debugText = uiText(this, 4, GAME_HEIGHT - 58, '', 8, '#7ef7a0')
+      .setDepth(DEPTH.debug)
+      .setAlpha(0.9);
+    uiText(
+      this,
+      4,
+      GAME_HEIGHT - 70,
+      'DBG G:무적 H:히트박스 N:웨이브+1 J/K:±5s L:레벨테마',
+      8,
+      '#5aa06a',
+    ).setDepth(DEPTH.debug);
+    const kb = this.input.keyboard;
+    kb?.on('keydown-G', () => {
+      this.god = !this.god;
+    });
+    kb?.on('keydown-H', () => {
+      this.debugHitbox = !this.debugHitbox;
+      this.debugGfx.clear();
+    });
+    kb?.on('keydown-N', () => {
+      this.clearField();
+      this.nextWave();
+    });
+    kb?.on('keydown-J', () => this.scrubWave(5));
+    kb?.on('keydown-K', () => this.scrubWave(-5));
+    kb?.on('keydown-L', () => {
+      this.levelIdx = (this.levelIdx + 1) % DATA.levels.levels.length;
+      this.scene.restart({ session: this.session });
+    });
+  }
+
+  /** 웨이브 타임라인 스크럽 — 뒤로 갈 때는 큐를 재생성해 남은 스폰을 복원 */
+  private scrubWave(delta: number): void {
+    this.waveT = Math.max(0, this.waveT + delta);
+    if (delta < 0) {
+      this.clearField();
+      this.spawnQ = buildWave(this.session.wave).filter((e) => e.t > this.waveT);
+    }
+  }
+
+  private clearField(): void {
+    for (const e of this.enemies) this.pool.release(e.img);
+    this.enemies = [];
+    for (const b of this.ebullets) this.pool.release(b.img);
+    this.ebullets = [];
+    if (this.boss) {
+      this.pool.release(this.boss.img);
+      this.pool.release(this.boss.glow);
+      this.boss = null;
+      this.bossBar.setVisible(false);
+      this.bossLabel.setVisible(false);
+    }
+    this.spawnQ = [];
+    this.waveClearT = -1;
+  }
+
+  private updateDebug(): void {
+    if (!this.debug) return;
+    const fps = this.game.loop.actualFps.toFixed(1);
+    this.debugText.setText(
+      `FPS ${fps} · obj ${this.children.length} · e ${this.enemies.length} b ${this.bullets.length} eb ${this.ebullets.length} ph ${this.sp?.phantoms.length ?? 0}` +
+        `${this.god ? ' · GOD' : ''} · L${this.level.id} ${this.level.background.theme} · waveT ${this.waveT.toFixed(1)}`,
+    );
+    const g = this.debugGfx;
+    g.clear();
+    if (!this.debugHitbox) return;
+    g.lineStyle(1, 0x00ff88, 0.9);
+    g.strokeRect(this.px - PLAYER.hitW / 2, this.py - PLAYER.hitH / 2, PLAYER.hitW, PLAYER.hitH);
+    const hb = DATA.enemies.hitbox;
+    g.lineStyle(1, 0xff5566, 0.9);
+    for (const e of this.enemies) g.strokeRect(e.x - hb.w / 2, e.y - hb.h / 2, hb.w, hb.h);
+    if (this.boss) {
+      const B = this.boss;
+      g.strokeRect(
+        B.x - B.def.hitbox.w / 2,
+        B.y - B.def.hitbox.h / 2,
+        B.def.hitbox.w,
+        B.def.hitbox.h,
+      );
+    }
+    g.lineStyle(1, 0x66aaff, 0.7);
+    for (const b of this.bullets) g.strokeRect(b.x - b.w / 2, b.y - b.h / 2, b.w, b.h);
+    g.lineStyle(1, 0xffaa33, 0.9);
+    for (const b of this.ebullets) g.strokeRect(b.x - b.size / 2, b.y - b.size / 2, b.size, b.size);
   }
 
   /* ---------- 입력 ---------- */
@@ -494,8 +606,8 @@ export class GameScene extends Phaser.Scene {
   /* ---------- 웨이브 ---------- */
   private nextWave(): void {
     this.session.wave++;
-    this.banner(`WAVE ${this.session.wave}`, 1.6, '#ffd75e');
-    this.scrollSpd = SCROLL.base(this.session.wave);
+    this.banner(t('banner.wave', this.session.wave), 1.6, '#ffd75e');
+    this.scrollSpd = this.level.scroll.base + this.session.wave * this.level.scroll.perWave;
     this.spawnQ = buildWave(this.session.wave);
     this.waveT = 0;
     this.waveClearT = -1;
@@ -504,7 +616,6 @@ export class GameScene extends Phaser.Scene {
   private banner(msg: string, dur: number, color: string): void {
     this.bannerText.setText(msg).setColor(color).setVisible(true).setAlpha(1);
     this.bannerT = dur;
-    // 팝인 연출
     this.bannerText.setScale(1.35);
     this.tweens.add({ targets: this.bannerText, scale: 1, duration: 260, ease: 'Back.easeOut' });
   }
@@ -515,64 +626,61 @@ export class GameScene extends Phaser.Scene {
       this.spawnBoss();
       return;
     }
-    const base: Omit<Enemy, 'img' | 'score'> = {
-      type: ev.kind,
+    const def = DATA.enemies.types[ev.type];
+    if (!def) {
+      console.error(`[data] 알 수 없는 적 타입: ${ev.type}`);
+      return;
+    }
+    const w = this.session.wave;
+    const e: Enemy = {
+      type: ev.type,
+      def,
       x: ev.x,
-      y: ENEMY.spawnY,
+      y: ev.opt.y ?? DATA.enemies.spawnY,
       t: 0,
-      hp: 1,
+      hp: def.hp.base + w * def.hp.perWave,
       hcd: 0,
       dead: false,
+      score: def.score,
       flashT: 0,
+      img: this.pool.get(def.sprite, ev.x, ev.opt.y ?? DATA.enemies.spawnY),
     };
-    const w = this.session.wave;
-    let e: Enemy;
-    if (ev.kind === 'e1') {
-      e = {
-        ...base,
-        score: ENEMY.e1.score,
-        hp: ENEMY.e1.hp(w),
-        spd: rnd(ENEMY.e1.spdMin, ENEMY.e1.spdMax) + w * ENEMY.e1.spdPerWave,
-        amp: ev.amp,
-        f: rnd(ENEMY.e1.freqMin, ENEMY.e1.freqMax),
-        bx: ev.x,
-        img: this.pool.get('ship-e1', ev.x, ENEMY.spawnY),
-      };
-    } else if (ev.kind === 'e2') {
-      e = {
-        ...base,
-        score: ENEMY.e2.score,
-        hp: ENEMY.e2.hp(w),
-        spd: ENEMY.e2.spd,
-        holdY: rnd(ENEMY.e2.holdYMin, ENEMY.e2.holdYMax),
-        cool: rnd(ENEMY.e2.coolMin, ENEMY.e2.coolMax),
-        life: ENEMY.e2.life,
-        drift: rnd(-ENEMY.e2.driftMax, ENEMY.e2.driftMax),
-        img: this.pool.get('ship-e2', ev.x, ENEMY.spawnY),
-      };
+    if (def.behavior === 'sineDescend') {
+      const p = def.params;
+      e.spd = rnd(p.spdMin, p.spdMax) + w * p.spdPerWave;
+      e.amp = ev.opt.amp ?? rnd(p.ampMin, p.ampMax);
+      e.f = rnd(p.freqMin, p.freqMax);
+      e.bx = ev.x;
+    } else if (def.behavior === 'turret') {
+      const p = def.params;
+      e.spd = p.spd;
+      e.holdY = rnd(p.holdYMin, p.holdYMax);
+      e.cool = rnd(p.coolMin, p.coolMax);
+      e.life = p.life;
+      e.drift = rnd(-p.driftMax, p.driftMax);
     } else {
-      e = {
-        ...base,
-        score: ENEMY.e3.score,
-        hp: ENEMY.e3.hp(w),
-        spd: ENEMY.e3.spd(w),
-        vx: ev.vx,
-        y: ev.y,
-        img: this.pool.get('ship-e3', ev.x, ev.y),
-      };
+      const p = def.params;
+      e.spd = p.spdBase + w * p.spdPerWave;
+      e.vx = ev.opt.vx ?? 0;
     }
     e.img.setDepth(DEPTH.enemy);
     this.enemies.push(e);
   }
 
   private spawnBoss(): void {
+    const def = DATA.bosses.bosses[DATA.waves.bossId];
+    if (!def) {
+      console.error(`[data] 알 수 없는 보스: ${DATA.waves.bossId}`);
+      return;
+    }
     const w = this.session.wave;
-    const hp = BOSS.hp(w);
+    const hp = def.hp.base + w * def.hp.perWave;
     const glow = this.pool.get('boss-glow', GAME_WIDTH / 2, -80);
     glow.setDepth(DEPTH.enemy - 0.2).setBlendMode(Phaser.BlendModes.ADD);
-    const img = this.pool.get('ship-boss', GAME_WIDTH / 2, -80);
+    const img = this.pool.get(def.sprite, GAME_WIDTH / 2, -80);
     img.setDepth(DEPTH.enemy);
     this.boss = {
+      def,
       x: GAME_WIDTH / 2,
       y: -80,
       t: 0,
@@ -586,9 +694,9 @@ export class GameScene extends Phaser.Scene {
       img,
       glow,
     };
-    this.banner('!! WARNING !!', 2.2, '#ff6a6a');
+    this.banner(t('banner.warning'), 2.2, '#ff6a6a');
     SFX.warn();
-    this.scrollSpd = SCROLL.boss;
+    this.scrollSpd = this.level.scroll.boss;
     this.bossBar.setVisible(true);
     this.bossLabel.setVisible(true);
   }
@@ -599,23 +707,22 @@ export class GameScene extends Phaser.Scene {
     this.vseq = (this.vseq + 1) % 3;
     const shots = firePattern(this.session.cur, level, this.px, this.py, this.vseq);
     for (const s of shots) {
-      const img = this.pool.get(`b-${s.kind}`, s.x, s.y);
+      const img = this.pool.get(s.sprite, s.x, s.y);
       img.setDepth(DEPTH.bullet).setBlendMode(Phaser.BlendModes.ADD);
-      // 세로 궤적감: 직선 고속탄은 살짝 늘인다
-      if (s.kind === 'laser' || s.kind === 'pulse') img.setScale(1, 1.3);
+      if (s.stretch) img.setScale(1, 1.3);
       this.bullets.push({ ...s, t: 0, img });
     }
-    // 총구 화염
     const mz = this.fxPool.get('muzzle', this.px, this.py - 19);
     mz.setDepth(DEPTH.bullet + 0.5).setBlendMode(Phaser.BlendModes.ADD);
     this.flashes.push({ img: mz, t: 0 });
-    SFX.shoot[this.session.cur]();
+    SFX.shoot(this.session.cur);
   }
 
   private eFire(x: number, y: number, spd: number, big = false): void {
     const dx = this.px - x;
     const dy = this.py - y;
     const L = Math.hypot(dx, dy) || 1;
+    const eb = DATA.enemies.ebullet;
     const img = this.pool.get(big ? 'eb-big' : 'eb-small', x, y);
     img.setDepth(DEPTH.ebullet);
     this.ebullets.push({
@@ -624,30 +731,36 @@ export class GameScene extends Phaser.Scene {
       vx: (dx / L) * spd,
       vy: (dy / L) * spd,
       big,
-      size: big ? EBULLET.bigSize : EBULLET.smallSize,
+      size: big ? eb.bigSize : eb.smallSize,
       img,
     });
     SFX.eshoot();
   }
 
-  private bossFan(): void {
+  private executeBossPhase(ph: BossPhase): void {
     const B = this.boss;
     if (!B) return;
-    for (let k = -3; k <= 3; k++) {
-      const ang = Math.PI / 2 + k * BOSS.fanAngleStep;
-      const img = this.pool.get('eb-small', B.x, B.y + 27);
-      img.setDepth(DEPTH.ebullet);
-      this.ebullets.push({
-        x: B.x,
-        y: B.y + 27,
-        vx: Math.cos(ang) * BOSS.fanSpeed,
-        vy: Math.sin(ang) * BOSS.fanSpeed,
-        big: false,
-        size: EBULLET.fanSize,
-        img,
-      });
+    const oy = B.def.fireOffsetY;
+    if (ph.type === 'fan') {
+      for (let k = 0; k < ph.count; k++) {
+        const ang = Math.PI / 2 + (k - (ph.count - 1) / 2) * ph.angleStep;
+        const img = this.pool.get('eb-small', B.x, B.y + oy + 3);
+        img.setDepth(DEPTH.ebullet);
+        this.ebullets.push({
+          x: B.x,
+          y: B.y + oy + 3,
+          vx: Math.cos(ang) * ph.speed,
+          vy: Math.sin(ang) * ph.speed,
+          big: false,
+          size: DATA.enemies.ebullet.fanSize,
+          img,
+        });
+      }
+      SFX.eshoot();
+    } else {
+      this.eFire(B.x - ph.offsetX, B.y + oy, ph.speed, ph.big);
+      this.eFire(B.x + ph.offsetX, B.y + oy, ph.speed, ph.big);
     }
-    SFX.eshoot();
   }
 
   private damagePlayer(d: number): void {
@@ -678,7 +791,9 @@ export class GameScene extends Phaser.Scene {
     this.session.credits += e.score;
     this.addBoom(e.x, e.y, 1.3, false);
     this.addFloatText(e.x, e.y, `+${e.score}`, '#ffd76a');
-    if (Math.random() < ENEMY.orbChance || (e.type === 'e2' && Math.random() < ENEMY.orbChanceE2))
+    const orb = DATA.enemies.orb;
+    const chance = e.def.behavior === 'turret' ? orb.chanceTurret : orb.chance;
+    if (Math.random() < orb.chance || (e.def.behavior === 'turret' && Math.random() < chance))
       this.dropOrb(e.x, e.y);
   }
 
@@ -695,17 +810,17 @@ export class GameScene extends Phaser.Scene {
             this.addBoom(bx + rnd(-26, 26), by + rnd(-24, 24), rnd(1.2, 2.1), k === 0);
         });
       }
-      this.session.score += BOSS.killScore;
-      this.session.credits += BOSS.killScore;
-      this.addFloatText(bx, by, `+${BOSS.killScore}`, '#7ef7ff');
+      this.session.score += B.def.killScore;
+      this.session.credits += B.def.killScore;
+      this.addFloatText(bx, by, `+${B.def.killScore}`, '#7ef7ff');
       B.img.clearTint();
       this.pool.release(B.img);
       this.pool.release(B.glow);
+      this.pendingShop = B.def.shopDelay;
       this.boss = null;
       this.bossBar.setVisible(false);
       this.bossLabel.setVisible(false);
-      this.scrollSpd = SCROLL.base(this.session.wave);
-      this.pendingShop = BOSS.shopDelay;
+      this.scrollSpd = this.level.scroll.base + this.session.wave * this.level.scroll.perWave;
     }
   }
 
@@ -745,12 +860,13 @@ export class GameScene extends Phaser.Scene {
 
   private dropOrb(x: number, y: number, forceS = false): void {
     this.session.orbCount++;
-    const type = forceS || this.session.orbCount % ORB.everyNthIsShield === 0 ? 'S' : 'P';
+    const orb = DATA.enemies.orb;
+    const type = forceS || this.session.orbCount % orb.everyNthIsShield === 0 ? 'S' : 'P';
     const img = this.pool.get(`orb-${type}`, x, y);
     img.setDepth(DEPTH.orb);
     const glow = this.pool.get('orb-glow', x, y);
     glow.setDepth(DEPTH.orb - 0.5).setBlendMode(Phaser.BlendModes.ADD);
-    this.orbs.push({ x, y, vy: ORB.fallSpeed, t: 0, type, img, glow });
+    this.orbs.push({ x, y, vy: orb.fallSpeed, t: 0, type, img, glow });
   }
 
   /* ---------- 슈퍼 Jungjioo ---------- */
@@ -832,10 +948,10 @@ export class GameScene extends Phaser.Scene {
         img.setAlpha(ph.a).setScale(ph.s);
         this.sp?.phantoms.push(ph);
       }
-      // 러시 동안 적탄 소거
       for (const b of this.ebullets) this.pool.release(b.img);
       this.ebullets.length = 0;
     }
+    const hb = DATA.enemies.hitbox;
     for (let i = sp.phantoms.length - 1; i >= 0; i--) {
       const q = sp.phantoms[i];
       if (!q) continue;
@@ -846,7 +962,7 @@ export class GameScene extends Phaser.Scene {
       for (const e of this.enemies) {
         if (
           e.hcd <= 0 &&
-          aabb(q.x, q.y, SUPER.phantomHitW, SUPER.phantomHitH, e.x, e.y, ENEMY.hitW, ENEMY.hitH)
+          aabb(q.x, q.y, SUPER.phantomHitW, SUPER.phantomHitH, e.x, e.y, hb.w, hb.h)
         ) {
           e.hcd = SUPER.enemyHitCooldown;
           e.hp -= SUPER.phantomDamage;
@@ -857,9 +973,18 @@ export class GameScene extends Phaser.Scene {
       if (
         B &&
         B.hcd <= 0 &&
-        aabb(q.x, q.y, SUPER.phantomHitW, SUPER.phantomHitH, B.x, B.y, BOSS.hitW, BOSS.hitH)
+        aabb(
+          q.x,
+          q.y,
+          SUPER.phantomHitW,
+          SUPER.phantomHitH,
+          B.x,
+          B.y,
+          B.def.hitbox.w,
+          B.def.hitbox.h,
+        )
       ) {
-        B.hcd = BOSS.hitCooldown;
+        B.hcd = B.def.hitCooldown;
         this.damageBoss(SUPER.phantomBossDamage);
       }
       if (q.y < -50) {
@@ -920,6 +1045,7 @@ export class GameScene extends Phaser.Scene {
     this.updateOrbs(dt);
     this.updateFx(dt);
     this.updateHud();
+    this.updateDebug();
 
     if (import.meta.env.DEV) {
       this.fpsTitleT += dt;
@@ -1009,7 +1135,7 @@ export class GameScene extends Phaser.Scene {
     const wantFire = this.touchOn || this.keyMap?.space?.isDown || this.keyMap?.z?.isDown;
     if (wantFire && this.fireCd <= 0) {
       this.playerFire();
-      this.fireCd = WEAPONS[this.session.cur].cd(weaponLevel(this.session));
+      this.fireCd = cooldownFor(this.session.cur, weaponLevel(this.session));
     }
     if (this.inv > 0 && !this.sp) this.inv -= dt;
     // 엔진 궤적 파티클
@@ -1053,7 +1179,7 @@ export class GameScene extends Phaser.Scene {
       }
     }
     if (!this.boss && this.spawnQ.length === 0 && this.enemies.length === 0 && this.alive) {
-      if (this.waveClearT < 0) this.waveClearT = this.waveT + 1.6;
+      if (this.waveClearT < 0) this.waveClearT = this.waveT + DATA.waves.clearDelay;
       if (this.waveT > this.waveClearT) this.nextWave();
     }
   }
@@ -1063,9 +1189,9 @@ export class GameScene extends Phaser.Scene {
       const b = this.bullets[i];
       if (!b) continue;
       b.t += dt;
-      if (b.kind === 'light') {
+      if (b.x0 !== undefined) {
         b.y += b.vy * dt;
-        b.x = (b.x0 ?? b.x) + Math.sin(b.t * 22 + (b.ph ?? 0)) * 8;
+        b.x = b.x0 + Math.sin(b.t * 22 + (b.ph ?? 0)) * 8;
       } else {
         b.x += b.vx * dt;
         b.y += b.vy * dt;
@@ -1079,62 +1205,64 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateEBullets(dt: number): void {
+    const eb = DATA.enemies.ebullet;
     for (let i = this.ebullets.length - 1; i >= 0; i--) {
       const b = this.ebullets[i];
       if (!b) continue;
       b.x += b.vx * dt;
       b.y += b.vy * dt;
       b.img.setPosition(b.x, b.y);
-      const size = b.size;
       if (b.y > GAME_HEIGHT + 25 || b.y < -25 || b.x < -25 || b.x > GAME_WIDTH + 25) {
         this.pool.release(b.img);
         this.ebullets.splice(i, 1);
         continue;
       }
-      if (this.alive && aabb(b.x, b.y, size, size, this.px, this.py, PLAYER.hitW, PLAYER.hitH)) {
+      if (
+        this.alive &&
+        aabb(b.x, b.y, b.size, b.size, this.px, this.py, PLAYER.hitW, PLAYER.hitH)
+      ) {
         this.pool.release(b.img);
         this.ebullets.splice(i, 1);
-        this.damagePlayer(b.big ? EBULLET.bigDamage : EBULLET.smallDamage);
+        this.damagePlayer(b.big ? eb.bigDamage : eb.smallDamage);
       }
     }
   }
 
   private updateEnemies(dt: number): void {
     const w = this.session.wave;
+    const hb = DATA.enemies.hitbox;
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const e = this.enemies[i];
       if (!e) continue;
       e.t += dt;
       if (e.hcd > 0) e.hcd -= dt;
-      if (e.type === 'e1') {
+      const def = e.def;
+      if (def.behavior === 'sineDescend') {
+        const p = def.params;
         e.y += (e.spd ?? 0) * dt;
         e.x = (e.bx ?? e.x) + Math.sin(e.t * (e.f ?? 2)) * (e.amp ?? 0);
-        if (
-          w >= ENEMY.e1.fireFromWave &&
-          Math.random() < ENEMY.e1.fireChancePerSec * dt &&
-          this.alive
-        )
-          this.eFire(e.x, e.y + 10, ENEMY.e1.bulletSpeed);
-      } else if (e.type === 'e2') {
+        if (w >= p.fireFromWave && Math.random() < p.fireChancePerSec * dt && this.alive)
+          this.eFire(e.x, e.y + 10, p.bulletSpeed);
+      } else if (def.behavior === 'turret') {
+        const p = def.params;
         if (e.y < (e.holdY ?? 0)) e.y += (e.spd ?? 0) * dt;
         else {
           e.x += (e.drift ?? 0) * dt;
           e.life = (e.life ?? 0) - dt;
           e.cool = (e.cool ?? 0) - dt;
-          if (e.x < ENEMY.e2.driftBoundX || e.x > GAME_WIDTH - ENEMY.e2.driftBoundX)
-            e.drift = -(e.drift ?? 0);
+          if (e.x < p.driftBoundX || e.x > GAME_WIDTH - p.driftBoundX) e.drift = -(e.drift ?? 0);
           if ((e.cool ?? 0) <= 0 && this.alive) {
-            this.eFire(e.x, e.y + 13, ENEMY.e2.bulletSpeed(w));
-            e.cool = rnd(1.1, 2.0) - ENEMY.e2.coolReduce(w);
+            this.eFire(e.x, e.y + 13, p.bulletSpeedBase + w * p.bulletSpeedPerWave);
+            e.cool =
+              rnd(p.fireCoolMin, p.fireCoolMax) -
+              Math.min(p.coolReduceMax, w * p.coolReducePerWave);
           }
-          if ((e.life ?? 0) <= 0) e.y += ENEMY.e2.leaveSpd * dt;
+          if ((e.life ?? 0) <= 0) e.y += p.leaveSpd * dt;
         }
       } else {
+        const p = def.params;
         e.vx =
-          (e.vx ?? 0) +
-          clamp(this.px - e.x, -ENEMY.e3.homingClamp, ENEMY.e3.homingClamp) *
-            ENEMY.e3.homingGain *
-            dt;
+          (e.vx ?? 0) + clamp(this.px - e.x, -p.homingClamp, p.homingClamp) * p.homingGain * dt;
         e.x += (e.vx ?? 0) * dt;
         e.y += (e.spd ?? 0) * dt;
       }
@@ -1149,7 +1277,7 @@ export class GameScene extends Phaser.Scene {
       for (let j = this.bullets.length - 1; j >= 0; j--) {
         const b = this.bullets[j];
         if (!b) continue;
-        if (aabb(b.x, b.y, b.w, b.h, e.x, e.y, ENEMY.hitW, ENEMY.hitH)) {
+        if (aabb(b.x, b.y, b.w, b.h, e.x, e.y, hb.w, hb.h)) {
           e.hp -= b.dmg;
           e.flashT = 0.05;
           if (b.pierce > 0) b.pierce--;
@@ -1170,7 +1298,7 @@ export class GameScene extends Phaser.Scene {
       }
       if (
         this.alive &&
-        aabb(e.x, e.y, ENEMY.hitW - 4, ENEMY.hitH - 4, this.px, this.py, PLAYER.hitW, PLAYER.hitH)
+        aabb(e.x, e.y, hb.w - 4, hb.h - 4, this.px, this.py, PLAYER.hitW, PLAYER.hitH)
       ) {
         this.killEnemy(e);
         this.pool.release(e.img);
@@ -1188,28 +1316,26 @@ export class GameScene extends Phaser.Scene {
   private updateBoss(dt: number): void {
     const B = this.boss;
     if (!B) return;
+    const def = B.def;
     B.t += dt;
     if (B.hcd > 0) B.hcd -= dt;
-    if (B.y < BOSS.entryY) B.y += BOSS.entrySpd * dt;
+    if (B.y < def.entryY) B.y += def.entrySpd * dt;
     else {
-      B.x += B.dir * BOSS.patrolSpd(this.session.wave) * dt;
-      if (B.x < BOSS.patrolMinX) {
-        B.x = BOSS.patrolMinX;
+      B.x += B.dir * (def.patrol.base + this.session.wave * def.patrol.perWave) * dt;
+      if (B.x < def.patrol.minX) {
+        B.x = def.patrol.minX;
         B.dir = 1;
       }
-      if (B.x > BOSS.patrolMaxX) {
-        B.x = BOSS.patrolMaxX;
+      if (B.x > def.patrol.maxX) {
+        B.x = def.patrol.maxX;
         B.dir = -1;
       }
       B.cool -= dt;
       if (B.cool <= 0 && this.alive) {
-        B.phase = (B.phase + 1) % 3;
-        if (B.phase !== 1) this.bossFan();
-        else {
-          this.eFire(B.x - BOSS.aimedOffsetX, B.y + BOSS.fireOffsetY, BOSS.aimedSpeed, true);
-          this.eFire(B.x + BOSS.aimedOffsetX, B.y + BOSS.fireOffsetY, BOSS.aimedSpeed, true);
-        }
-        B.cool = BOSS.cool(this.session.wave);
+        B.phase = (B.phase + 1) % def.phases.length;
+        const ph = def.phases[B.phase];
+        if (ph) this.executeBossPhase(ph);
+        B.cool = Math.max(def.cool.min, def.cool.base + this.session.wave * def.cool.perWave);
       }
     }
     B.img.setPosition(B.x, B.y);
@@ -1225,7 +1351,7 @@ export class GameScene extends Phaser.Scene {
     for (let j = this.bullets.length - 1; j >= 0; j--) {
       const b = this.bullets[j];
       if (!b) continue;
-      if (aabb(b.x, b.y, b.w, b.h, B.x, B.y, BOSS.hitW, BOSS.hitH)) {
+      if (aabb(b.x, b.y, b.w, b.h, B.x, B.y, def.hitbox.w, def.hitbox.h)) {
         if (b.pierce > 0) b.pierce--;
         else {
           this.pool.release(b.img);
@@ -1239,12 +1365,13 @@ export class GameScene extends Phaser.Scene {
     if (
       this.boss &&
       this.alive &&
-      aabb(B.x, B.y, BOSS.hitW - 7, BOSS.hitH - 7, this.px, this.py, PLAYER.hitW, PLAYER.hitH)
+      aabb(B.x, B.y, def.hitbox.w - 7, def.hitbox.h - 7, this.px, this.py, PLAYER.hitW, PLAYER.hitH)
     )
-      this.damagePlayer(PLAYER.bossTouchDamage);
+      this.damagePlayer(def.touchDamage);
   }
 
   private updateOrbs(dt: number): void {
+    const orb = DATA.enemies.orb;
     for (let i = this.orbs.length - 1; i >= 0; i--) {
       const o = this.orbs[i];
       if (!o) continue;
@@ -1253,9 +1380,9 @@ export class GameScene extends Phaser.Scene {
       const dx = this.px - o.x;
       const dy = this.py - o.y;
       const L = Math.hypot(dx, dy);
-      if (this.alive && L < ORB.magnetRadius && L > 0.001) {
-        o.x += (dx / L) * ORB.magnetPull * dt;
-        o.y += (dy / L) * ORB.magnetPull * dt;
+      if (this.alive && L < orb.magnetRadius && L > 0.001) {
+        o.x += (dx / L) * orb.magnetPull * dt;
+        o.y += (dy / L) * orb.magnetPull * dt;
       }
       const yy = o.y + Math.sin(o.t * 5) * 2;
       const pulse = 1 + Math.sin(o.t * 6) * 0.14;
@@ -1270,21 +1397,21 @@ export class GameScene extends Phaser.Scene {
         this.orbs.splice(i, 1);
         SFX.pow();
         if (o.type === 'P') {
-          if (weaponLevel(this.session) < 6) {
+          if (weaponLevel(this.session) < DATA.weapons.maxLevel) {
             this.session.weapons[this.session.cur] = weaponLevel(this.session) + 1;
-            this.addFloatText(this.px, this.py - 21, 'POWER UP!', '#8aff8a');
+            this.addFloatText(this.px, this.py - 21, t('game.powerup'), '#8aff8a');
           } else {
-            this.session.score += ORB.maxPowerBonusScore;
-            this.session.credits += ORB.maxPowerBonusScore;
-            this.addFloatText(this.px, this.py - 21, `+${ORB.maxPowerBonusScore}`, '#8aff8a');
+            this.session.score += orb.maxPowerBonusScore;
+            this.session.credits += orb.maxPowerBonusScore;
+            this.addFloatText(this.px, this.py - 21, `+${orb.maxPowerBonusScore}`, '#8aff8a');
           }
         } else {
           this.session.shield = this.session.shieldMax;
           this.session.armor = Math.min(
             this.session.armorMax,
-            this.session.armor + ORB.shieldArmorBonus,
+            this.session.armor + orb.shieldArmorBonus,
           );
-          this.addFloatText(this.px, this.py - 21, 'SHIELD!', '#7ecbff');
+          this.addFloatText(this.px, this.py - 21, t('game.shield'), '#7ecbff');
         }
         continue;
       }
@@ -1333,13 +1460,13 @@ export class GameScene extends Phaser.Scene {
       }
     }
     for (let i = this.texts.length - 1; i >= 0; i--) {
-      const t = this.texts[i];
-      if (!t) continue;
-      t.t += dt;
-      t.obj.setY(t.obj.y - 32 * dt).setAlpha(1 - t.t / 0.9);
-      if (t.t > 0.9) {
-        t.obj.setVisible(false);
-        this.textPool.push(t.obj);
+      const tx = this.texts[i];
+      if (!tx) continue;
+      tx.t += dt;
+      tx.obj.setY(tx.obj.y - 32 * dt).setAlpha(1 - tx.t / 0.9);
+      if (tx.t > 0.9) {
+        tx.obj.setVisible(false);
+        this.textPool.push(tx.obj);
         this.texts.splice(i, 1);
       }
     }
@@ -1347,14 +1474,15 @@ export class GameScene extends Phaser.Scene {
 
   private updateHud(): void {
     const s = this.session;
+    const wpn = DATA.weapons.weapons[s.cur];
     this.hudShieldBar.setScale(clamp(s.shield / s.shieldMax, 0, 1), 1);
     this.hudArmorBar.setScale(clamp(s.armor / s.armorMax, 0, 1), 1);
-    this.hudWpn.setText(WEAPONS[s.cur].short);
+    this.hudWpn.setText(wpn?.short ?? s.cur);
     const lvl = weaponLevel(s);
     this.hudPips.forEach((p, i) => p.setFillStyle(i < lvl ? 0x8aff8a : 0x37543f));
-    this.hudWaveT.setText(`WAVE ${s.wave}`);
+    this.hudWaveT.setText(t('hud.wave', s.wave));
     this.hudScore.setText(String(s.score).padStart(7, '0'));
-    this.hudCredits.setText(`CR ${s.credits}`);
+    this.hudCredits.setText(t('hud.credits', s.credits));
     // 하단 탄막을 가리지 않게 반투명 유지, 사용 가능 시 펄스
     if (s.superN > 0) {
       this.superBtn.setAlpha(0.66).setScale(1 + Math.sin(this.worldT * 4.5) * 0.05);

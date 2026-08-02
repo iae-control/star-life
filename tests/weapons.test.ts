@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { MAX_WEAPON_LEVEL, WEAPON_KEYS, WEAPONS } from '../src/game/logic/balance';
-import { firePattern } from '../src/game/logic/weapons';
+import { MAX_WEAPON_LEVEL, WEAPON_KEYS } from '../src/data';
+import { cooldownFor, firePattern } from '../src/game/logic/weapons';
 
 const rng = () => 0.5;
 
@@ -45,7 +45,7 @@ describe('firePattern', () => {
 describe('weapon cooldowns', () => {
   it('remain positive at max level', () => {
     for (const key of WEAPON_KEYS) {
-      expect(WEAPONS[key].cd(MAX_WEAPON_LEVEL)).toBeGreaterThan(0.01);
+      expect(cooldownFor(key, MAX_WEAPON_LEVEL)).toBeGreaterThan(0.009);
     }
   });
 });

@@ -2,6 +2,7 @@
 import Phaser from 'phaser';
 
 import { GAME_HEIGHT, GAME_WIDTH, SceneKeys } from '../config';
+import { t } from '../data';
 import { uiText } from '../ui/text';
 
 export class PauseScene extends Phaser.Scene {
@@ -11,16 +12,8 @@ export class PauseScene extends Phaser.Scene {
 
   create(): void {
     this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x00000a, 0.6).setOrigin(0, 0);
-    uiText(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 'PAUSED', 24, '#e8ecff', 'center');
-    uiText(
-      this,
-      GAME_WIDTH / 2,
-      GAME_HEIGHT / 2 + 30,
-      'P·ESC·탭으로 계속',
-      11,
-      '#9aa6c8',
-      'center',
-    );
+    uiText(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, t('pause.title'), 24, '#e8ecff', 'center');
+    uiText(this, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 30, t('pause.help'), 11, '#9aa6c8', 'center');
 
     const resume = (): void => {
       this.scene.stop();
