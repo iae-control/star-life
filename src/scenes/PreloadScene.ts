@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 
 import { GAME_HEIGHT, GAME_WIDTH, isSceneKey, SceneKeys } from '../config';
+import { generateTextures } from '../systems/textures';
 
 // 에셋 로딩 담당. M0 시점에는 로딩할 에셋이 없어 진행 바 뼈대만 둔다.
 export class PreloadScene extends Phaser.Scene {
@@ -27,6 +28,8 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   create(): void {
+    // 임시 에셋(자체 절차 생성) — M3에서 정식 아트로 교체
+    generateTextures(this);
     // 개발 전용 씬 점프(?scene=Game) — M2 ?debug 도구의 최소 선행 버전.
     // Boot/Preload로의 점프는 자기 재시작 무한루프가 되므로 제외한다.
     if (import.meta.env.DEV) {
