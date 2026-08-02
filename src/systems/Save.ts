@@ -13,6 +13,7 @@ export interface SaveData {
     musicVol: number;
     sfxVol: number;
     vibration: boolean;
+    pilot: 'jungjioo' | 'parksulhee';
   };
   progress: {
     /** 도달한 최고 레벨 (이어하기 시작점) */
@@ -37,6 +38,7 @@ function defaults(): SaveData {
       musicVol: 0.8,
       sfxVol: 1,
       vibration: true,
+      pilot: 'jungjioo',
     },
     progress: { unlockedLevel: 1, endlessUnlocked: false, tutorialDone: false },
   };

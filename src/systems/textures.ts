@@ -438,6 +438,71 @@ const ARC_MAP = [
 ];
 const ARC_PAL = { O: '#160a24', p: '#d8b0ff', A: '#9a6ae0', a: '#5a3aa0' };
 
+// 최종 보스 — 살인달팽이 (나선 껍데기 = 블랙홀 나선 호응)
+const SNAIL_MAP = [
+  '..........OOOOOOOO........',
+  '........OOssssssssOO......',
+  '......OOssppppppppssOO....',
+  '.....OsspPPPPPPPPPpssO....',
+  '....OsspPttttttttPPpssO...',
+  '...OsspPttSSSSSSttPpssO...',
+  '...OspPttSSppppSSttPpsO...',
+  '..OspPttSSppttppSSttPpsO..',
+  '..OspPttSSpttttppSStPpsO..',
+  '..OspPttSSppttppSSttPpsO..',
+  '...OspPttSSppppSSttPpsO...',
+  '...OsspPttSSSSSSttPpssO...',
+  'OOOOsspPttttttttPPpssO....',
+  'OggggOsspPPPPPPPPpssO.....',
+  'OgGGggOOssssssssssOO......',
+  'OgGGGggggggggggOOO........',
+  'OggGGGGGGGGGggggO.........',
+  '.OggggggggggggggO.........',
+  '..OOgggOOOOgggOO..........',
+  '....OOO....OOO............',
+];
+const SNAIL_PAL = {
+  O: '#12081e',
+  s: '#5a3aa0',
+  p: '#8a5ad4',
+  P: '#b48aff',
+  t: '#3aa88a',
+  S: '#7ee8c8',
+  g: '#8ad84a',
+  G: '#c8ff8a',
+};
+
+// 달팽이 눈자루 (파괴 가능 파츠)
+const EYESTALK_MAP = [
+  '..OWWO..',
+  '.OWiiWO.',
+  '.OWiIWO.',
+  '.OWiiWO.',
+  '..OWWO..',
+  '...OgO..',
+  '...OgO..',
+  '..OgO...',
+  '..OgO...',
+  '.OgO....',
+  '.OgO....',
+];
+const EYESTALK_PAL = { O: '#12081e', W: '#f0fff0', i: '#3a8a5a', I: '#0a2a14', g: '#8ad84a' };
+
+// 요상한 프롭: 거대 눈알 / 소용돌이 껍데기
+const EYE_MAP = [
+  '...OOOOOO...',
+  '..OWWWWWWO..',
+  '.OWWWiiWWWO.',
+  'OWWWiiiiWWWO',
+  'OWWiiIIiiWWO',
+  'OWWiiIIiiWWO',
+  'OWWWiiiiWWWO',
+  '.OWWWiiWWWO.',
+  '..OWWWWWWO..',
+  '...OOOOOO...',
+];
+const EYE_PAL = { O: '#1c0a2a', W: '#e8e0f4', i: '#b03aa0', I: '#12040f' };
+
 function tinted(rows: string[], scale: number, color: string, alpha: number): HTMLCanvasElement {
   const h = rows.length;
   const w = Math.max(...rows.map((r) => r.length));
@@ -664,6 +729,106 @@ export function generateTextures(scene: Phaser.Scene): void {
   addCanvasTexture(scene, 'part-flarecannon', enhance(pixmap(CANNON_MAP, CANNON_PAL, 3)));
   addCanvasTexture(scene, 'part-shard', enhance(pixmap(SHARDP_MAP, SHARDP_PAL, 3)));
   addCanvasTexture(scene, 'part-arc', enhance(pixmap(ARC_MAP, ARC_PAL, 3)));
+  addCanvasTexture(scene, 'boss-snail', enhance(pixmap(SNAIL_MAP, SNAIL_PAL, 4)));
+  addCanvasTexture(scene, 'part-eyestalk', enhance(pixmap(EYESTALK_MAP, EYESTALK_PAL, 3)));
+  addCanvasTexture(scene, 'prop-eye', enhance(pixmap(EYE_MAP, EYE_PAL, 4)));
+  addCanvasTexture(
+    scene,
+    'prop-shellswirl',
+    enhance(
+      pixmap(
+        SNAIL_MAP.slice(0, 13).map((r) => r.slice(8, 24)),
+        SNAIL_PAL,
+        3,
+      ),
+    ),
+  );
+  // 박슬희 기체 (마젠타 팔레트 스왑)
+  addCanvasTexture(
+    scene,
+    'ship-player-ps',
+    enhance(
+      pixmap(
+        PLAYER_MAP,
+        {
+          O: '#260a1c',
+          W: '#ffe8f4',
+          C: '#ff9ad8',
+          B: '#d6479a',
+          D: '#701c4e',
+          G: '#ffd8ec',
+          g: '#f06ab8',
+          E: '#ffd75e',
+          e: '#b8862a',
+        },
+        2,
+      ),
+    ),
+  );
+
+  // 거대 배드민턴 채 (박슬희 필살기)
+  {
+    const [c, ctx] = canvas(100, 240);
+    // 그립
+    ctx.fillStyle = '#3a2410';
+    ctx.fillRect(43, 190, 14, 46);
+    ctx.fillStyle = '#8a5a2a';
+    ctx.fillRect(45, 192, 10, 42);
+    ctx.fillStyle = '#c89a5a';
+    for (let y = 196; y < 230; y += 8) ctx.fillRect(45, y, 10, 3);
+    // 샤프트
+    ctx.fillStyle = '#d84a3a';
+    ctx.fillRect(46, 118, 8, 76);
+    // 헤드 림
+    ctx.lineWidth = 8;
+    ctx.strokeStyle = '#d84a3a';
+    ctx.beginPath();
+    ctx.ellipse(50, 65, 42, 58, 0, 0, 7);
+    ctx.stroke();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#ff8a6a';
+    ctx.beginPath();
+    ctx.ellipse(50, 65, 42, 58, 0, 0, 7);
+    ctx.stroke();
+    // 스트링
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(50, 65, 38, 54, 0, 0, 7);
+    ctx.clip();
+    ctx.strokeStyle = 'rgba(240,248,255,0.85)';
+    ctx.lineWidth = 2;
+    for (let x = 14; x <= 90; x += 9) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, 130);
+      ctx.stroke();
+    }
+    for (let y = 8; y <= 126; y += 9) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(100, y);
+      ctx.stroke();
+    }
+    ctx.restore();
+    addCanvasTexture(scene, 'racket', c);
+  }
+
+  // 블랙홀 내부 왜곡 링 (요상한 배경 장식)
+  {
+    const [c, ctx] = canvas(320, 320);
+    for (const [rx, ry, col, w] of [
+      [140, 105, 'rgba(220,80,200,0.35)', 5],
+      [110, 140, 'rgba(120,255,160,0.28)', 4],
+      [80, 70, 'rgba(150,120,255,0.3)', 3],
+    ] as const) {
+      ctx.lineWidth = w;
+      ctx.strokeStyle = col;
+      ctx.beginPath();
+      ctx.ellipse(160, 160, rx, ry, 0.6, 0, 7);
+      ctx.stroke();
+    }
+    addCanvasTexture(scene, 'decor-warpring', c);
+  }
 
   // 기계형 적기 — Kenney Pixel Shmup 헐 (CC0) 색상화. 로드 실패 시 위의 절차 생성 유지.
   kenneyShip(scene, 'ship-e1', 'kship_18', '#e64a4a');

@@ -5,12 +5,21 @@ import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 
 export interface BackgroundConfig {
-  theme: 'nebula' | 'protostar' | 'mainseq' | 'asteroids' | 'redgiant' | 'supernova' | 'blackhole';
+  theme:
+    | 'nebula'
+    | 'protostar'
+    | 'mainseq'
+    | 'asteroids'
+    | 'redgiant'
+    | 'supernova'
+    | 'blackhole'
+    | 'inside';
   nebulaAlpha: number;
 }
 
 export class SpaceBackground {
-  private layers: { sprite: Phaser.GameObjects.TileSprite; speed: number }[] = [];
+  private layers: { sprite: Phaser.GameObjects.TileSprite; speed: number; hueCycle?: boolean }[] =
+    [];
   private decors: { img: Phaser.GameObjects.Image; rot: number; pulse: number }[] = [];
   private t = 0;
 
@@ -19,14 +28,21 @@ export class SpaceBackground {
     baseDepth = 0,
     config: BackgroundConfig = { theme: 'nebula', nebulaAlpha: 0.85 },
   ) {
-    const add = (key: string, depth: number, speed: number, alpha = 1, blend = false) => {
+    const add = (
+      key: string,
+      depth: number,
+      speed: number,
+      alpha = 1,
+      blend = false,
+      hueCycle = false,
+    ) => {
       const sprite = scene.add
         .tileSprite(0, 0, GAME_WIDTH, GAME_HEIGHT, key)
         .setOrigin(0, 0)
         .setDepth(depth)
         .setAlpha(alpha);
       if (blend) sprite.setBlendMode(Phaser.BlendModes.ADD);
-      this.layers.push({ sprite, speed });
+      this.layers.push({ sprite, speed, hueCycle });
     };
     const decor = (
       key: string,
@@ -85,6 +101,18 @@ export class SpaceBackground {
         decor('decor-swirl', GAME_WIDTH / 2, 150, baseDepth + 0.06, { rot: 0.35, alpha: 0.8 });
         add('bg-stars-far', baseDepth + 0.1, 0.3, 0.6);
         break;
+      case 'inside':
+        // 블랙홀 안쪽 — 색이 순환하는 성운, 거꾸로 흐르는 별, 반대로 도는 왜곡 링
+        add('bg-nebula-warm', baseDepth, 0.1, a, true, true);
+        decor('decor-warpring', GAME_WIDTH / 2, 200, baseDepth + 0.05, { rot: 0.22, alpha: 0.9 });
+        decor('decor-warpring', GAME_WIDTH / 2, 430, baseDepth + 0.06, {
+          rot: -0.3,
+          alpha: 0.6,
+          scale: 1.5,
+        });
+        add('bg-stars-far', baseDepth + 0.1, -0.4, 0.8);
+        add('bg-stars-near', baseDepth + 0.2, -0.7, 0.6);
+        break;
       default:
         add('bg-nebula', baseDepth, 0.12, a, true);
         add('bg-stars-far', baseDepth + 0.1, 0.35);
@@ -95,7 +123,13 @@ export class SpaceBackground {
   /** speed: 논리 스크롤 속도(px/s) — 레이어별 시차 배율 적용 */
   update(dt: number, speed: number): void {
     this.t += dt;
-    for (const l of this.layers) l.sprite.tilePositionY -= speed * l.speed * dt;
+    for (const l of this.layers) {
+      l.sprite.tilePositionY -= speed * l.speed * dt;
+      if (l.hueCycle) {
+        const hue = (this.t * 0.06) % 1;
+        l.sprite.setTint(Phaser.Display.Color.HSVToRGB(hue, 0.75, 1).color);
+      }
+    }
     for (const d of this.decors) {
       if (d.rot) d.img.rotation += d.rot * dt;
       if (d.pulse) d.img.setAlpha((d.img.alpha = 0.85 + Math.sin(this.t * 1.4) * d.pulse));

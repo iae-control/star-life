@@ -158,6 +158,23 @@ interface SuperState {
   acc: number;
   spidSaid: boolean;
 }
+/** 박슬희 필살기 — 거대 배드민턴 채 풀스윙 */
+interface RacketState {
+  t: number;
+  img: Phaser.GameObjects.Image;
+  bossHit: boolean;
+  swooshed: boolean;
+}
+// 대사 표기는 정본 — 변경 금지
+const PS_BUBBLE = 'Hey I am Parksulhee!';
+const PS = {
+  bubbleUntil: 1.0,
+  sweepFrom: 1.0,
+  sweepTo: 2.6,
+  endAt: 3.0,
+  bossDamage: 110,
+  partDamage: 90,
+} as const;
 
 const DEPTH = {
   bg: 0,
@@ -205,6 +222,7 @@ export class GameScene extends Phaser.Scene {
   private textPool: Phaser.GameObjects.Text[] = [];
   private boss: BossState | null = null;
   private sp: SuperState | null = null;
+  private ps: RacketState | null = null;
 
   // 웨이브
   private spawnQ: SpawnEvent[] = [];
@@ -310,6 +328,7 @@ export class GameScene extends Phaser.Scene {
     this.textPool = [];
     this.boss = null;
     this.sp = null;
+    this.ps = null;
     this.spawnQ = [];
     this.waveClearT = -1;
     this.pendingShop = -1;
@@ -379,7 +398,13 @@ export class GameScene extends Phaser.Scene {
       .setDepth(DEPTH.player - 0.4)
       .setBlendMode(Phaser.BlendModes.ADD)
       .setVisible(false);
-    this.playerImg = this.add.image(this.px, this.py, 'ship-player').setDepth(DEPTH.player);
+    this.playerImg = this.add
+      .image(
+        this.px,
+        this.py,
+        this.session.pilot === 'parksulhee' ? 'ship-player-ps' : 'ship-player',
+      )
+      .setDepth(DEPTH.player);
 
     // 사이드킥 표시체
     if (this.session.sidekick === 'pods') {
@@ -1337,8 +1362,25 @@ export class GameScene extends Phaser.Scene {
   /* ---------- 슈퍼 Jungjioo ---------- */
   private startSuper(): void {
     // pendingShop 카운트다운 중 발동하면 상점 전환으로 즉시 소멸되므로 차단
-    if (!this.alive || this.sp || this.session.superN <= 0 || this.pendingShop > 0) return;
+    if (!this.alive || this.sp || this.ps || this.session.superN <= 0 || this.pendingShop > 0)
+      return;
     this.session.superN--;
+    if (this.session.pilot === 'parksulhee') {
+      // 박슬희: 거대 배드민턴 채 일망타진
+      const img = this.add
+        .image(-140, GAME_HEIGHT * 0.46, 'racket')
+        .setDepth(DEPTH.phantom)
+        .setScale(2.1)
+        .setRotation(-0.5)
+        .setVisible(false);
+      this.ps = { t: 0, img, bossHit: false, swooshed: false };
+      this.inv = 999;
+      this.auraImg.setVisible(true);
+      vibrate(80);
+      SFX.superOn();
+      this.shake = 5;
+      return;
+    }
     const n = 3 + (Math.random() < 0.5 ? 1 : 0);
     const holes: Hole[] = [];
     for (let i = 0; i < n; i++) {
@@ -1482,6 +1524,53 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private updatePS(dt: number): void {
+    const ps = this.ps;
+    if (!ps) return;
+    ps.t += dt;
+    if (ps.t < PS.bubbleUntil) {
+      this.showBubble(PS_BUBBLE, this.px, this.py - 34);
+    } else if (ps.t < PS.sweepTo) {
+      this.bubble.setVisible(false);
+      if (!ps.swooshed) {
+        ps.swooshed = true;
+        ps.img.setVisible(true);
+        SFX.spid();
+      }
+      // 풀스윙: 왼쪽 → 오른쪽, 지나간 자리의 적 일망타진
+      const p = (ps.t - PS.sweepFrom) / (PS.sweepTo - PS.sweepFrom);
+      const x = -140 + (GAME_WIDTH + 300) * p;
+      ps.img.setPosition(x, GAME_HEIGHT * 0.46 + Math.sin(p * Math.PI) * -40);
+      ps.img.setRotation(-0.5 + p * 0.85);
+      const front = x + 80;
+      for (const e of this.enemies) {
+        if (!e.dead && e.x < front) this.killEnemy(e);
+      }
+      this.reapEnemies();
+      for (const b of this.ebullets) this.pool.release(b.img);
+      this.ebullets.length = 0;
+      const B = this.boss;
+      if (B && !ps.bossHit && B.x < front) {
+        ps.bossHit = true;
+        vibrate(90);
+        this.shake = 7;
+        const shieldParts = B.parts.filter((pp) => pp.alive && pp.def.shield);
+        if (shieldParts.length > 0) {
+          for (const part of shieldParts) this.damagePart(part, B, PS.partDamage);
+        } else {
+          B.flashT = 0.08;
+          this.damageBoss(PS.bossDamage);
+        }
+      }
+    } else if (ps.t >= PS.endAt) {
+      ps.img.destroy();
+      this.ps = null;
+      this.inv = SUPER.endInvuln;
+      this.auraImg.setVisible(false);
+      this.bubble.setVisible(false);
+    }
+  }
+
   private reapEnemies(): void {
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const e = this.enemies[i];
@@ -1512,6 +1601,7 @@ export class GameScene extends Phaser.Scene {
     }
     if (this.immuneMsgT > 0) this.immuneMsgT -= dt;
     if (this.sp) this.updateSuper(dt);
+    if (this.ps) this.updatePS(dt);
     if (this.auto) this.updateAutoPilot(dt);
 
     this.updatePlayer(dt);
@@ -1534,7 +1624,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     // 슈퍼 진행 중에는 상점 전환을 보류 (연출 강제 절단 방지)
-    if (this.pendingShop > 0 && !this.sp) {
+    if (this.pendingShop > 0 && !this.sp && !this.ps) {
       this.pendingShop -= dt;
       if (this.pendingShop <= 0 && this.alive) {
         if (this.session.campaignDone) {
@@ -1637,7 +1727,7 @@ export class GameScene extends Phaser.Scene {
       this.playerFire();
       this.fireCd = cooldownFor(this.session.cur, weaponLevel(this.session));
     }
-    if (this.inv > 0 && !this.sp) this.inv -= dt;
+    if (this.inv > 0 && !this.sp && !this.ps) this.inv -= dt;
 
     // 후방무기 (피드백 4 — 무기 체계 확장)
     const rear = this.session.rear ? DATA.equipment.rear[this.session.rear] : undefined;
@@ -1720,7 +1810,7 @@ export class GameScene extends Phaser.Scene {
     this.flameImg.setPosition(Math.round(this.px), Math.round(this.py) + 17);
     this.flameImg.setScale(1, 1 + Math.sin(this.worldT * 40) * 0.25);
     this.flameImg.setVisible(this.playerImg.visible);
-    if (this.sp) this.auraImg.setPosition(this.px, this.py);
+    if (this.sp || this.ps) this.auraImg.setPosition(this.px, this.py);
   }
 
   private updateWaves(dt: number): void {
@@ -2163,6 +2253,7 @@ export class GameScene extends Phaser.Scene {
         redgiant: ['prop-emberrock'],
         supernova: ['prop-rock'],
         blackhole: ['prop-derelict'],
+        inside: ['prop-eye', 'prop-shellswirl', 'prop-derelict'],
       };
       const keys = table[this.level.background.theme] ?? ['prop-rock'];
       const key = keys[Math.floor(Math.random() * keys.length)] ?? 'prop-rock';

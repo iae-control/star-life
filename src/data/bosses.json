@@ -760,6 +760,129 @@
       "shopDelay": 2.5,
       "hitCooldown": 0.05,
       "touchDamage": 32
+    },
+    "snail": {
+      "sprite": "boss-snail",
+      "nameKey": "boss.snail",
+      "hp": {
+        "base": 1300,
+        "perWave": 24
+      },
+      "hitbox": {
+        "w": 100,
+        "h": 76
+      },
+      "entryY": 128,
+      "entrySpd": 34,
+      "movement": {
+        "type": "wander",
+        "speed": 22,
+        "minX": 110,
+        "maxX": 250,
+        "minY": 100,
+        "maxY": 180
+      },
+      "cool": {
+        "base": 1.15,
+        "min": 0.5,
+        "perWave": -0.015
+      },
+      "fireOffsetY": 34,
+      "gravity": {
+        "radius": 240,
+        "pull": 280,
+        "playerPull": 55
+      },
+      "phases": [
+        {
+          "type": "spiral",
+          "arms": 3,
+          "speed": 135,
+          "rotStep": 0.5,
+          "cool": 0.24
+        },
+        {
+          "type": "spiral",
+          "arms": 3,
+          "speed": 135,
+          "rotStep": 0.5,
+          "cool": 0.24
+        },
+        {
+          "type": "spiral",
+          "arms": 3,
+          "speed": 135,
+          "rotStep": 0.5,
+          "cool": 1.5
+        },
+        {
+          "type": "ring",
+          "count": 16,
+          "speed": 120
+        },
+        {
+          "type": "aimed",
+          "speed": 185,
+          "offsetX": 30,
+          "big": true
+        },
+        {
+          "type": "spawn",
+          "enemy": "bh_wraith",
+          "count": 2,
+          "cool": 2.2
+        }
+      ],
+      "parts": [
+        {
+          "id": "eyeL",
+          "sprite": "part-eyestalk",
+          "dx": -58,
+          "dy": -18,
+          "hp": {
+            "base": 170,
+            "perWave": 9
+          },
+          "hitbox": {
+            "w": 24,
+            "h": 44
+          },
+          "shield": true,
+          "phase": {
+            "type": "aimed",
+            "speed": 190,
+            "offsetX": 0,
+            "big": false
+          },
+          "fireEvery": 1.6
+        },
+        {
+          "id": "eyeR",
+          "sprite": "part-eyestalk",
+          "dx": -24,
+          "dy": -30,
+          "hp": {
+            "base": 170,
+            "perWave": 9
+          },
+          "hitbox": {
+            "w": 24,
+            "h": 44
+          },
+          "shield": true,
+          "phase": {
+            "type": "aimed",
+            "speed": 190,
+            "offsetX": 0,
+            "big": false
+          },
+          "fireEvery": 1.9
+        }
+      ],
+      "killScore": 25000,
+      "shopDelay": 2.5,
+      "hitCooldown": 0.05,
+      "touchDamage": 34
     }
   }
 }

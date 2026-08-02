@@ -30,6 +30,7 @@ export class TitleScene extends Phaser.Scene {
   private menuTexts: Phaser.GameObjects.Text[] = [];
   private sel = 0;
   private diffText!: Phaser.GameObjects.Text;
+  private pilotText!: Phaser.GameObjects.Text;
 
   constructor() {
     super(SceneKeys.Title);
@@ -61,7 +62,13 @@ export class TitleScene extends Phaser.Scene {
       .image(GAME_WIDTH / 2, 246 + 52, 'engine-flame')
       .setScale(3)
       .setBlendMode(Phaser.BlendModes.ADD);
-    this.ship = this.add.image(GAME_WIDTH / 2, 246, 'ship-player').setScale(3);
+    this.ship = this.add
+      .image(
+        GAME_WIDTH / 2,
+        246,
+        save.settings.pilot === 'parksulhee' ? 'ship-player-ps' : 'ship-player',
+      )
+      .setScale(3);
     this.orb = this.add.image(GAME_WIDTH / 2 + 92, 246, 'orb-P').setScale(1.4);
 
     uiText(this, GAME_WIDTH / 2, 132, '별의 일생', 40, '#dfe8ff', 'center');
@@ -138,6 +145,21 @@ export class TitleScene extends Phaser.Scene {
       .setOrigin(0, 0)
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', () => this.cycleDiff(1));
+    // 조종사 선택 (정지우 / 박슬희)
+    this.pilotText = uiText(
+      this,
+      GAME_WIDTH / 2,
+      menuY + this.menu.length * 30 + 38,
+      '',
+      10,
+      '#9aa6c8',
+      'center',
+    );
+    this.add
+      .zone(90, menuY + this.menu.length * 30 + 25, GAME_WIDTH - 180, 26)
+      .setOrigin(0, 0)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => this.cyclePilot());
     this.refreshMenu();
 
     uiText(this, GAME_WIDTH / 2, 508, t('title.help1'), 8, '#9aa6c8', 'center');
@@ -176,6 +198,16 @@ export class TitleScene extends Phaser.Scene {
     playMusic('title');
   }
 
+  private cyclePilot(): void {
+    updateSave((s) => {
+      s.settings.pilot = s.settings.pilot === 'jungjioo' ? 'parksulhee' : 'jungjioo';
+    });
+    this.ship.setTexture(
+      loadSave().settings.pilot === 'parksulhee' ? 'ship-player-ps' : 'ship-player',
+    );
+    this.refreshMenu();
+  }
+
   private cycleDiff(d: number): void {
     const save = loadSave();
     const idx = DIFF_ORDER.indexOf(save.settings.difficulty);
@@ -192,8 +224,9 @@ export class TitleScene extends Phaser.Scene {
       const entry = this.menu[i];
       if (entry) txt.setText((i === this.sel ? '▶ ' : '') + entry.label);
     });
-    const diff = loadSave().settings.difficulty;
-    this.diffText.setText(`${t('title.diff')}  ◀ ${t(`diff.${diff}`)} ▶`);
+    const save = loadSave();
+    this.diffText.setText(`${t('title.diff')}  ◀ ${t(`diff.${save.settings.difficulty}`)} ▶`);
+    this.pilotText.setText(`${t('title.pilot')}  ◀ ${t(`pilot.${save.settings.pilot}`)} ▶`);
   }
 
   update(_time: number, deltaMs: number): void {

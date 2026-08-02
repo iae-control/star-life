@@ -357,6 +357,7 @@ export const levelsSchema = z.object({
             'redgiant',
             'supernova',
             'blackhole',
+            'inside',
           ]),
           nebulaAlpha: z.number().min(0).max(1),
         }),

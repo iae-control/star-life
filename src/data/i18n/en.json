@@ -73,7 +73,7 @@
   "level.supernova": "Supernova",
   "level.supernova.tag": "The moment it shatters",
   "level.blackhole": "Black Hole",
-  "level.blackhole.tag": "The dark that devours all",
+  "level.blackhole.tag": "Inside... something is wrong",
   "boss.crimson": "Crimson Giant",
   "boss.nova": "Nova Core",
   "boss.singularity": "Singularity",
@@ -95,5 +95,9 @@
   "tut.move": "Drag (or arrow keys) to move",
   "tut.fire": "Firing is automatic — destroy enemies!",
   "tut.super": "In danger, tap S — super \"Jungjioo\"",
-  "tut.done": "Ready. Good luck!"
+  "tut.done": "Ready. Good luck!",
+  "boss.snail": "Killer Snail",
+  "title.pilot": "Pilot",
+  "pilot.jungjioo": "Jungjioo",
+  "pilot.parksulhee": "Parksulhee"
 }

@@ -73,7 +73,7 @@
   "level.supernova": "초신성",
   "level.supernova.tag": "산산이 흩어지는 순간",
   "level.blackhole": "블랙홀",
-  "level.blackhole.tag": "모든 것을 삼키는 어둠",
+  "level.blackhole.tag": "안쪽은... 무언가 잘못됐다",
   "boss.crimson": "크림슨 자이언트",
   "boss.nova": "노바 코어",
   "boss.singularity": "싱귤래리티",
@@ -95,5 +95,9 @@
   "tut.move": "드래그(또는 방향키)로 기체를 움직여 보세요",
   "tut.fire": "발사는 자동! 적을 파괴하세요",
   "tut.super": "위기엔 우하단 S 버튼 — 슈퍼 \"Jungjioo\"",
-  "tut.done": "준비 완료. 행운을 빕니다!"
+  "tut.done": "준비 완료. 행운을 빕니다!",
+  "boss.snail": "살인달팽이",
+  "title.pilot": "조종사",
+  "pilot.jungjioo": "정지우",
+  "pilot.parksulhee": "박슬희"
 }

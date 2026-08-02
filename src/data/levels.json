@@ -1219,8 +1219,8 @@
       "nameKey": "level.blackhole",
       "taglineKey": "level.blackhole.tag",
       "background": {
-        "theme": "blackhole",
-        "nebulaAlpha": 0.7
+        "theme": "inside",
+        "nebulaAlpha": 0.9
       },
       "scroll": {
         "base": 58,
@@ -1421,7 +1421,7 @@
           }
         ]
       ],
-      "boss": "singularity"
+      "boss": "snail"
     }
   ]
 }
