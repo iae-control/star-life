@@ -5,7 +5,7 @@ import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH, SceneKeys } from '../config';
 import { DATA, t } from '../data';
 import type { BossData, BossPhase, EnemyTypeData, LevelData } from '../data/schemas';
-import { DIFficulty, PLAYER, SUPER } from '../game/logic/balance';
+import { DIFficulty, PLAYER, STICK, SUPER } from '../game/logic/balance';
 import { aabb, applyDamage } from '../game/logic/damage';
 import { cooldownFor, firePattern, type ShotSpec } from '../game/logic/weapons';
 import { buildLevelWave, type SpawnEvent } from '../game/logic/waves';
@@ -32,6 +32,8 @@ interface EBul {
   y: number;
   vx: number;
   vy: number;
+  /** warp 기믹: 좌우 화면 순환 1회 사용 여부 */
+  warped?: boolean;
   big: boolean;
   size: number;
   img: Phaser.GameObjects.Image;
@@ -307,6 +309,31 @@ export class GameScene extends Phaser.Scene {
   // 입력
   private touchOn = false;
   private dragPointerId = -1;
+  // 가상 아날로그 스틱 — 좌측하단 고정 + 아무 곳 터치 플로팅
+  private stickOn = false;
+  private stickBaseX = 0;
+  private stickBaseY = 0;
+  private stickDx = 0;
+  private stickDy = 0;
+  private stickBase!: Phaser.GameObjects.Graphics;
+  private stickKnob!: Phaser.GameObjects.Graphics;
+
+  // 스테이지 기믹 상태 (levels.json gimmick)
+  private gimT = 0;
+  private fogs: { img: Phaser.GameObjects.Image; vx: number; vy: number }[] = [];
+  private vents: {
+    x: number;
+    t: number;
+    warnImg: Phaser.GameObjects.Rectangle;
+    img: Phaser.GameObjects.Image | null;
+  }[] = [];
+  private windCur = 0;
+  private windT = 0;
+  private windStreakT = 0;
+  private heatwaves: { y: number; gapX: number; imgs: Phaser.GameObjects.Image[]; hit: boolean }[] =
+    [];
+  private warpPulseT = 0;
+  private scrollRev = 0;
   private touchTx = 0;
   private touchTy = 0;
   private keyMap!: Record<string, Phaser.Input.Keyboard.Key>;
@@ -391,6 +418,18 @@ export class GameScene extends Phaser.Scene {
     this.worldT = 0;
     this.touchOn = false;
     this.dragPointerId = -1;
+    this.stickOn = false;
+    this.stickDx = 0;
+    this.stickDy = 0;
+    this.gimT = 0;
+    this.fogs = [];
+    this.vents = [];
+    this.windCur = 0;
+    this.windT = 0;
+    this.windStreakT = 0;
+    this.heatwaves = [];
+    this.warpPulseT = 0;
+    this.scrollRev = 0;
     this.bubbleMsg = '';
     this.hudPips = [];
     this.flashes = [];
@@ -617,6 +656,19 @@ export class GameScene extends Phaser.Scene {
     this.superCount = uiText(this, 0, 12, '', 8, '#cfc2ff', 'center');
     this.superBtn = this.add.container(bx, by, [g, label, this.superCount]).setDepth(DEPTH.hud + 1);
 
+    // 가상 스틱 비주얼 — 평소엔 좌측하단에 반투명 대기, 잡으면 밝아짐
+    this.stickBase = this.add.graphics().setDepth(DEPTH.hud + 1);
+    this.stickBase.lineStyle(2, 0x8caaff, 0.9);
+    this.stickBase.strokeCircle(0, 0, STICK.radius);
+    this.stickBase.lineStyle(1, 0x8caaff, 0.35);
+    this.stickBase.strokeCircle(0, 0, STICK.radius * 0.55);
+    this.stickKnob = this.add.graphics().setDepth(DEPTH.hud + 1.1);
+    this.stickKnob.fillStyle(0xbfd2ff, 0.9);
+    this.stickKnob.fillCircle(0, 0, 17);
+    this.stickKnob.lineStyle(1, 0xe8f0ff, 0.8);
+    this.stickKnob.strokeCircle(0, 0, 17);
+    this.setStickIdle();
+
     this.bannerText = uiText(this, GAME_WIDTH / 2, 200, '', 22, '#e8ecff', 'center')
       .setDepth(DEPTH.banner)
       .setVisible(false);
@@ -834,7 +886,8 @@ export class GameScene extends Phaser.Scene {
       kb.on('keydown-ESC', () => this.togglePause());
     }
 
-    // 멀티터치: 첫 손가락이 드래그를 잡고, 다른 손가락은 슈퍼 버튼 등 별개 처리
+    // 멀티터치: 첫 손가락이 스틱을 잡고, 다른 손가락은 슈퍼 버튼 등 별개 처리
+    this.input.addPointer(2);
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       audioResume();
       const bx = GAME_WIDTH - 31;
@@ -849,15 +902,22 @@ export class GameScene extends Phaser.Scene {
       }
       if (this.dragPointerId === -1) {
         this.dragPointerId = p.id;
-        this.touchOn = true;
-        this.touchTx = p.worldX;
-        this.touchTy = p.worldY + PLAYER.touchOffsetY;
+        this.stickOn = true;
+        // 좌측하단 고정 스틱을 잡으면 그 자리, 그 외엔 터치 지점에 플로팅
+        const nearHome = Math.hypot(p.worldX - STICK.homeX, p.worldY - STICK.homeY) < STICK.grabRadius;
+        // 플로팅 베이스는 터치 지점 그대로(클램프 금지) — 클램프하면 그 오프셋이 유령 편향으로 주입된다
+        this.stickBaseX = nearHome ? STICK.homeX : p.worldX;
+        this.stickBaseY = nearHome ? STICK.homeY : p.worldY;
+        this.stickDx = nearHome ? p.worldX - STICK.homeX : 0;
+        this.stickDy = nearHome ? p.worldY - STICK.homeY : 0;
+        this.updateStickVisual();
       }
     });
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
-      if (!this.touchOn || p.id !== this.dragPointerId) return;
-      this.touchTx = p.worldX;
-      this.touchTy = p.worldY + PLAYER.touchOffsetY;
+      if (!this.stickOn || p.id !== this.dragPointerId) return;
+      this.stickDx = p.worldX - this.stickBaseX;
+      this.stickDy = p.worldY - this.stickBaseY;
+      this.updateStickVisual();
     });
     const onUp = (p: Phaser.Input.Pointer): void => {
       if (p.id === this.dragPointerId) this.releaseTouch();
@@ -884,7 +944,26 @@ export class GameScene extends Phaser.Scene {
 
   private releaseTouch(): void {
     this.touchOn = false;
+    this.stickOn = false;
+    this.stickDx = 0;
+    this.stickDy = 0;
     this.dragPointerId = -1;
+    this.setStickIdle();
+  }
+
+  /** 스틱 대기 상태: 좌측하단 홈 위치에 반투명 표시 */
+  private setStickIdle(): void {
+    this.stickBase.setPosition(STICK.homeX, STICK.homeY).setAlpha(0.34);
+    this.stickKnob.setPosition(STICK.homeX, STICK.homeY).setAlpha(0.34);
+  }
+
+  private updateStickVisual(): void {
+    const len = Math.hypot(this.stickDx, this.stickDy);
+    const cl = len > STICK.radius ? STICK.radius / len : 1;
+    this.stickBase.setPosition(this.stickBaseX, this.stickBaseY).setAlpha(0.75);
+    this.stickKnob
+      .setPosition(this.stickBaseX + this.stickDx * cl, this.stickBaseY + this.stickDy * cl)
+      .setAlpha(0.9);
   }
 
   private onBlur = (): void => {
@@ -1815,8 +1894,9 @@ export class GameScene extends Phaser.Scene {
     this.worldT += dt;
     if (this.tutStep >= 0) this.updateTutorial(realDt);
 
-    this.spaceBg.update(dt, this.scrollSpd);
+    this.spaceBg.update(dt, this.scrollRev > 0 ? -this.scrollSpd * 0.55 : this.scrollSpd);
     this.updateProps(dt);
+    this.updateGimmick(dt);
     if (this.bannerT > 0) {
       this.bannerT -= dt;
       this.bannerText.setAlpha(Math.min(1, this.bannerT * 2));
@@ -1907,7 +1987,21 @@ export class GameScene extends Phaser.Scene {
       if (k.down?.isDown || k.s?.isDown) ay += 1;
     }
     const f60 = dt * 60;
-    if (this.touchOn) {
+    if (this.stickOn) {
+      // 아날로그 스틱: 상대 조작 — 기울인 방향·크기로 속도 직결 (지연 없는 즉답감)
+      const len = Math.hypot(this.stickDx, this.stickDy);
+      let mag = Math.min(1, len / STICK.radius);
+      mag = mag < STICK.deadzone ? 0 : Math.pow(mag, STICK.curve);
+      if (mag > 0 && len > 0) {
+        this.pvx = (this.stickDx / len) * STICK.speed * mag;
+        this.pvy = (this.stickDy / len) * STICK.speed * mag;
+      } else {
+        const fr = Math.pow(PLAYER.friction, f60);
+        this.pvx *= fr;
+        this.pvy *= fr;
+      }
+    } else if (this.touchOn) {
+      // 스프링 추적 — 자동 조종(?auto 소크 봇)용으로 유지
       this.pvx +=
         clamp(
           (this.touchTx - this.px) * PLAYER.touchSpring,
@@ -1942,11 +2036,15 @@ export class GameScene extends Phaser.Scene {
         this.pvy += (dy / L) * f * dt * 6;
       }
     }
+    // 태양풍(기믹): 속도 대입에 소멸되지 않도록 위치 변위로 — 조작 방식과 무관하게 동일한 밀림
+    const gw = this.level.gimmick;
+    if (gw?.type === 'wind') this.px += this.windCur * gw.force * 0.62 * dt;
     this.px = clamp(this.px + this.pvx * dt, PLAYER.minX, PLAYER.maxX);
     this.py = clamp(this.py + this.pvy * dt, PLAYER.minY, PLAYER.maxY);
 
     this.fireCd -= dt;
-    const wantFire = this.touchOn || this.keyMap?.space?.isDown || this.keyMap?.z?.isDown;
+    const wantFire =
+      this.touchOn || this.stickOn || this.keyMap?.space?.isDown || this.keyMap?.z?.isDown;
     if (wantFire && this.fireCd <= 0) {
       this.playerFire();
       this.fireCd = cooldownFor(this.session.cur, weaponLevel(this.session));
@@ -2122,6 +2220,16 @@ export class GameScene extends Phaser.Scene {
       if (!b) continue;
       b.x += b.vx * dt;
       b.y += b.vy * dt;
+      // warp 기믹: 좌우로 나간 적탄이 반대편에서 1회 재진입
+      if (this.level.gimmick?.type === 'warp' && !b.warped) {
+        if (b.x < -8) {
+          b.x += GAME_WIDTH + 16;
+          b.warped = true;
+        } else if (b.x > GAME_WIDTH + 8) {
+          b.x -= GAME_WIDTH + 16;
+          b.warped = true;
+        }
+      }
       b.img.setPosition(b.x, b.y);
       if (b.y > GAME_HEIGHT + 25 || b.y < -25 || b.x < -25 || b.x > GAME_WIDTH + 25) {
         this.pool.release(b.img);
@@ -2470,6 +2578,161 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** 티리안식 대형 지형 구조물 — 테마별 프롭이 스크롤을 따라 흘러간다 */
+  /** 스테이지 기믹 — 테마별 환경 요소 (levels.json gimmick, 데이터 주도) */
+  private updateGimmick(dt: number): void {
+    const g = this.level.gimmick;
+    if (!g) return;
+    // 보스전 중·보스 격파 후 클리어 연출(pendingShop) 중에는 위험 기믹을 봉인:
+    // 스폰 금지 + 타이머 홀드(게이트 해제 직후 즉발 방지) + 연출 중 피해 판정 정지
+    const hazardGate = !!this.boss || this.pendingShop > 0;
+    const canHurt = this.pendingShop <= 0;
+
+    if (g.type === 'fog') {
+      // L1 성운: 안개 구름이 흘러가며 적을 가린다
+      this.gimT += dt;
+      if (this.gimT >= g.interval && this.fogs.length < 3) {
+        this.gimT = 0;
+        const img = this.add
+          .image(rnd(40, GAME_WIDTH - 40), -70, 'fog-cloud')
+          .setDepth(DEPTH.enemy + 0.5)
+          .setScale(rnd(1.7, 2.7), rnd(1.4, 2.0))
+          .setAlpha(g.alpha)
+          .setBlendMode(Phaser.BlendModes.SCREEN);
+        this.fogs.push({ img, vx: rnd(-9, 9), vy: this.scrollSpd * rnd(0.75, 1.0) });
+      }
+      for (let i = this.fogs.length - 1; i >= 0; i--) {
+        const f = this.fogs[i];
+        if (!f) continue;
+        f.img.x += f.vx * dt;
+        f.img.y += f.vy * dt;
+        if (f.img.y > GAME_HEIGHT + 90) {
+          f.img.destroy();
+          this.fogs.splice(i, 1);
+        }
+      }
+    } else if (g.type === 'vents') {
+      // L2 원시별: 예고선 → 화염 기둥 분출
+      this.gimT += dt;
+      if (hazardGate) this.gimT = Math.min(this.gimT, g.interval * 0.4);
+      if (this.gimT >= g.interval && !hazardGate) {
+        this.gimT = 0;
+        const x = rnd(50, GAME_WIDTH - 50);
+        const warnImg = this.add
+          .rectangle(x, GAME_HEIGHT - 165, 5, 330, 0xff6a30, 0.55)
+          .setDepth(DEPTH.bg + 1.2);
+        this.vents.push({ x, t: 0, warnImg, img: null });
+        SFX.eshoot();
+      }
+      for (let i = this.vents.length - 1; i >= 0; i--) {
+        const v = this.vents[i];
+        if (!v) continue;
+        v.t += dt;
+        if (v.t < g.warn) {
+          v.warnImg.setAlpha(Math.floor(v.t * 10) % 2 === 0 ? 0.6 : 0.2);
+        } else {
+          if (!v.img) {
+            v.warnImg.destroy();
+            v.img = this.add
+              .image(v.x, GAME_HEIGHT - 165, 'vent-pillar')
+              .setDepth(DEPTH.ebullet + 0.5)
+              .setBlendMode(Phaser.BlendModes.ADD);
+            SFX.swoosh();
+            this.shake = Math.min(7, this.shake + 2);
+          }
+          v.img.setScale(rnd(0.9, 1.2), 1).setAlpha(Math.min(1, (g.warn + g.burn - v.t) * 4));
+          if (
+            this.alive &&
+            canHurt &&
+            Math.abs(this.px - v.x) < g.width / 2 + PLAYER.hitW / 2 &&
+            this.py > GAME_HEIGHT - 330
+          ) {
+            this.damagePlayer(g.damage);
+          }
+          if (v.t >= g.warn + g.burn) {
+            v.img.destroy();
+            this.vents.splice(i, 1);
+          }
+        }
+      }
+    } else if (g.type === 'wind') {
+      // L3 주계열성: 태양풍 — 주기적으로 방향이 바뀌는 횡풍
+      this.windT += dt;
+      const target = this.windT % (g.period * 2) < g.period ? 1 : -1;
+      this.windCur += (target - this.windCur) * Math.min(1, dt * 1.6);
+      for (const b of this.bullets) b.x += this.windCur * g.force * 0.35 * dt;
+      this.windStreakT += dt;
+      if (this.windStreakT > 0.11) {
+        this.windStreakT = 0;
+        const sImg = this.fxPool.get('wind-streak', rnd(0, GAME_WIDTH), rnd(50, GAME_HEIGHT - 40));
+        sImg
+          .setDepth(DEPTH.bg + 1.1)
+          .setBlendMode(Phaser.BlendModes.ADD)
+          .setAlpha(0.5)
+          .setFlipX(this.windCur < 0);
+        this.sparks.push({ img: sImg, vx: this.windCur * 430, vy: 0, t: 0.35 });
+      }
+    } else if (g.type === 'heatwave') {
+      // L4 적색거성: 팽창 맥동 — 틈새 하나 남기고 올라오는 열파 띠
+      this.gimT += dt;
+      if (hazardGate) this.gimT = Math.min(this.gimT, g.interval * 0.4);
+      if (this.gimT >= g.interval && !hazardGate) {
+        this.gimT = 0;
+        const gapX = rnd(70, GAME_WIDTH - 70);
+        const imgs: Phaser.GameObjects.Image[] = [];
+        for (let x = 14; x < GAME_WIDTH; x += 28) {
+          if (Math.abs(x - gapX) < g.gap / 2) continue;
+          const im = this.fxPool.get('heat-flame', x, GAME_HEIGHT + 22);
+          im.setDepth(DEPTH.ebullet + 0.3)
+            .setBlendMode(Phaser.BlendModes.ADD)
+            .setScale(1.25);
+          imgs.push(im);
+        }
+        this.heatwaves.push({ y: GAME_HEIGHT + 22, gapX, imgs, hit: false });
+        SFX.swoosh();
+        vibrate(25);
+      }
+      for (let i = this.heatwaves.length - 1; i >= 0; i--) {
+        const hw = this.heatwaves[i];
+        if (!hw) continue;
+        hw.y -= g.speed * dt;
+        for (const im of hw.imgs) {
+          im.setY(hw.y);
+          im.setScale(1.1 + Math.sin(this.worldT * 18 + im.x) * 0.2);
+        }
+        if (
+          this.alive &&
+          canHurt &&
+          !hw.hit &&
+          Math.abs(this.py - hw.y) < 15 + PLAYER.hitH / 2 &&
+          Math.abs(this.px - hw.gapX) > g.gap / 2 - PLAYER.hitW / 2
+        ) {
+          hw.hit = true;
+          this.damagePlayer(g.damage);
+        }
+        if (hw.y < -26) {
+          for (const im of hw.imgs) this.fxPool.release(im);
+          this.heatwaves.splice(i, 1);
+        }
+      }
+    } else if (g.type === 'debris') {
+      // L5 초신성: 파괴 가능한 잔해 낙하 (부수면 점수·크레딧)
+      this.gimT += dt;
+      if (hazardGate) this.gimT = Math.min(this.gimT, g.interval * 0.4);
+      if (this.gimT >= g.interval && !hazardGate) {
+        this.gimT = 0;
+        this.spawnEnemyAt(g.enemy, rnd(40, GAME_WIDTH - 40), -45, { vx: rnd(-28, 28) });
+      }
+    } else if (g.type === 'warp') {
+      // L6 블랙홀 안쪽: 공간 왜곡 — 주기적 스크롤 역류 (적탄 순환은 updateEBullets)
+      this.warpPulseT += dt;
+      if (this.warpPulseT >= g.pulseEvery) {
+        this.warpPulseT = 0;
+        this.scrollRev = 1.3;
+      }
+      if (this.scrollRev > 0) this.scrollRev -= dt;
+    }
+  }
+
   private updateProps(dt: number): void {
     this.propT += dt;
     if (this.propT >= this.nextPropAt) {

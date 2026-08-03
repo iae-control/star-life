@@ -69,7 +69,7 @@
             "w": 24,
             "h": 24
           },
-          "shield": false,
+          "shield": true,
           "phase": {
             "type": "aimed",
             "speed": 150,
@@ -91,7 +91,7 @@
             "w": 24,
             "h": 24
           },
-          "shield": false,
+          "shield": true,
           "phase": {
             "type": "aimed",
             "speed": 150,
@@ -284,7 +284,7 @@
             "w": 24,
             "h": 30
           },
-          "shield": false,
+          "shield": true,
           "phase": {
             "type": "fan",
             "count": 3,
@@ -306,7 +306,7 @@
             "w": 24,
             "h": 30
           },
-          "shield": false,
+          "shield": true,
           "phase": {
             "type": "fan",
             "count": 3,
@@ -859,8 +859,8 @@
         {
           "id": "eyeR",
           "sprite": "part-eyestalk",
-          "dx": -24,
-          "dy": -30,
+          "dx": -76,
+          "dy": -44,
           "hp": {
             "base": 170,
             "perWave": 9

@@ -268,7 +268,12 @@
           }
         ]
       ],
-      "boss": "amoeba"
+      "boss": "amoeba",
+      "gimmick": {
+        "type": "fog",
+        "interval": 6.0,
+        "alpha": 0.5
+      }
     },
     {
       "id": 2,
@@ -534,7 +539,15 @@
           }
         ]
       ],
-      "boss": "protocore"
+      "boss": "protocore",
+      "gimmick": {
+        "type": "vents",
+        "interval": 7.5,
+        "warn": 1.1,
+        "burn": 0.8,
+        "width": 34,
+        "damage": 12
+      }
     },
     {
       "id": 3,
@@ -790,7 +803,12 @@
           }
         ]
       ],
-      "boss": "helios"
+      "boss": "helios",
+      "gimmick": {
+        "type": "wind",
+        "force": 90,
+        "period": 6.0
+      }
     },
     {
       "id": 4,
@@ -1034,7 +1052,14 @@
           }
         ]
       ],
-      "boss": "crimson"
+      "boss": "crimson",
+      "gimmick": {
+        "type": "heatwave",
+        "interval": 9.0,
+        "speed": 135,
+        "gap": 104,
+        "damage": 12
+      }
     },
     {
       "id": 5,
@@ -1264,7 +1289,12 @@
           }
         ]
       ],
-      "boss": "nova"
+      "boss": "nova",
+      "gimmick": {
+        "type": "debris",
+        "interval": 6.0,
+        "enemy": "sn_boulder"
+      }
     },
     {
       "id": 6,
@@ -1487,7 +1517,11 @@
           }
         ]
       ],
-      "boss": "snail"
+      "boss": "snail",
+      "gimmick": {
+        "type": "warp",
+        "pulseEvery": 10.0
+      }
     }
   ]
 }

@@ -953,6 +953,58 @@ export function generateTextures(scene: Phaser.Scene): void {
   addCanvasTexture(scene, 'parrot-r', enhance(pixmap(PARROT_MAP, PARROT_PAL_R, 2)));
   addCanvasTexture(scene, 'jw-mountains', jwMountains());
 
+  // 스테이지 기믹 텍스처 (M-기믹)
+  {
+    // 성운 안개 구름 — 부드러운 타원 라디얼
+    const [c, ctx] = canvas(160, 90);
+    const g2 = ctx.createRadialGradient(80, 45, 4, 80, 45, 78);
+    g2.addColorStop(0, 'rgba(190,160,235,0.85)');
+    g2.addColorStop(0.6, 'rgba(150,120,210,0.45)');
+    g2.addColorStop(1, 'rgba(120,90,190,0)');
+    ctx.save();
+    ctx.scale(1, 0.56);
+    ctx.translate(0, 35);
+    ctx.fillStyle = g2;
+    ctx.fillRect(0, -80, 160, 260);
+    ctx.restore();
+    addCanvasTexture(scene, 'fog-cloud', c);
+  }
+  {
+    // 열 분출 기둥 — 아래가 진한 세로 그라디언트
+    const [c, ctx] = canvas(36, 330);
+    const g2 = ctx.createLinearGradient(0, 0, 0, 330);
+    g2.addColorStop(0, 'rgba(255,220,120,0)');
+    g2.addColorStop(0.25, 'rgba(255,170,60,0.55)');
+    g2.addColorStop(0.8, 'rgba(255,110,30,0.95)');
+    g2.addColorStop(1, 'rgba(255,235,160,1)');
+    ctx.fillStyle = g2;
+    ctx.fillRect(6, 0, 24, 330);
+    ctx.fillStyle = 'rgba(255,140,40,0.5)';
+    ctx.fillRect(0, 40, 36, 290);
+    addCanvasTexture(scene, 'vent-pillar', c);
+  }
+  {
+    // 태양풍 줄기
+    const [c, ctx] = canvas(30, 3);
+    const g2 = ctx.createLinearGradient(0, 0, 30, 0);
+    g2.addColorStop(0, 'rgba(255,240,200,0)');
+    g2.addColorStop(1, 'rgba(255,240,200,0.9)');
+    ctx.fillStyle = g2;
+    ctx.fillRect(0, 0, 30, 3);
+    addCanvasTexture(scene, 'wind-streak', c);
+  }
+  {
+    // 열파 불꽃 구슬
+    const [c, ctx] = canvas(26, 26);
+    const g2 = ctx.createRadialGradient(13, 13, 1, 13, 13, 13);
+    g2.addColorStop(0, 'rgba(255,240,180,1)');
+    g2.addColorStop(0.5, 'rgba(255,150,50,0.85)');
+    g2.addColorStop(1, 'rgba(255,80,20,0)');
+    ctx.fillStyle = g2;
+    ctx.fillRect(0, 0, 26, 26);
+    addCanvasTexture(scene, 'heat-flame', c);
+  }
+
   // 플레이어 탄 (글로우 베이크)
   addCanvasTexture(
     scene,

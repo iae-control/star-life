@@ -482,6 +482,44 @@
       },
       "tint": "#b48aff",
       "scale": 1.8
+    },
+    "sn_boulder": {
+      "behavior": "diver",
+      "sprite": "az-asteroid-big-a",
+      "score": 150,
+      "hp": {
+        "base": 30,
+        "perWave": 1.5
+      },
+      "onDeath": {
+        "spawn": {
+          "type": "sn_pebble",
+          "count": 2
+        }
+      },
+      "params": {
+        "spdBase": 95,
+        "spdPerWave": 2,
+        "homingClamp": 1,
+        "homingGain": 0
+      },
+      "scale": 1.1
+    },
+    "sn_pebble": {
+      "behavior": "diver",
+      "sprite": "az-asteroid-med-b",
+      "score": 60,
+      "hp": {
+        "base": 8,
+        "perWave": 0.6
+      },
+      "params": {
+        "spdBase": 150,
+        "spdPerWave": 3,
+        "homingClamp": 40,
+        "homingGain": 0.4
+      },
+      "scale": 0.9
     }
   }
 }

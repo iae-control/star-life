@@ -33,6 +33,17 @@ export const PLAYER = {
   superMax: 5,
 } as const;
 
+// 가상 아날로그 스틱 (좌측하단 고정 + 화면 전체 플로팅) — 상대 조작
+export const STICK = {
+  homeX: 62,
+  homeY: GAME_HEIGHT - 74,
+  radius: 42, // 노브 최대 이동 반경
+  grabRadius: 78, // 고정 스틱 잡기 판정
+  deadzone: 0.08,
+  curve: 1.4, // 미세 조작 곡선 (mag^curve)
+  speed: 322, // maxSpeed(257)보다 빠르게 — 터치 기동성 보정
+} as const;
+
 // 난이도 배수 (Easy/Normal/Hard) — 적 체력·적 공격력·크레딧 수입
 export interface DiffMods {
   hp: number;

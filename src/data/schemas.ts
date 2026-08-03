@@ -352,6 +352,31 @@ const waveGroupSchema = z.discriminatedUnion('kind', [
   }),
 ]);
 
+/** 스테이지 기믹 — 테마별 환경 요소 (데이터 주도) */
+const gimmickSchema = z
+  .discriminatedUnion('type', [
+    z.object({ type: z.literal('fog'), interval: z.number(), alpha: z.number().min(0).max(1) }),
+    z.object({
+      type: z.literal('vents'),
+      interval: z.number(),
+      warn: z.number(),
+      burn: z.number(),
+      width: z.number(),
+      damage: z.number(),
+    }),
+    z.object({ type: z.literal('wind'), force: z.number(), period: z.number() }),
+    z.object({
+      type: z.literal('heatwave'),
+      interval: z.number(),
+      speed: z.number(),
+      gap: z.number(),
+      damage: z.number(),
+    }),
+    z.object({ type: z.literal('debris'), interval: z.number(), enemy: z.string() }),
+    z.object({ type: z.literal('warp'), pulseEvery: z.number() }),
+  ])
+  .optional();
+
 export const levelsSchema = z.object({
   clearDelay: z.number(),
   bossDelay: z.number(),
@@ -377,6 +402,7 @@ export const levelsSchema = z.object({
         scroll: z.object({ base: z.number(), perWave: z.number(), boss: z.number() }),
         waves: z.array(z.array(waveGroupSchema).min(1)).min(1),
         boss: z.string(),
+        gimmick: gimmickSchema,
       }),
     )
     .min(1),
