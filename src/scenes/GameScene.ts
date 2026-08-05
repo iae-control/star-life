@@ -9,7 +9,16 @@ import { DIFficulty, PLAYER, STICK, SUPER } from '../game/logic/balance';
 import { aabb, applyDamage } from '../game/logic/damage';
 import { cooldownFor, firePattern, type ShotSpec } from '../game/logic/weapons';
 import { buildLevelWave, type SpawnEvent } from '../game/logic/waves';
-import { newSession, saveBest, weaponLevel, type GameSession } from '../game/session';
+import {
+  newSession,
+  PILOT_REAR,
+  PILOT_SIDEKICK,
+  REAR_MAX_LEVEL,
+  saveBest,
+  SIDE_MAX_LEVEL,
+  weaponLevel,
+  type GameSession,
+} from '../game/session';
 import { SpaceBackground } from '../systems/background';
 import { playMusic } from '../systems/Music';
 import { vibrate } from '../systems/haptics';
@@ -128,7 +137,7 @@ interface OrbEnt {
   y: number;
   vy: number;
   t: number;
-  type: 'P' | 'S';
+  type: 'P' | 'S' | 'R' | 'W';
   img: Phaser.GameObjects.Image;
   glow: Phaser.GameObjects.Image;
 }
@@ -210,27 +219,35 @@ interface JiwooState {
   yellT: number;
   bg: Phaser.GameObjects.TileSprite;
 }
-/** 지우큰애비 필살기 — 푸들 하무가 전방으로 날아간다 (쉭쉭) */
+/** 지우큰애비 필살기 — 푸들 하무 단 한 마리의 화력집중 돌진: 느리게 출발→가속, 막판 1.2초 뱅글뱅글 */
 interface KbState {
   t: number;
-  pass: number;
+  phase: 'flight' | 'spin' | 'fade';
   img: Phaser.GameObjects.Image;
   glow: Phaser.GameObjects.Image;
-  y: number;
   x: number;
-  bossHitThisPass: boolean;
-  bossPasses: number;
+  y: number;
+  vy: number;
+  phaseT: number;
+  bossHits: number;
+  bossTickT: number;
 }
 // 대사 표기는 정본 — 변경 금지
 const KB_BUBBLE = '하무야 물어! 쉭쉭!';
 const KB = {
   bubbleUntil: 1.1,
-  speed: 1250,
-  halfWidth: 96,
-  passes: 3,
-  bossDamagePerPass: 40,
-  partDamagePerPass: 34,
-  maxBossPasses: 3,
+  vyStart: 150,
+  accel: 620,
+  vyMax: 1050,
+  halfWidth: 100,
+  spinY: 170,
+  spinDur: 1.2,
+  spinRadius: 165,
+  fadeDur: 0.3,
+  bossDamagePerHit: 40,
+  partDamagePerHit: 34,
+  maxBossHits: 3,
+  spinBossEvery: 0.45,
 } as const;
 
 // 대사 표기는 정본 — 변경 금지
@@ -297,6 +314,16 @@ export class GameScene extends Phaser.Scene {
   private ps: RacketState | null = null;
   private jw: JiwooState | null = null;
   private kb: KbState | null = null;
+  // 뼈다귀 리코셰 (지우큰애비 후방무기)
+  private bones: {
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    life: number;
+    bhcd: number;
+    img: Phaser.GameObjects.Image;
+  }[] = [];
 
   // 웨이브
   private spawnQ: SpawnEvent[] = [];
@@ -369,7 +396,6 @@ export class GameScene extends Phaser.Scene {
   private hudPips: Phaser.GameObjects.Rectangle[] = [];
   private hudWaveT!: Phaser.GameObjects.Text;
   private hudScore!: Phaser.GameObjects.Text;
-  private hudCredits!: Phaser.GameObjects.Text;
   private hudMute!: Phaser.GameObjects.Text;
   private bossBar!: Phaser.GameObjects.Rectangle;
   private bossLabel!: Phaser.GameObjects.Text;
@@ -394,7 +420,6 @@ export class GameScene extends Phaser.Scene {
   private tutText: Phaser.GameObjects.Text | null = null;
   // HUD 변경 감지 캐시
   private lastScore = -1;
-  private lastCredits = -1;
   private lastWave = -1;
   private lastSuperN = -1;
   private lastWpnKey = '';
@@ -430,6 +455,7 @@ export class GameScene extends Phaser.Scene {
     this.ps = null;
     this.jw = null;
     this.kb = null;
+    this.bones = [];
     this.spawnQ = [];
     this.waveClearT = -1;
     this.pendingShop = -1;
@@ -470,7 +496,7 @@ export class GameScene extends Phaser.Scene {
     this.tutT = 0;
     this.tutMoved = 0;
     this.tutText = null;
-    this.lastScore = this.lastCredits = this.lastWave = this.lastSuperN = -1;
+    this.lastScore = this.lastWave = this.lastSuperN = -1;
     this.lastWpnKey = '';
     this.lastWpnLvl = -1;
     this.podL = this.podR = this.satellite = null;
@@ -525,22 +551,8 @@ export class GameScene extends Phaser.Scene {
     // 엔진 화염은 시트에 포함(행 플리커) — 별도 화염 이미지는 끈다
     this.flameImg.setVisible(false);
 
-    // 사이드킥 표시체
-    if (this.session.sidekick === 'pods') {
-      this.podL = this.add
-        .image(this.px - 26, this.py + 8, 'ship-mite')
-        .setDepth(DEPTH.player - 0.2);
-      this.podR = this.add
-        .image(this.px + 26, this.py + 8, 'ship-mite')
-        .setDepth(DEPTH.player - 0.2);
-      this.podL.setTint(0x8fd3ff);
-      this.podR.setTint(0x8fd3ff);
-    } else if (this.session.sidekick === 'satellite') {
-      this.satellite = this.add
-        .image(this.px, this.py - 40, 'orb-S')
-        .setDepth(DEPTH.player - 0.2)
-        .setScale(1.2);
-    }
+    // 사이드킥 표시체 (이어하기 세션 등 이미 보유한 경우)
+    this.createSidekickVisuals();
 
     playMusic(this.level.background.theme);
 
@@ -585,8 +597,8 @@ export class GameScene extends Phaser.Scene {
       }
       if (!this.scene.isActive(SceneKeys.Game)) return;
       if (this.pendingShop > 0 && !this.session.campaignDone) {
-        // 보스 격파~상점 전환 창: 상점을 건너뛰지 않도록 곧장 상점으로
-        this.scene.start(SceneKeys.Shop, { session: this.session });
+        // 보스 격파~전환 창: 곧장 다음 스테이지로 (상점 폐지)
+        this.scene.start(SceneKeys.StageIntro, { session: this.session });
         return;
       }
       this.scene.restart({ session: this.session, replayWave: true });
@@ -655,9 +667,6 @@ export class GameScene extends Phaser.Scene {
     }
     this.hudWaveT = uiText(this, 114, 22, '', 9, '#cfd8ff').setDepth(DEPTH.hud + 1);
     this.hudScore = uiText(this, GAME_WIDTH - 7, 9, '', 11, '#fff2b0', 'right').setDepth(
-      DEPTH.hud + 1,
-    );
-    this.hudCredits = uiText(this, GAME_WIDTH - 7, 22, '', 9, '#ffd76a', 'right').setDepth(
       DEPTH.hud + 1,
     );
     this.add.image(244, 15, 'pause-btn').setDepth(DEPTH.hud + 1);
@@ -1366,7 +1375,6 @@ export class GameScene extends Phaser.Scene {
       this.slomo(0.35, 0.22);
       this.addBoom(B.x + part.def.dx, B.y + part.def.dy, 1.6, true);
       this.session.score += 800;
-      this.session.credits += Math.round(800 * DATA.shop.creditRate * this.diff.credit);
       this.addFloatText(B.x + part.def.dx, B.y + part.def.dy, '+800', '#ffd76a');
       this.pool.release(part.img);
     }
@@ -1435,7 +1443,6 @@ export class GameScene extends Phaser.Scene {
     e.dead = true;
     this.session.kills++;
     this.session.score += e.score;
-    this.session.credits += Math.round(e.score * DATA.shop.creditRate * this.diff.credit);
     this.addBoom(e.x, e.y, 1.3, false);
     this.addFloatText(e.x, e.y, `+${e.score}`, '#ffd76a');
     const orb = DATA.enemies.orb;
@@ -1475,7 +1482,6 @@ export class GameScene extends Phaser.Scene {
         onComplete: () => this.whiteFlash.setVisible(false),
       });
       this.session.score += B.def.killScore;
-      this.session.credits += Math.round(B.def.killScore * DATA.shop.creditRate * this.diff.credit);
       this.addFloatText(bx, by, `+${B.def.killScore}`, '#7ef7ff');
       B.img.clearTint();
       for (const part of B.parts) {
@@ -1550,7 +1556,16 @@ export class GameScene extends Phaser.Scene {
   private dropOrb(x: number, y: number, forceS = false): void {
     this.session.orbCount++;
     const orb = DATA.enemies.orb;
-    const type = forceS || this.session.orbCount % orb.everyNthIsShield === 0 ? 'S' : 'P';
+    const n = this.session.orbCount;
+    // 상점 폐지 — 전부 아이템: S=슈퍼, R=후방무기, W=사이드킥(3의 배수에서 교대), P=주무기
+    const type =
+      forceS || n % orb.everyNthIsSuper === 0
+        ? 'S'
+        : n % orb.everyNthIsRear === 0
+          ? Math.floor(n / orb.everyNthIsRear) % 2 === 1
+            ? 'R'
+            : 'W'
+          : 'P';
     const img = this.pool.get(`orb-${type}`, x, y);
     img.setDepth(DEPTH.orb);
     const glow = this.pool.get('orb-glow', x, y);
@@ -1559,6 +1574,25 @@ export class GameScene extends Phaser.Scene {
   }
 
   /* ---------- 슈퍼 Jungjioo ---------- */
+  /** 사이드킥 표시체 생성 — 세션 보유 시(입장/이어하기) 또는 W오브 획득 순간 */
+  private createSidekickVisuals(): void {
+    if (this.session.sidekick === 'pods' && !this.podL) {
+      this.podL = this.add
+        .image(this.px - 26, this.py + 8, 'ship-mite')
+        .setDepth(DEPTH.player - 0.2);
+      this.podR = this.add
+        .image(this.px + 26, this.py + 8, 'ship-mite')
+        .setDepth(DEPTH.player - 0.2);
+      this.podL.setTint(0x8fd3ff);
+      this.podR.setTint(0x8fd3ff);
+    } else if (this.session.sidekick === 'satellite' && !this.satellite) {
+      this.satellite = this.add
+        .image(this.px, this.py - 40, 'orb-S')
+        .setDepth(DEPTH.player - 0.2)
+        .setScale(1.2);
+    }
+  }
+
   private startSuper(): void {
     // pendingShop 카운트다운 중 발동하면 상점 전환으로 즉시 소멸되므로 차단
     if (
@@ -1587,13 +1621,15 @@ export class GameScene extends Phaser.Scene {
         .setVisible(false);
       this.kb = {
         t: 0,
-        pass: 0,
+        phase: 'flight',
         img,
         glow,
-        x: this.px,
-        y: this.py,
-        bossHitThisPass: false,
-        bossPasses: 0,
+        x: clamp(this.px, 75, GAME_WIDTH - 75),
+        y: this.py - 30,
+        vy: KB.vyStart,
+        phaseT: 0,
+        bossHits: 0,
+        bossTickT: 0,
       };
       this.inv = 999;
       this.auraImg.setVisible(true);
@@ -1864,6 +1900,67 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /** 뼈다귀 리코셰 — 벽에 튕기며 닿는 적을 갉아먹는다 (보스는 쿨다운 딜) */
+  private updateBones(dt: number): void {
+    if (this.bones.length === 0) return;
+    const hb = DATA.enemies.hitbox;
+    for (let i = this.bones.length - 1; i >= 0; i--) {
+      const bn = this.bones[i];
+      if (!bn) continue;
+      bn.life -= dt;
+      bn.bhcd -= dt;
+      bn.x += bn.vx * dt;
+      bn.y += bn.vy * dt;
+      // 화면 벽 반사
+      if (bn.x < 12) {
+        bn.x = 12;
+        bn.vx = Math.abs(bn.vx);
+      } else if (bn.x > GAME_WIDTH - 12) {
+        bn.x = GAME_WIDTH - 12;
+        bn.vx = -Math.abs(bn.vx);
+      }
+      if (bn.y < 44) {
+        bn.y = 44;
+        bn.vy = Math.abs(bn.vy);
+      } else if (bn.y > GAME_HEIGHT - 14) {
+        bn.y = GAME_HEIGHT - 14;
+        bn.vy = -Math.abs(bn.vy);
+      }
+      bn.img.setPosition(bn.x, bn.y);
+      bn.img.setRotation(bn.img.rotation + dt * 9);
+      // 적 접촉 피해 — 개체별 히트 쿨다운(hcd)으로 갉아먹기
+      for (const e of this.enemies) {
+        if (e.dead || e.hcd > 0) continue;
+        if (aabb(bn.x, bn.y, 22, 12, e.x, e.y, hb.w, hb.h)) {
+          e.hp -= 6;
+          e.hcd = 0.22;
+          e.flashT = 0.05;
+          if (e.hp <= 0) this.killEnemy(e);
+        }
+      }
+      // 보스 접촉 — 뼈다귀별 쿨다운 딜 (실드 파츠 우선)
+      const B = this.boss;
+      if (B && B.entered && bn.bhcd <= 0) {
+        const bhb = B.def.hitbox;
+        if (aabb(bn.x, bn.y, 22, 12, B.x, B.y, bhb.w + 10, bhb.h + 10)) {
+          bn.bhcd = 0.6;
+          const shieldParts = B.parts.filter((pp) => pp.alive && pp.def.shield);
+          if (shieldParts.length > 0) {
+            const part = shieldParts[Math.floor(Math.random() * shieldParts.length)];
+            if (part) this.damagePart(part, B, 4);
+          } else {
+            B.flashT = 0.05;
+            this.damageBoss(4);
+          }
+        }
+      }
+      if (bn.life <= 0) {
+        this.pool.release(bn.img);
+        this.bones.splice(i, 1);
+      }
+    }
+  }
+
   private updateKB(dt: number): void {
     const kb = this.kb;
     if (!kb) return;
@@ -1873,9 +1970,81 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     this.bubble.setVisible(false);
-    // 패스 시작: 플레이어 위치(1회차) 또는 화면 아래(재진입)에서 발사
     if (!kb.img.visible) {
-      if (kb.pass >= KB.passes) {
+      kb.img.setVisible(true).setAlpha(1);
+      kb.glow.setVisible(true);
+      SFX.swoosh();
+      vibrate(40);
+    }
+    const B = this.boss;
+    if (kb.phase === 'flight') {
+      // 느리게 출발 → 점차 가속 (화력집중 단일 돌진)
+      kb.vy = Math.min(KB.vyMax, kb.vy + KB.accel * dt);
+      kb.y -= kb.vy * dt;
+      const wob = Math.sin(kb.t * 18) * 5;
+      kb.img.setPosition(kb.x + wob, kb.y);
+      kb.img.setRotation(Math.sin(kb.t * 14) * 0.1);
+      kb.glow.setPosition(kb.x + wob, kb.y).setAlpha(0.5 + Math.sin(kb.t * 24) * 0.25);
+      for (const e of this.enemies) {
+        if (!e.dead && Math.abs(e.x - kb.x) < KB.halfWidth && e.y > kb.y - 240 && e.y < kb.y + 220)
+          this.killEnemy(e);
+      }
+      // 돌진 중 보스를 지나치면 1타
+      if (
+        B &&
+        B.entered &&
+        kb.bossHits < KB.maxBossHits &&
+        kb.bossTickT <= 0 &&
+        Math.abs(B.x - kb.x) < B.def.hitbox.w / 2 + KB.halfWidth &&
+        kb.y < B.y + 50
+      ) {
+        this.kbBossBite(B);
+        kb.bossTickT = KB.spinBossEvery;
+      }
+      if (kb.bossTickT > 0) kb.bossTickT -= dt;
+      if (kb.y <= KB.spinY) {
+        kb.phase = 'spin';
+        kb.phaseT = 0;
+        SFX.swoosh();
+        vibrate(60);
+      }
+    } else if (kb.phase === 'spin') {
+      // 사라지기 전 1.2초 — 뱅글뱅글 블렌더
+      kb.phaseT += dt;
+      kb.img.setPosition(kb.x, kb.y);
+      kb.img.setRotation(kb.img.rotation + dt * 17);
+      kb.glow.setPosition(kb.x, kb.y).setAlpha(0.6 + Math.sin(kb.phaseT * 40) * 0.3);
+      this.shake = Math.min(6, this.shake + dt * 8);
+      const r2 = KB.spinRadius * KB.spinRadius;
+      for (const e of this.enemies) {
+        if (e.dead) continue;
+        const dx = e.x - kb.x;
+        const dy = e.y - kb.y;
+        if (dx * dx + dy * dy < r2) this.killEnemy(e);
+      }
+      kb.bossTickT -= dt;
+      if (
+        B &&
+        B.entered &&
+        kb.bossHits < KB.maxBossHits &&
+        kb.bossTickT <= 0 &&
+        Math.hypot(B.x - kb.x, B.y - kb.y) < KB.spinRadius + B.def.hitbox.w / 2
+      ) {
+        this.kbBossBite(B);
+        kb.bossTickT = KB.spinBossEvery;
+      }
+      if (kb.phaseT >= KB.spinDur) {
+        kb.phase = 'fade';
+        kb.phaseT = 0;
+      }
+    } else {
+      // 페이드 아웃 — 회전 유지하며 사라진다
+      kb.phaseT += dt;
+      const p = Math.min(1, kb.phaseT / KB.fadeDur);
+      kb.img.setRotation(kb.img.rotation + dt * 17);
+      kb.img.setAlpha(1 - p).setScale(0.62 * (1 + p * 0.5));
+      kb.glow.setAlpha((1 - p) * 0.6);
+      if (p >= 1) {
         kb.img.destroy();
         kb.glow.destroy();
         this.kb = null;
@@ -1884,53 +2053,26 @@ export class GameScene extends Phaser.Scene {
         this.bubble.setVisible(false);
         return;
       }
-      kb.pass++;
-      kb.x = clamp(this.px, 70, GAME_WIDTH - 70);
-      kb.y = kb.pass === 1 ? this.py - 30 : GAME_HEIGHT + 240;
-      kb.bossHitThisPass = false;
-      kb.img.setVisible(true).setAlpha(1);
-      kb.glow.setVisible(true);
-      SFX.swoosh();
-      vibrate(40);
     }
-    // 돌진: 위로 가속, 좌우 흔들림 + 회전 워블
-    kb.y -= KB.speed * dt;
-    const wob = Math.sin(kb.t * 21) * 6;
-    kb.img.setPosition(kb.x + wob, kb.y);
-    kb.img.setRotation(Math.sin(kb.t * 17) * 0.12);
-    kb.glow.setPosition(kb.x + wob, kb.y).setAlpha(0.5 + Math.sin(kb.t * 24) * 0.25);
-    // 경로의 적 일망타진 — 푸들 몸통 폭 스와스
-    for (const e of this.enemies) {
-      if (!e.dead && Math.abs(e.x - kb.x) < KB.halfWidth && e.y > kb.y - 240 && e.y < kb.y + 200)
-        this.killEnemy(e);
-    }
-    // 보스: 패스당 1회, 총 3회 상한 — 실드 파츠 우선
-    const B = this.boss;
-    if (
-      B &&
-      B.entered &&
-      !kb.bossHitThisPass &&
-      kb.bossPasses < KB.maxBossPasses &&
-      Math.abs(B.x - kb.x) < B.def.hitbox.w / 2 + KB.halfWidth &&
-      kb.y < B.y + 40
-    ) {
-      kb.bossHitThisPass = true;
-      kb.bossPasses++;
-      vibrate(70);
-      this.shake = Math.min(7, this.shake + 4);
-      const shieldParts = B.parts.filter((pp) => pp.alive && pp.def.shield);
-      if (shieldParts.length > 0) {
-        for (const part of shieldParts) this.damagePart(part, B, KB.partDamagePerPass);
-      } else {
-        B.flashT = 0.08;
-        this.damageBoss(KB.bossDamagePerPass);
-      }
-    }
-    // 화면 밖으로 나가면 다음 패스
-    if (kb.y < -260) kb.img.setVisible(false);
     this.reapEnemies();
     for (const b of this.ebullets) this.pool.release(b.img);
     this.ebullets.length = 0;
+  }
+
+  /** 하무의 물기 — 실드 파츠 우선, 총 3회 상한 */
+  private kbBossBite(B: BossState): void {
+    const kb = this.kb;
+    if (!kb) return;
+    kb.bossHits++;
+    vibrate(70);
+    this.shake = Math.min(7, this.shake + 4);
+    const shieldParts = B.parts.filter((pp) => pp.alive && pp.def.shield);
+    if (shieldParts.length > 0) {
+      for (const part of shieldParts) this.damagePart(part, B, KB.partDamagePerHit);
+    } else {
+      B.flashT = 0.08;
+      this.damageBoss(KB.bossDamagePerHit);
+    }
   }
 
   private updateJW(dt: number): void {
@@ -2063,6 +2205,7 @@ export class GameScene extends Phaser.Scene {
     if (this.ps) this.updatePS(dt);
     if (this.jw) this.updateJW(dt);
     if (this.kb) this.updateKB(dt);
+    this.updateBones(dt);
     if (this.auto) this.updateAutoPilot(dt);
 
     this.updatePlayer(dt);
@@ -2084,7 +2227,7 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // 슈퍼 진행 중에는 상점 전환을 보류 (연출 강제 절단 방지)
+    // 슈퍼 진행 중에는 스테이지 전환을 보류 (연출 강제 절단 방지) — 상점 폐지: 곧장 다음 스테이지로
     if (this.pendingShop > 0 && !this.sp && !this.ps && !this.jw && !this.kb) {
       this.pendingShop -= dt;
       if (this.pendingShop <= 0 && this.alive) {
@@ -2092,8 +2235,10 @@ export class GameScene extends Phaser.Scene {
           saveBest(this.session.score);
           this.scene.pause();
           this.scene.launch(SceneKeys.Result, { session: this.session, mode: 'complete' });
+        } else if (this.session.endless) {
+          this.scene.restart({ session: this.session });
         } else {
-          this.scene.start(SceneKeys.Shop, { session: this.session });
+          this.scene.start(SceneKeys.StageIntro, { session: this.session });
         }
         return;
       }
@@ -2208,34 +2353,72 @@ export class GameScene extends Phaser.Scene {
     }
     if (this.inv > 0 && !this.sp && !this.ps && !this.jw && !this.kb) this.inv -= dt;
 
-    // 후방무기 (피드백 4 — 무기 체계 확장)
+    // 후방무기 — R오브 아이템제, 레벨 스케일 (rearLv 1~5)
     const rear = this.session.rear ? DATA.equipment.rear[this.session.rear] : undefined;
     if (rear && this.alive) {
+      const rl = this.session.rearLv;
       this.rearCd -= dt;
       if (this.rearCd <= 0) {
-        this.rearCd = rear.fireEvery;
+        this.rearCd = rear.fireEvery * (1 - 0.09 * (rl - 1));
         if (rear.kind === 'tail') {
-          for (const off of [-6, 6])
-            this.spawnPlayerBullet(this.px + off, this.py + 16, rnd(-25, 25), 520, 1.6, 'b-vulcan');
+          const offs = rl >= 3 ? [-9, 0, 9] : [-6, 6];
+          for (const off of offs)
+            this.spawnPlayerBullet(
+              this.px + off,
+              this.py + 16,
+              rnd(-25, 25),
+              520,
+              1.6 + 0.3 * rl,
+              'b-vulcan',
+            );
         } else if (rear.kind === 'side') {
-          this.spawnPlayerBullet(this.px - 12, this.py, -430, 0, 2.2, 'b-light');
-          this.spawnPlayerBullet(this.px + 12, this.py, 430, 0, 2.2, 'b-light');
+          const dmg = 2.2 + 0.4 * rl;
+          this.spawnPlayerBullet(this.px - 12, this.py, -430, 0, dmg, 'b-light');
+          this.spawnPlayerBullet(this.px + 12, this.py, 430, 0, dmg, 'b-light');
+          if (rl >= 4) {
+            this.spawnPlayerBullet(this.px - 12, this.py - 6, -330, -330, dmg, 'b-light');
+            this.spawnPlayerBullet(this.px + 12, this.py - 6, 330, -330, dmg, 'b-light');
+          }
+        } else if (rear.kind === 'homing') {
+          const dmg = 4.5 + 0.6 * rl;
+          this.spawnPlayerBullet(this.px, this.py + 12, rnd(-40, 40), 240, dmg, 'b-proton', true);
+          if (rl >= 4)
+            this.spawnPlayerBullet(this.px, this.py + 12, rnd(-40, 40), 300, dmg, 'b-proton', true);
         } else {
-          this.spawnPlayerBullet(this.px, this.py + 12, rnd(-40, 40), 240, 4.5, 'b-proton', true);
+          // 뼈다귀: 벽 반사 리코셰 — 홀수 강화=속도, 짝수 강화=유지시간 (사용자 지시)
+          const speedUps = Math.floor(rl / 2);
+          const durUps = Math.floor((rl - 1) / 2);
+          const sp = 250 + 55 * speedUps;
+          const ang = rnd(0.6, 2.5);
+          this.bones.push({
+            x: this.px,
+            y: this.py + 14,
+            vx: Math.cos(ang) * sp * (Math.random() < 0.5 ? 1 : -1),
+            vy: Math.abs(Math.sin(ang)) * sp,
+            life: 3.4 + 1.3 * durUps,
+            bhcd: 0,
+            img: this.pool
+              .get('b-bone', this.px, this.py + 14)
+              .setDepth(DEPTH.bullet),
+          });
+          SFX.swoosh();
         }
       }
     }
     // 사이드킥
     const side = this.session.sidekick ? DATA.equipment.sidekick[this.session.sidekick] : undefined;
     if (side && this.alive) {
+      const sl = this.session.sideLv;
+      const sideEvery = side.fireEvery * (1 - 0.15 * (sl - 1));
       this.sideCd -= dt;
       if (this.podL && this.podR) {
         this.podL.setPosition(this.px - 26, this.py + 8);
         this.podR.setPosition(this.px + 26, this.py + 8);
         if (this.sideCd <= 0) {
-          this.sideCd = side.fireEvery;
-          this.spawnPlayerBullet(this.px - 26, this.py - 4, 0, -640, 1.4, 'b-pulse');
-          this.spawnPlayerBullet(this.px + 26, this.py - 4, 0, -640, 1.4, 'b-pulse');
+          this.sideCd = sideEvery;
+          const dmg = 1.4 + 0.4 * sl;
+          this.spawnPlayerBullet(this.px - 26, this.py - 4, 0, -640, dmg, 'b-pulse');
+          this.spawnPlayerBullet(this.px + 26, this.py - 4, 0, -640, dmg, 'b-pulse');
         }
       } else if (this.satellite) {
         this.satAng += dt * 2.6;
@@ -2243,7 +2426,7 @@ export class GameScene extends Phaser.Scene {
         const sy = this.py + Math.sin(this.satAng) * 44;
         this.satellite.setPosition(sx, sy);
         if (this.sideCd <= 0) {
-          this.sideCd = side.fireEvery;
+          this.sideCd = sideEvery;
           const tgt = this.nearestTarget(sx, sy);
           if (tgt) {
             const L = Math.hypot(tgt.x - sx, tgt.y - sy) || 1;
@@ -2252,7 +2435,7 @@ export class GameScene extends Phaser.Scene {
               sy,
               ((tgt.x - sx) / L) * 480,
               ((tgt.y - sy) / L) * 480,
-              3,
+              3 + 0.7 * sl,
               'b-proton',
             );
           }
@@ -2721,18 +2904,44 @@ export class GameScene extends Phaser.Scene {
             this.addFloatText(this.px, this.py - 21, t('game.powerup'), '#8aff8a');
           } else {
             this.session.score += orb.maxPowerBonusScore;
-            this.session.credits += Math.round(
-              orb.maxPowerBonusScore * DATA.shop.creditRate * this.diff.credit,
-            );
             this.addFloatText(this.px, this.py - 21, `+${orb.maxPowerBonusScore}`, '#8aff8a');
           }
+        } else if (o.type === 'S') {
+          // 슈퍼무기 아이템 — 실드 오브 폐지 (사용자 지시)
+          if (this.session.superN < PLAYER.superMax) {
+            this.session.superN++;
+            this.addFloatText(this.px, this.py - 21, t('game.superup'), '#cfa8ff');
+          } else {
+            this.session.score += orb.maxPowerBonusScore;
+            this.addFloatText(this.px, this.py - 21, `+${orb.maxPowerBonusScore}`, '#cfa8ff');
+          }
+        } else if (o.type === 'R') {
+          // 후방무기 아이템 — 파일럿 시그니처 장착 → 이후 강화
+          if (!this.session.rear) {
+            this.session.rear = PILOT_REAR[this.session.pilot] ?? 'tailgun';
+            this.session.rearLv = 1;
+            this.addFloatText(this.px, this.py - 21, t('game.rearGet'), '#ffb347');
+          } else if (this.session.rearLv < REAR_MAX_LEVEL) {
+            this.session.rearLv++;
+            this.addFloatText(this.px, this.py - 21, t('game.rearUp'), '#ffb347');
+          } else {
+            this.session.score += orb.maxPowerBonusScore;
+            this.addFloatText(this.px, this.py - 21, `+${orb.maxPowerBonusScore}`, '#ffb347');
+          }
         } else {
-          this.session.shield = this.session.shieldMax;
-          this.session.armor = Math.min(
-            this.session.armorMax,
-            this.session.armor + orb.shieldArmorBonus,
-          );
-          this.addFloatText(this.px, this.py - 21, t('game.shield'), '#7ecbff');
+          // 사이드킥 아이템 — 파일럿 시그니처 합류 → 이후 강화
+          if (!this.session.sidekick) {
+            this.session.sidekick = PILOT_SIDEKICK[this.session.pilot] ?? 'pods';
+            this.session.sideLv = 1;
+            this.createSidekickVisuals();
+            this.addFloatText(this.px, this.py - 21, t('game.sideGet'), '#5ad8e8');
+          } else if (this.session.sideLv < SIDE_MAX_LEVEL) {
+            this.session.sideLv++;
+            this.addFloatText(this.px, this.py - 21, t('game.sideUp'), '#5ad8e8');
+          } else {
+            this.session.score += orb.maxPowerBonusScore;
+            this.addFloatText(this.px, this.py - 21, `+${orb.maxPowerBonusScore}`, '#5ad8e8');
+          }
         }
         continue;
       }
@@ -3009,10 +3218,6 @@ export class GameScene extends Phaser.Scene {
     if (s.score !== this.lastScore) {
       this.lastScore = s.score;
       this.hudScore.setText(String(s.score).padStart(7, '0'));
-    }
-    if (s.credits !== this.lastCredits) {
-      this.lastCredits = s.credits;
-      this.hudCredits.setText(t('hud.credits', s.credits));
     }
     // 하단 탄막을 가리지 않게 반투명 유지, 사용 가능 시 펄스
     if (s.superN > 0) {

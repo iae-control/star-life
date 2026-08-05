@@ -181,8 +181,8 @@ export const enemiesSchema = z.object({
     fallSpeed: z.number(),
     magnetRadius: z.number(),
     magnetPull: z.number(),
-    everyNthIsShield: z.number().int().min(1),
-    shieldArmorBonus: z.number(),
+    everyNthIsSuper: z.number().int().min(1),
+    everyNthIsRear: z.number().int().min(1),
     maxPowerBonusScore: z.number(),
   }),
   ebullet: z.object({
@@ -410,25 +410,6 @@ export const levelsSchema = z.object({
     .min(1),
 });
 
-export const shopSchema = z.object({
-  creditRate: z.number().min(0).max(1),
-  power: z.object({ base: z.number(), perLevel: z.number() }),
-  shield: z.object({
-    base: z.number(),
-    perOver: z.number(),
-    step: z.number(),
-    cap: z.number(),
-    baseStat: z.number(),
-  }),
-  armor: z.object({
-    base: z.number(),
-    perOver: z.number(),
-    step: z.number(),
-    cap: z.number(),
-    baseStat: z.number(),
-  }),
-  super: z.object({ price: z.number(), cap: z.number().int() }),
-});
 
 const equipBase = {
   name: z.string(),
@@ -438,7 +419,7 @@ const equipBase = {
   fireEvery: z.number().positive(),
 };
 export const equipmentSchema = z.object({
-  rear: z.record(z.string(), z.object({ ...equipBase, kind: z.enum(['tail', 'side', 'homing']) })),
+  rear: z.record(z.string(), z.object({ ...equipBase, kind: z.enum(['tail', 'side', 'homing', 'bone']) })),
   sidekick: z.record(z.string(), z.object({ ...equipBase, kind: z.enum(['pods', 'satellite']) })),
 });
 
@@ -454,7 +435,6 @@ export type BossPhase = z.infer<typeof bossPhaseSchema>;
 export type WaveGroup = z.infer<typeof waveGroupSchema>;
 export type LevelsData = z.infer<typeof levelsSchema>;
 export type LevelData = LevelsData['levels'][number];
-export type ShopData = z.infer<typeof shopSchema>;
 export type EquipmentData = z.infer<typeof equipmentSchema>;
 export type EquipItem = EquipmentData['rear'][string];
 export type I18nData = z.infer<typeof i18nSchema>;

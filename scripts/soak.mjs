@@ -66,7 +66,6 @@ for (let done = 0; done < totalFrames; done += CHUNK_FRAMES) {
       children: sc?.children?.length ?? -1,
       heapMB: Math.round(mem / 1048576),
       gameScene: !!sc && g.scene.isActive('Game'),
-      shopActive: g.scene.isActive('Shop'),
       resultActive: g.scene.isActive('Result'),
       level: sc?.session?.level ?? -1,
       campaignDone: sc?.session?.campaignDone ?? false,
@@ -87,13 +86,6 @@ for (let done = 0; done < totalFrames; done += CHUNK_FRAMES) {
     bossShotTaken = true;
   }
   // 상점에 들어갔으면 즉시 출격 (자동 봇은 Game 씬에서만 동작)
-  if (s.shopActive) {
-    await page.evaluate(() => {
-      const g = window.__game;
-      const shop = g.scene.getScene('Shop');
-      shop?.act?.(shop.rows?.length ?? 13); // 마지막 인덱스 = 출격
-    });
-  }
   const line = `[soak] ${Math.round(((done + n) / totalFrames) * 100)}% simT=${s.simT}s L${s.level} wave=${s.wave} score=${s.score} ent(b=${s.bullets},eb=${s.ebullets},e=${s.enemies},ph=${s.phantoms}) children=${s.children} heap=${s.heapMB}MB${s.boss ? ' BOSS' : ''}${s.superActive ? ' SUPER' : ''}`;
   console.log(line);
   if (s.campaignDone && s.resultActive) {

@@ -44,16 +44,15 @@ export const STICK = {
   speed: 322, // maxSpeed(257)보다 빠르게 — 터치 기동성 보정
 } as const;
 
-// 난이도 배수 (Easy/Normal/Hard) — 적 체력·적 공격력·크레딧 수입
+// 난이도 배수 (Easy/Normal/Hard) — 적 체력·적 공격력
 export interface DiffMods {
   hp: number;
   dmg: number;
-  credit: number;
 }
 export const DIFficulty: Record<'easy' | 'normal' | 'hard', DiffMods> = {
-  easy: { hp: 0.75, dmg: 0.7, credit: 1.15 },
-  normal: { hp: 1, dmg: 1, credit: 1 },
-  hard: { hp: 1.3, dmg: 1.35, credit: 0.85 },
+  easy: { hp: 0.75, dmg: 0.7 },
+  normal: { hp: 1, dmg: 1 },
+  hard: { hp: 1.3, dmg: 1.35 },
 };
 
 // 슈퍼무기 "Jungjioo" — 대사 표기는 정본, 변경 금지 (PLAN 0장)

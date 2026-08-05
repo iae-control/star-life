@@ -15,8 +15,6 @@ const DIFF_ORDER: Difficulty[] = ['easy', 'normal', 'hard'];
 interface MenuEntry {
   label: string;
   action: () => GameSession;
-  /** 보정 크레딧을 바로 쓸 수 있게 상점을 먼저 연다 */
-  viaShop?: boolean;
 }
 
 export class TitleScene extends Phaser.Scene {
@@ -78,12 +76,9 @@ export class TitleScene extends Phaser.Scene {
       const lv = Math.min(save.progress.unlockedLevel, DATA.levels.levels.length);
       this.menu.push({
         label: t('title.menu.continue', lv),
-        viaShop: true,
         action: () => {
           const s = newSession();
           s.level = lv;
-          // 후반 시작 보정: 전 레벨 분량의 기본 자금
-          s.credits = (lv - 1) * 1600;
           return s;
         },
       });
@@ -91,12 +86,10 @@ export class TitleScene extends Phaser.Scene {
     if (save.progress.endlessUnlocked) {
       this.menu.push({
         label: t('title.menu.endless'),
-        viaShop: true,
         action: () => {
           const s = newSession();
           s.endless = true;
           s.level = 1 + Math.floor(Math.random() * DATA.levels.levels.length);
-          s.credits = 2000;
           return s;
         },
       });
@@ -269,6 +262,7 @@ export class TitleScene extends Phaser.Scene {
     this.starting = true;
     audioResume();
     const session = entry.action();
-    this.scene.start(entry.viaShop ? SceneKeys.Shop : SceneKeys.StageIntro, { session });
+    // 상점 폐지 — 엔들리스는 인트로 없이 바로 전장으로
+    this.scene.start(session.endless ? SceneKeys.Game : SceneKeys.StageIntro, { session });
   }
 }

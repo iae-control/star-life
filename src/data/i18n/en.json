@@ -3,7 +3,7 @@
   "title.start": "TAP or ENTER to launch",
   "title.restart": "Launch again: TAP / ENTER",
   "title.help1": "Move: arrows·WASD·drag / Fire: SPACE·Z (auto on touch)",
-  "title.help2": "Super: X·B or S button / Shop: after each boss",
+  "title.help2": "Super: X·B or S button / Items: P·R·W·S orbs",
   "title.help3": "P·ESC pause · M mute",
   "title.best": "BEST {0}",
   "hud.wave": "WAVE {0}",
@@ -103,5 +103,13 @@
   "pilot.youngjioo": "Young Jioo",
   "pilot.keunaebi": "Keunaebi",
   "weapon.missile.desc": "Slow but explodes on impact, sweeping nearby foes",
-  "shop.weaponHint": "Collect P orbs in battle to power up!"
+  "shop.weaponHint": "Collect P orbs in battle to power up!",
+  "rear.bone.desc": "Ricochet bone — bounces off walls, shredding foes",
+  "game.superup": "SUPER +1",
+  "game.rearGet": "REAR WEAPON!",
+  "game.rearUp": "REAR POWER UP!",
+  "shop.rearHint": "Collect R orbs in battle to power up!",
+  "shop.rearNone": "Rear weapon: grab an R orb in battle",
+  "game.sideGet": "SIDEKICK JOINED!",
+  "game.sideUp": "SIDEKICK POWER UP!"
 }

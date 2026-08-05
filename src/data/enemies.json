@@ -10,9 +10,9 @@
     "fallSpeed": 61,
     "magnetRadius": 86,
     "magnetPull": 220,
-    "everyNthIsShield": 4,
-    "shieldArmorBonus": 12,
-    "maxPowerBonusScore": 500
+    "maxPowerBonusScore": 500,
+    "everyNthIsSuper": 9,
+    "everyNthIsRear": 3
   },
   "ebullet": {
     "smallSize": 6,

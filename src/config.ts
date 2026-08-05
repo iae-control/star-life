@@ -11,7 +11,6 @@ export const SceneKeys = {
   Title: 'Title',
   StageIntro: 'StageIntro',
   Game: 'Game',
-  Shop: 'Shop',
   Result: 'Result',
   Pause: 'Pause',
   Settings: 'Settings',

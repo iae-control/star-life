@@ -23,6 +23,14 @@
       "color": "#ff8ad8",
       "fireEvery": 0.75,
       "kind": "homing"
+    },
+    "bone": {
+      "name": "BONE RICOCHET",
+      "descKey": "rear.bone.desc",
+      "price": 0,
+      "color": "#f0e6c8",
+      "fireEvery": 2.4,
+      "kind": "bone"
     }
   },
   "sidekick": {

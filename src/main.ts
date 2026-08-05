@@ -12,7 +12,6 @@ import { PauseScene } from './scenes/PauseScene';
 import { PreloadScene } from './scenes/PreloadScene';
 import { ResultScene } from './scenes/ResultScene';
 import { SettingsScene } from './scenes/SettingsScene';
-import { ShopScene } from './scenes/ShopScene';
 import { StageIntroScene } from './scenes/StageIntroScene';
 import { TitleScene } from './scenes/TitleScene';
 
@@ -65,7 +64,6 @@ function boot(): void {
       TitleScene,
       StageIntroScene,
       GameScene,
-      ShopScene,
       ResultScene,
       PauseScene,
       SettingsScene,

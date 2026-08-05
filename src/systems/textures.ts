@@ -975,6 +975,16 @@ export function generateTextures(scene: Phaser.Scene): void {
   addCanvasTexture(scene, 'parrot-r', enhance(pixmap(PARROT_MAP, PARROT_PAL_R, 2)));
   addCanvasTexture(scene, 'jw-mountains', jwMountains());
 
+  // 뼈다귀 (지우큰애비 후방무기) — 벽에 튕기는 리코셰
+  {
+    const BONE_MAP = [
+      'ww.......ww',
+      'wwwwwwwwwww',
+      'ww.......ww',
+    ];
+    addCanvasTexture(scene, 'b-bone', enhance(pixmap(BONE_MAP, { w: '#f0ead8' }, 2)));
+  }
+
   // 스테이지 기믹 텍스처 (M-기믹)
   {
     // 성운 안개 구름 — 부드러운 타원 라디얼
@@ -1114,10 +1124,12 @@ export function generateTextures(scene: Phaser.Scene): void {
     );
   }
 
-  // 오브 P/S — 함선과 같은 픽셀 밀도의 플랫 셰이딩 (2px 그리드)
+  // 오브 P(파워)/S(슈퍼)/R(후방무기) — 함선과 같은 픽셀 밀도의 플랫 셰이딩 (2px 그리드)
   for (const [key, pal, letter, dark] of [
     ['orb-P', { O: '#04300f', A: '#2fae4a', B: '#59e659', H: '#d8ffd8' }, 'P', '#043012'],
-    ['orb-S', { O: '#062248', A: '#2a72c8', B: '#54b4ff', H: '#d8eeff' }, 'S', '#062248'],
+    ['orb-S', { O: '#2a1048', A: '#7a4ac8', B: '#b48aff', H: '#eadcff' }, 'S', '#2a1048'],
+    ['orb-R', { O: '#48260a', A: '#c8742a', B: '#ffb347', H: '#ffe8c8' }, 'R', '#48260a'],
+    ['orb-W', { O: '#083038', A: '#2a92a8', B: '#5ad8e8', H: '#d8f8ff' }, 'W', '#083038'],
   ] as const) {
     const rows = [
       '..OOOO..',

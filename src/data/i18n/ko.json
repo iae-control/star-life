@@ -3,7 +3,7 @@
   "title.start": "탭 또는 ENTER로 출격",
   "title.restart": "다시 출격: 탭 / ENTER",
   "title.help1": "이동: 방향키·WASD·드래그 / 발사: SPACE·Z (터치 자동)",
-  "title.help2": "슈퍼무기: X·B 또는 S버튼 / 상점: 보스 격파 후",
+  "title.help2": "슈퍼무기: X·B 또는 S버튼 / 아이템: P무기 R후방 W사이드 S슈퍼",
   "title.help3": "P·ESC 일시정지 · M 음소거",
   "title.best": "BEST {0}",
   "hud.wave": "WAVE {0}",
@@ -103,5 +103,13 @@
   "pilot.youngjioo": "어린지우",
   "pilot.keunaebi": "지우큰애비",
   "weapon.missile.desc": "느리지만 착탄 시 폭발해 주변을 휩쓴다",
-  "shop.weaponHint": "강화는 전투 중 P 오브 획득!"
+  "shop.weaponHint": "강화는 전투 중 P 오브 획득!",
+  "rear.bone.desc": "벽에 튕기는 뼈다귀 — 화면을 어지럽히며 적을 소탕",
+  "game.superup": "슈퍼 +1",
+  "game.rearGet": "후방무기 장착!",
+  "game.rearUp": "후방무기 강화!",
+  "shop.rearHint": "강화는 전투 중 R 오브 획득!",
+  "shop.rearNone": "후방무기: 전투 중 R 오브를 주우면 장착",
+  "game.sideGet": "사이드킥 합류!",
+  "game.sideUp": "사이드킥 강화!"
 }

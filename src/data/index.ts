@@ -11,17 +11,14 @@ import {
   equipmentSchema,
   i18nSchema,
   levelsSchema,
-  shopSchema,
   weaponsSchema,
   type BossesData,
   type EnemiesData,
   type EquipmentData,
   type I18nData,
   type LevelsData,
-  type ShopData,
   type WeaponsData,
 } from './schemas';
-import rawShop from './shop.json';
 import rawWeapons from './weapons.json';
 
 export interface GameData {
@@ -30,7 +27,6 @@ export interface GameData {
   equipment: EquipmentData;
   bosses: BossesData;
   levels: LevelsData;
-  shop: ShopData;
   i18n: { ko: I18nData; en: I18nData };
 }
 
@@ -41,7 +37,6 @@ function parseAll(): GameData {
     equipment: equipmentSchema.parse(rawEquipment),
     bosses: bossesSchema.parse(rawBosses),
     levels: levelsSchema.parse(rawLevels),
-    shop: shopSchema.parse(rawShop),
     i18n: { ko: i18nSchema.parse(rawKo), en: i18nSchema.parse(rawEn) },
   };
 }
@@ -96,19 +91,17 @@ if (import.meta.hot) {
       './equipment.json',
       './bosses.json',
       './levels.json',
-      './shop.json',
       './i18n/ko.json',
       './i18n/en.json',
     ],
     (mods) => {
-      const [w, e, eq, b, lv, sh, ko, en] = mods;
+      const [w, e, eq, b, lv, ko, en] = mods;
       try {
         if (w) DATA.weapons = weaponsSchema.parse(w.default);
         if (e) DATA.enemies = enemiesSchema.parse(e.default);
         if (eq) DATA.equipment = equipmentSchema.parse(eq.default);
         if (b) DATA.bosses = bossesSchema.parse(b.default);
         if (lv) DATA.levels = levelsSchema.parse(lv.default);
-        if (sh) DATA.shop = shopSchema.parse(sh.default);
         if (ko) DATA.i18n.ko = i18nSchema.parse(ko.default);
         if (en) DATA.i18n.en = i18nSchema.parse(en.default);
         WEAPON_KEYS.length = 0;

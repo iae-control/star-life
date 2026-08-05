@@ -11,9 +11,26 @@ export const PILOT_WEAPON: Record<string, string> = {
   keunaebi: 'laser',
 };
 
+/** 파일럿 시그니처 후방무기 — R오브 획득 시 장착, 이후 R오브마다 강화 */
+export const PILOT_REAR: Record<string, string> = {
+  jungjioo: 'tailgun',
+  parksulhee: 'seeker',
+  youngjioo: 'sidecutter',
+  keunaebi: 'bone',
+};
+export const REAR_MAX_LEVEL = 5;
+
+/** 파일럿 시그니처 사이드킥 — W오브 획득 시 장착, 이후 강화 */
+export const PILOT_SIDEKICK: Record<string, string> = {
+  jungjioo: 'pods',
+  parksulhee: 'satellite',
+  youngjioo: 'pods',
+  keunaebi: 'satellite',
+};
+export const SIDE_MAX_LEVEL = 3;
+
 export interface GameSession {
   score: number;
-  credits: number;
   /** 전역 웨이브 카운터 — 난이도 스케일링에 사용 (레벨을 넘어 계속 증가) */
   wave: number;
   /** 현재 레벨 (1-based) */
@@ -33,7 +50,11 @@ export interface GameSession {
   superN: number;
   /** 후방무기/사이드킥 (미보유 = null) */
   rear: string | null;
+  /** 후방무기 강화 레벨 (R오브, 1~REAR_MAX_LEVEL) */
+  rearLv: number;
   sidekick: string | null;
+  /** 사이드킥 강화 레벨 (W오브, 1~SIDE_MAX_LEVEL) */
+  sideLv: number;
   difficulty: Difficulty;
   /** 조종사: 정지우(블랙홀 팬텀 러시) / 박슬희(배드민턴 일망타진) */
   pilot: 'jungjioo' | 'parksulhee' | 'youngjioo' | 'keunaebi';
@@ -44,7 +65,6 @@ export interface GameSession {
 export function newSession(): GameSession {
   return {
     score: 0,
-    credits: 0,
     wave: 0,
     level: 1,
     levelWave: 0,
@@ -59,7 +79,9 @@ export function newSession(): GameSession {
     armorMax: PLAYER.armorMax,
     superN: PLAYER.superStart,
     rear: null,
+    rearLv: 1,
     sidekick: null,
+    sideLv: 1,
     difficulty: loadSave().settings.difficulty,
     pilot: loadSave().settings.pilot,
     endless: false,
