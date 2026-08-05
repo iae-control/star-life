@@ -61,8 +61,9 @@ export class TitleScene extends Phaser.Scene {
       .image(
         GAME_WIDTH / 2,
         246,
-        { parksulhee: 'az-ship-ps', youngjioo: 'az-ship-jw' }[save.settings.pilot as string] ??
-          'az-ship',
+        { parksulhee: 'az-ship-ps', youngjioo: 'az-ship-jw', keunaebi: 'az-ship-kb' }[
+          save.settings.pilot as string
+        ] ?? 'az-ship',
         0,
       )
       .setScale(4);
@@ -204,14 +205,15 @@ export class TitleScene extends Phaser.Scene {
   }
 
   private cyclePilot(): void {
-    const order = ['jungjioo', 'parksulhee', 'youngjioo'] as const;
+    const order = ['jungjioo', 'parksulhee', 'youngjioo', 'keunaebi'] as const;
     updateSave((s) => {
       const i = order.indexOf(s.settings.pilot as (typeof order)[number]);
       s.settings.pilot = order[(i + 1) % order.length] ?? 'jungjioo';
     });
     const pilot = loadSave().settings.pilot as string;
     this.ship.setTexture(
-      { parksulhee: 'az-ship-ps', youngjioo: 'az-ship-jw' }[pilot] ?? 'az-ship',
+      { parksulhee: 'az-ship-ps', youngjioo: 'az-ship-jw', keunaebi: 'az-ship-kb' }[pilot] ??
+        'az-ship',
       this.ship.frame.name,
     );
     this.refreshMenu();

@@ -13,6 +13,8 @@ export interface ShotSpec {
   pierce: number;
   sprite: string;
   stretch: boolean;
+  /** 착탄 스플래시 (미사일) */
+  splash?: { radius: number; ratio: number };
   /** sine 전용: 진동 기준 x */
   x0?: number;
   /** sine 전용: 위상 */
@@ -60,6 +62,7 @@ export function firePattern(
       pierce: b.pierce,
       sprite: b.sprite,
       stretch: b.stretch,
+      splash: b.splash,
       ...extra,
     });
 

@@ -1,12 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  curLevel,
   equipAction,
   itemAction,
-  powerPrice,
   UPGRADE_ITEMS,
-  weaponAction,
   type ShopPlayerState,
 } from '../src/game/logic/shop';
 
@@ -26,41 +23,8 @@ function state(over: Partial<ShopPlayerState> = {}): ShopPlayerState {
   };
 }
 
-describe('weaponAction', () => {
-  it('buys an unowned weapon at level 1 and equips it', () => {
-    const s = state();
-    expect(weaponAction(s, 'vulcan')).toBe('bought');
-    expect(s.credits).toBe(10_000 - 1500);
-    expect(s.weapons.vulcan).toBe(1);
-    expect(s.cur).toBe('vulcan');
-  });
-
-  it('denies purchase without credits', () => {
-    const s = state({ credits: 100 });
-    expect(weaponAction(s, 'laser')).toBe('denied');
-    expect(s.weapons.laser).toBeUndefined();
-  });
-
-  it('equips an owned weapon without charging', () => {
-    const s = state({ weapons: { pulse: 3, vulcan: 2 } });
-    expect(weaponAction(s, 'vulcan')).toBe('equipped');
-    expect(s.credits).toBe(10_000);
-    expect(s.cur).toBe('vulcan');
-  });
-});
-
 describe('upgrade items (demo price curves)', () => {
   const [shield, armor, superItem] = UPGRADE_ITEMS;
-
-  it('equipped weapon row upgrades power: 400 + level*400, caps at 6', () => {
-    const s = state({ weapons: { pulse: 3 } });
-    expect(powerPrice(s, 'pulse')).toBe(1600);
-    expect(weaponAction(s, 'pulse')).toBe('bought');
-    expect(curLevel(s)).toBe(4);
-    expect(s.credits).toBe(10_000 - 1600);
-    const maxed = state({ weapons: { pulse: 6 } });
-    expect(weaponAction(maxed, 'pulse')).toBe('noop');
-  });
 
   it('equipment: buy equips, tap again unequips, other purchase replaces', () => {
     const s = state();

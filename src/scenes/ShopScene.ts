@@ -1,17 +1,11 @@
-// 상점 — 보스 격파 후 진입. 무기 행에서 구매→장착→파워업 통합 (피드백 2).
-// FRONT / REAR / SIDEKICK / SUPPLY 4섹션. 로직은 game/logic/shop.ts.
+// 상점 — 보스 격파 후 진입. 무기 구매 폐지(파일럿 고정 + P오브 강화) — REAR / SIDEKICK / SUPPLY 3섹션.
+// 로직은 game/logic/shop.ts.
 import Phaser from 'phaser';
 
 import { GAME_HEIGHT, GAME_WIDTH, SceneKeys } from '../config';
 import { DATA, MAX_WEAPON_LEVEL, t } from '../data';
-import {
-  equipAction,
-  itemAction,
-  powerPrice,
-  SHOP_WEAPON_KEYS,
-  UPGRADE_ITEMS,
-  weaponAction,
-} from '../game/logic/shop';
+import { equipAction, itemAction, UPGRADE_ITEMS } from '../game/logic/shop';
+import { weaponLevel } from '../game/session';
 import type { GameSession } from '../game/session';
 import { SpaceBackground } from '../systems/background';
 import { audioResume, SFX } from '../systems/Sfx';
@@ -20,13 +14,12 @@ import { uiText } from '../ui/text';
 const ROW_H = 29;
 const REAR_KEYS = Object.keys(DATA.equipment.rear);
 const SIDE_KEYS = Object.keys(DATA.equipment.sidekick);
-const N_WPN = SHOP_WEAPON_KEYS.length;
+const N_WPN = 0;
 const N_REAR = REAR_KEYS.length;
 const N_SIDE = SIDE_KEYS.length;
 const N_ROWS = N_WPN + N_REAR + N_SIDE + UPGRADE_ITEMS.length + 1;
 
-const wpnY = (i: number) => 122 + i * ROW_H;
-const rearY = (i: number) => wpnY(N_WPN) + 22 + i * ROW_H;
+const rearY = (i: number) => 186 + i * ROW_H;
 const sideY = (i: number) => rearY(N_REAR) + 22 + i * ROW_H;
 const supY = (i: number) => sideY(N_SIDE) + 22 + i * ROW_H;
 const GO_Y = 566;
@@ -88,11 +81,14 @@ export class ShopScene extends Phaser.Scene {
       this.hitZone(22, y - 5, GAME_WIDTH - 44, ROW_H - 1, () => this.act(idx));
     };
 
-    section(t('shop.front'), 110);
-    SHOP_WEAPON_KEYS.forEach((key, i) => {
-      const def = DATA.weapons.weapons[key];
-      makeRow(wpnY(i), def ? parseInt(def.color.slice(1), 16) : null, i);
-    });
+    // 파일럿 고정 무기 정보 패널 — 구매 대신 P오브 강화 안내
+    const wdef = DATA.weapons.weapons[this.session.cur];
+    if (wdef) {
+      const lv = weaponLevel(this.session);
+      this.add.rectangle(30, 122, 9, 9, parseInt(wdef.color.slice(1), 16)).setStrokeStyle(1, 0x0a1226, 1);
+      uiText(this, 44, 122, `${wdef.name}  Lv${lv}${lv >= MAX_WEAPON_LEVEL ? ' MAX' : `/${MAX_WEAPON_LEVEL}`}`, 10, '#dfe8ff').setOrigin(0, 0.5);
+      uiText(this, 44, 140, t('shop.weaponHint'), 8, '#8fa0c8').setOrigin(0, 0.5);
+    }
     section(t('shop.rear'), rearY(0) - 12);
     REAR_KEYS.forEach((key, i) => {
       const def = DATA.equipment.rear[key];
@@ -176,7 +172,6 @@ export class ShopScene extends Phaser.Scene {
   }
 
   private rowY(idx: number): number {
-    if (idx < N_WPN) return wpnY(idx);
     if (idx < N_WPN + N_REAR) return rearY(idx - N_WPN);
     if (idx < N_WPN + N_REAR + N_SIDE) return sideY(idx - N_WPN - N_REAR);
     return supY(idx - N_WPN - N_REAR - N_SIDE);
@@ -186,10 +181,7 @@ export class ShopScene extends Phaser.Scene {
     this.sel = sel;
     const s = this.session;
     let r: string = 'noop';
-    if (sel < N_WPN) {
-      const key = SHOP_WEAPON_KEYS[sel];
-      if (key) r = weaponAction(s, key);
-    } else if (sel < N_WPN + N_REAR) {
+    if (sel < N_WPN + N_REAR) {
       const key = REAR_KEYS[sel - N_WPN];
       if (key) r = equipAction(s, 'rear', key);
     } else if (sel < N_WPN + N_REAR + N_SIDE) {
@@ -217,38 +209,6 @@ export class ShopScene extends Phaser.Scene {
     this.goBox.setFillStyle(0x3c5a46, this.sel === N_ROWS - 1 ? 0.45 : 0.25);
 
     let detail = '';
-    SHOP_WEAPON_KEYS.forEach((key, i) => {
-      const def = DATA.weapons.weapons[key];
-      const row = this.rows[i];
-      if (!def || !row) return;
-      const owned = s.weapons[key] !== undefined;
-      const equipped = s.cur === key;
-      const lv = s.weapons[key] ?? 0;
-      let rightText: string;
-      let rightColor: string;
-      if (!owned) {
-        rightText = t('shop.price', def.price);
-        rightColor = s.credits >= def.price ? '#ffd76a' : '#8b6a3a';
-      } else if (!equipped) {
-        rightText = `Lv${lv} · ${t('shop.equip')}`;
-        rightColor = '#7ecbff';
-      } else if (lv >= MAX_WEAPON_LEVEL) {
-        rightText = `Lv${lv} ${t('shop.maxLevel')}`;
-        rightColor = '#8aff8a';
-      } else {
-        const price = powerPrice(s, key);
-        rightText = `Lv${lv} ▶ ${t('shop.price', price)}`;
-        rightColor = s.credits >= price ? '#8aff8a' : '#8b6a3a';
-      }
-      row.name
-        .setText((equipped ? '▶ ' : '') + def.name)
-        .setColor(equipped ? '#8aff8a' : owned ? '#dfe8ff' : '#aeb8d8');
-      row.right.setText(rightText).setColor(rightColor);
-      if (this.sel === i)
-        detail = `${t(def.descKey)}${
-          equipped && lv < MAX_WEAPON_LEVEL ? ` · ${t('shop.upgradeTo', lv + 1)}` : ''
-        }`;
-    });
     REAR_KEYS.forEach((key, i) => {
       const def = DATA.equipment.rear[key];
       const row = this.rows[N_WPN + i];

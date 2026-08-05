@@ -19,7 +19,7 @@
   "result.wave": "WAVE   {0}",
   "result.newRecord": "NEW RECORD!",
   "result.retry": "TAP / ENTER — retry",
-  "shop.title": "WEAPON SHOP",
+  "shop.title": "SUPPLY SHOP",
   "shop.front": "FRONT WEAPON — buy / equip",
   "shop.upgrade": "UPGRADE / SUPPLY",
   "shop.equipped": "[EQUIPPED]",
@@ -100,5 +100,8 @@
   "title.pilot": "Pilot",
   "pilot.jungjioo": "Jungjioo",
   "pilot.parksulhee": "Parksulhee",
-  "pilot.youngjioo": "Young Jioo"
+  "pilot.youngjioo": "Young Jioo",
+  "pilot.keunaebi": "Keunaebi",
+  "weapon.missile.desc": "Slow but explodes on impact, sweeping nearby foes",
+  "shop.weaponHint": "Collect P orbs in battle to power up!"
 }

@@ -6,31 +6,40 @@ import { cooldownFor, firePattern } from '../src/game/logic/weapons';
 const rng = () => 0.5;
 
 describe('firePattern', () => {
-  it('pulse shot counts per level match the demo (1,2,3,4,5,7)', () => {
-    const counts = [1, 2, 3, 4, 5, 7];
-    for (let l = 1; l <= 6; l++) {
+  it('max level is 10 (아이템제 강화 확장)', () => {
+    expect(MAX_WEAPON_LEVEL).toBe(10);
+  });
+
+  it('pulse shot counts grow to 7 at Lv10', () => {
+    const counts = [1, 2, 3, 4, 5, 5, 5, 6, 6, 7];
+    for (let l = 1; l <= 10; l++) {
       expect(firePattern('pulse', l, 180, 500, 0, rng)).toHaveLength(counts[l - 1] ?? -1);
     }
   });
 
-  it('vulcan stream counts follow [1,1,2,2,3,3]', () => {
-    const counts = [1, 1, 2, 2, 3, 3];
-    for (let l = 1; l <= 6; l++) {
-      expect(firePattern('vulcan', l, 180, 500, 0, rng)).toHaveLength(counts[l - 1] ?? -1);
+  it('missile (박설희): slow cooldown, splash on every shot', () => {
+    const counts = [1, 1, 2, 2, 2, 3, 3, 3, 4, 4];
+    for (let l = 1; l <= 10; l++) {
+      const shots = firePattern('missile', l, 180, 500, 0, rng);
+      expect(shots).toHaveLength(counts[l - 1] ?? -1);
+      expect(shots.every((s) => s.splash && s.splash.radius > 0 && s.splash.ratio > 0)).toBe(true);
     }
+    // 공속이 느린 정체성: 최대 강화에도 펄스보다 느리다
+    expect(cooldownFor('missile', 10)).toBeGreaterThan(cooldownFor('pulse', 10));
   });
 
-  it('proton spread counts follow [2,3,3,4,5,6]', () => {
-    const counts = [2, 3, 3, 4, 5, 6];
-    for (let l = 1; l <= 6; l++) {
+  it('proton (어린지우) spread counts follow [1,2,3,3,4,5,5,6,7,8]', () => {
+    const counts = [1, 2, 3, 3, 4, 5, 5, 6, 7, 8];
+    for (let l = 1; l <= 10; l++) {
       expect(firePattern('proton', l, 180, 500, 0, rng)).toHaveLength(counts[l - 1] ?? -1);
     }
   });
 
-  it('laser pierces (999), light pierces once, pulse does not', () => {
-    expect(firePattern('laser', 6, 180, 500, 0, rng).every((s) => s.pierce === 999)).toBe(true);
-    expect(firePattern('light', 6, 180, 500, 0, rng).every((s) => s.pierce === 1)).toBe(true);
-    expect(firePattern('pulse', 6, 180, 500, 0, rng).every((s) => s.pierce === 0)).toBe(true);
+  it('laser pierces (999), light pierces once, pulse/missile do not', () => {
+    expect(firePattern('laser', 10, 180, 500, 0, rng).every((s) => s.pierce === 999)).toBe(true);
+    expect(firePattern('light', 10, 180, 500, 0, rng).every((s) => s.pierce === 1)).toBe(true);
+    expect(firePattern('pulse', 10, 180, 500, 0, rng).every((s) => s.pierce === 0)).toBe(true);
+    expect(firePattern('missile', 10, 180, 500, 0, rng).every((s) => s.pierce === 0)).toBe(true);
   });
 
   it('all shots travel upward (vy < 0)', () => {

@@ -19,7 +19,7 @@
   "result.wave": "WAVE   {0}",
   "result.newRecord": "NEW RECORD!",
   "result.retry": "탭 / ENTER — 재도전",
-  "shop.title": "WEAPON SHOP",
+  "shop.title": "SUPPLY SHOP",
   "shop.front": "FRONT WEAPON — 구매 / 장착",
   "shop.upgrade": "UPGRADE / SUPPLY",
   "shop.equipped": "[장착중]",
@@ -100,5 +100,8 @@
   "title.pilot": "조종사",
   "pilot.jungjioo": "정지우",
   "pilot.parksulhee": "박설희",
-  "pilot.youngjioo": "어린지우"
+  "pilot.youngjioo": "어린지우",
+  "pilot.keunaebi": "지우큰애비",
+  "weapon.missile.desc": "느리지만 착탄 시 폭발해 주변을 휩쓴다",
+  "shop.weaponHint": "강화는 전투 중 P 오브 획득!"
 }

@@ -948,6 +948,28 @@ export function generateTextures(scene: Phaser.Scene): void {
   azSheetVariant(scene, 'az-ship-ps', 'az-ship', '#ff5ad8', 16, 24);
   // 어린지우 전용기 — 초록 변형
   azSheetVariant(scene, 'az-ship-jw', 'az-ship', '#63d97a', 16, 24);
+  // 지우큰애비 전용기 — 황금빛 변형
+  azSheetVariant(scene, 'az-ship-kb', 'az-ship', '#e0b060', 16, 24);
+  // 미사일 탄 (박설희 시그니처)
+  {
+    const MISSILE_MAP = [
+      '..w..',
+      '.www.',
+      '.ooo.',
+      '.ooo.',
+      'gooog',
+      'gooog',
+      '.fff.',
+      '..f..',
+    ];
+    const PAL: Record<string, string> = {
+      w: '#f0f4ff',
+      o: '#ff9a5a',
+      g: '#9aa6b8',
+      f: '#ffd23a',
+    };
+    addCanvasTexture(scene, 'b-missile', enhance(pixmap(MISSILE_MAP, PAL, 2)));
+  }
   // 앵무새떼 + 초록 산 (어린지우 필살기)
   addCanvasTexture(scene, 'parrot-g', enhance(pixmap(PARROT_MAP, PARROT_PAL_G, 2)));
   addCanvasTexture(scene, 'parrot-r', enhance(pixmap(PARROT_MAP, PARROT_PAL_R, 2)));

@@ -3,6 +3,14 @@
 import { loadSave, updateSave, type Difficulty } from '../systems/Save';
 import { PLAYER } from './logic/balance';
 
+/** 파일럿 시그니처 무기 — 무기 구매 폐지, 캐릭터 고정 (P오브로 강화) */
+export const PILOT_WEAPON: Record<string, string> = {
+  jungjioo: 'pulse',
+  parksulhee: 'missile',
+  youngjioo: 'proton',
+  keunaebi: 'laser',
+};
+
 export interface GameSession {
   score: number;
   credits: number;
@@ -28,7 +36,7 @@ export interface GameSession {
   sidekick: string | null;
   difficulty: Difficulty;
   /** 조종사: 정지우(블랙홀 팬텀 러시) / 박슬희(배드민턴 일망타진) */
-  pilot: 'jungjioo' | 'parksulhee' | 'youngjioo';
+  pilot: 'jungjioo' | 'parksulhee' | 'youngjioo' | 'keunaebi';
   /** 엔들리스 모드 여부 (캠페인 완주 후 해금) */
   endless: boolean;
 }
@@ -43,8 +51,8 @@ export function newSession(): GameSession {
     campaignDone: false,
     kills: 0,
     orbCount: 0,
-    weapons: { pulse: 1 },
-    cur: 'pulse',
+    weapons: { [PILOT_WEAPON[loadSave().settings.pilot] ?? 'pulse']: 1 },
+    cur: PILOT_WEAPON[loadSave().settings.pilot] ?? 'pulse',
     shield: PLAYER.shieldMax,
     shieldMax: PLAYER.shieldMax,
     armor: PLAYER.armorMax,

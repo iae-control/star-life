@@ -5,16 +5,16 @@ const curve = z.object({ base: z.number(), perLevel: z.number(), min: z.number()
 const waveCurve = z.object({ base: z.number(), perWave: z.number(), min: z.number() });
 const hpCurve = z.object({ base: z.number(), perWave: z.number() });
 const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/);
-const levels6 = <T extends z.ZodTypeAny>(item: T) => z.array(item).length(6);
+const levels10 = <T extends z.ZodTypeAny>(item: T) => z.array(item).length(10);
 
 /** [dx, dy, vx, vy, dmg] */
 const shotTuple = z.tuple([z.number(), z.number(), z.number(), z.number(), z.number()]);
 
 const patternSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('table'), shots: levels6(z.array(shotTuple).min(1)) }),
+  z.object({ type: z.literal('table'), shots: levels10(z.array(shotTuple).min(1)) }),
   z.object({
     type: z.literal('stream'),
-    streams: levels6(z.number().int().min(1)),
+    streams: levels10(z.number().int().min(1)),
     offsetX: z.number(),
     jitterVx: z.number(),
     vy: z.number(),
@@ -24,7 +24,7 @@ const patternSchema = z.discriminatedUnion('type', [
   }),
   z.object({
     type: z.literal('fan'),
-    counts: levels6(z.number().int().min(1)),
+    counts: levels10(z.number().int().min(1)),
     spreadBase: z.number(),
     spreadPerLevel: z.number(),
     speedBase: z.number(),
@@ -35,7 +35,7 @@ const patternSchema = z.discriminatedUnion('type', [
   }),
   z.object({
     type: z.literal('sine'),
-    counts: levels6(z.number().int().min(1)),
+    counts: levels10(z.number().int().min(1)),
     offsetX: z.number(),
     vy: z.number(),
     dmgBase: z.number(),
@@ -43,7 +43,7 @@ const patternSchema = z.discriminatedUnion('type', [
   }),
   z.object({
     type: z.literal('line'),
-    counts: levels6(z.number().int().min(1)),
+    counts: levels10(z.number().int().min(1)),
     offsetX: z.number(),
     vy: z.number(),
     dmgBase: z.number(),
@@ -53,7 +53,7 @@ const patternSchema = z.discriminatedUnion('type', [
 ]);
 
 export const weaponsSchema = z.object({
-  maxLevel: z.literal(6),
+  maxLevel: z.literal(10),
   weapons: z.record(
     z.string(),
     z.object({
@@ -69,6 +69,8 @@ export const weaponsSchema = z.object({
         pierce: z.number().int().min(0),
         sprite: z.string(),
         stretch: z.boolean(),
+        /** 착탄 스플래시 (미사일): 반경 내 적에게 dmg×ratio */
+        splash: z.object({ radius: z.number().positive(), ratio: z.number().positive() }).optional(),
       }),
       pattern: patternSchema,
     }),

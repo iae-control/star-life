@@ -27,7 +27,7 @@ const LINES: [string, number, string][] = [
   ['절차 생성 (자체 제작)', 10, '#dfe8ff'],
   ['', 8, '#8fa0c8'],
   ['Special Thanks', 9, '#8fa0c8'],
-  ['Jungjioo & Parksulhee', 11, '#cfc2ff'],
+  ['Jungjioo · Parksulhee · 하무', 11, '#cfc2ff'],
   ['', 8, '#8fa0c8'],
   ['원작 v4 데모에서 출발한 프로덕션 빌드', 8, '#5a6a92'],
 ];

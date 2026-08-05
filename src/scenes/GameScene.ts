@@ -210,6 +210,29 @@ interface JiwooState {
   yellT: number;
   bg: Phaser.GameObjects.TileSprite;
 }
+/** 지우큰애비 필살기 — 푸들 하무가 전방으로 날아간다 (쉭쉭) */
+interface KbState {
+  t: number;
+  pass: number;
+  img: Phaser.GameObjects.Image;
+  glow: Phaser.GameObjects.Image;
+  y: number;
+  x: number;
+  bossHitThisPass: boolean;
+  bossPasses: number;
+}
+// 대사 표기는 정본 — 변경 금지
+const KB_BUBBLE = '하무야 물어! 쉭쉭!';
+const KB = {
+  bubbleUntil: 1.1,
+  speed: 1250,
+  halfWidth: 96,
+  passes: 3,
+  bossDamagePerPass: 40,
+  partDamagePerPass: 34,
+  maxBossPasses: 3,
+} as const;
+
 // 대사 표기는 정본 — 변경 금지
 const JW_BUBBLE = '비켜!';
 const JW_YELLS = ['비켜!!!', '비켜!', '비켜!!!!'] as const;
@@ -273,6 +296,7 @@ export class GameScene extends Phaser.Scene {
   private sp: SuperState | null = null;
   private ps: RacketState | null = null;
   private jw: JiwooState | null = null;
+  private kb: KbState | null = null;
 
   // 웨이브
   private spawnQ: SpawnEvent[] = [];
@@ -405,6 +429,7 @@ export class GameScene extends Phaser.Scene {
     this.sp = null;
     this.ps = null;
     this.jw = null;
+    this.kb = null;
     this.spawnQ = [];
     this.waveClearT = -1;
     this.pendingShop = -1;
@@ -490,8 +515,9 @@ export class GameScene extends Phaser.Scene {
       .image(
         this.px,
         this.py,
-        { parksulhee: 'az-ship-ps', youngjioo: 'az-ship-jw' }[this.session.pilot as string] ??
-          'az-ship',
+        { parksulhee: 'az-ship-ps', youngjioo: 'az-ship-jw', keunaebi: 'az-ship-kb' }[
+          this.session.pilot as string
+        ] ?? 'az-ship',
         0,
       )
       .setScale(2)
@@ -619,10 +645,10 @@ export class GameScene extends Phaser.Scene {
       .setDepth(DEPTH.hud + 1);
 
     this.hudWpn = uiText(this, 114, 9, '', 9, '#8aff8a').setDepth(DEPTH.hud + 1);
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < DATA.weapons.maxLevel; i++) {
       this.hudPips.push(
         this.add
-          .rectangle(156 + i * 8, 5, 6, 7, 0x8aff8a)
+          .rectangle(156 + i * 6, 5, 4, 7, 0x8aff8a)
           .setOrigin(0, 0)
           .setDepth(DEPTH.hud + 1),
       );
@@ -1374,6 +1400,36 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /** 착탄 스플래시(미사일) — 반경 내 잡몹 피해 + 경량 폭발 연출 (셰이크 없음) */
+  private splashHit(x: number, y: number, splash: { radius: number; ratio: number }, dmg: number): void {
+    const sd = dmg * splash.ratio;
+    const r2 = splash.radius * splash.radius;
+    // 길이 스냅샷: killEnemy의 onDeath 분열체(순회 중 push)가 이 폭발에 소급 피격되지 않게
+    const n = this.enemies.length;
+    for (let i = 0; i < n; i++) {
+      const e = this.enemies[i];
+      if (!e || e.dead) continue;
+      const dx = e.x - x;
+      const dy = e.y - y;
+      if (dx * dx + dy * dy < r2) {
+        e.hp -= sd;
+        e.flashT = 0.05;
+        if (e.hp <= 0) this.killEnemy(e);
+      }
+    }
+    const img = this.fxPool.get('az-explosion', x, y);
+    img
+      .setFrame(0)
+      .setDepth(DEPTH.boom)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setScale(1.1)
+      .setRotation(rnd(0, 6.283));
+    const ring = this.fxPool.get('boom-ring', x, y);
+    ring.setDepth(DEPTH.boom + 0.1).setBlendMode(Phaser.BlendModes.ADD).setScale(0.35);
+    this.booms.push({ x, y, t: 0.25, scale: splash.radius / 44, img, ring });
+    SFX.boom();
+  }
+
   private killEnemy(e: Enemy): void {
     if (e.dead) return;
     e.dead = true;
@@ -1510,11 +1566,42 @@ export class GameScene extends Phaser.Scene {
       this.sp ||
       this.ps ||
       this.jw ||
+      this.kb ||
       this.session.superN <= 0 ||
       this.pendingShop > 0
     )
       return;
     this.session.superN--;
+    if (this.session.pilot === 'keunaebi') {
+      // 지우큰애비: "하무야 물어! 쉭쉭!" — 푸들 하무 전방 돌진
+      const glow = this.add
+        .image(this.px, this.py, 'super-aura')
+        .setDepth(DEPTH.phantom - 0.1)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setScale(3.2)
+        .setVisible(false);
+      const img = this.add
+        .image(this.px, this.py, 'poodle')
+        .setDepth(DEPTH.phantom)
+        .setScale(0.62)
+        .setVisible(false);
+      this.kb = {
+        t: 0,
+        pass: 0,
+        img,
+        glow,
+        x: this.px,
+        y: this.py,
+        bossHitThisPass: false,
+        bossPasses: 0,
+      };
+      this.inv = 999;
+      this.auraImg.setVisible(true);
+      vibrate(80);
+      SFX.superOn();
+      this.shake = 5;
+      return;
+    }
     if (this.session.pilot === 'youngjioo') {
       // 어린지우: "비켜!" — 초록 산에서 앵무새떼가 부와아아악 쏟아진다
       const bg = this.add
@@ -1777,6 +1864,75 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private updateKB(dt: number): void {
+    const kb = this.kb;
+    if (!kb) return;
+    kb.t += dt;
+    if (kb.t < KB.bubbleUntil) {
+      this.showBubble(KB_BUBBLE, this.px, this.py - 34);
+      return;
+    }
+    this.bubble.setVisible(false);
+    // 패스 시작: 플레이어 위치(1회차) 또는 화면 아래(재진입)에서 발사
+    if (!kb.img.visible) {
+      if (kb.pass >= KB.passes) {
+        kb.img.destroy();
+        kb.glow.destroy();
+        this.kb = null;
+        this.inv = SUPER.endInvuln;
+        this.auraImg.setVisible(false);
+        this.bubble.setVisible(false);
+        return;
+      }
+      kb.pass++;
+      kb.x = clamp(this.px, 70, GAME_WIDTH - 70);
+      kb.y = kb.pass === 1 ? this.py - 30 : GAME_HEIGHT + 240;
+      kb.bossHitThisPass = false;
+      kb.img.setVisible(true).setAlpha(1);
+      kb.glow.setVisible(true);
+      SFX.swoosh();
+      vibrate(40);
+    }
+    // 돌진: 위로 가속, 좌우 흔들림 + 회전 워블
+    kb.y -= KB.speed * dt;
+    const wob = Math.sin(kb.t * 21) * 6;
+    kb.img.setPosition(kb.x + wob, kb.y);
+    kb.img.setRotation(Math.sin(kb.t * 17) * 0.12);
+    kb.glow.setPosition(kb.x + wob, kb.y).setAlpha(0.5 + Math.sin(kb.t * 24) * 0.25);
+    // 경로의 적 일망타진 — 푸들 몸통 폭 스와스
+    for (const e of this.enemies) {
+      if (!e.dead && Math.abs(e.x - kb.x) < KB.halfWidth && e.y > kb.y - 240 && e.y < kb.y + 200)
+        this.killEnemy(e);
+    }
+    // 보스: 패스당 1회, 총 3회 상한 — 실드 파츠 우선
+    const B = this.boss;
+    if (
+      B &&
+      B.entered &&
+      !kb.bossHitThisPass &&
+      kb.bossPasses < KB.maxBossPasses &&
+      Math.abs(B.x - kb.x) < B.def.hitbox.w / 2 + KB.halfWidth &&
+      kb.y < B.y + 40
+    ) {
+      kb.bossHitThisPass = true;
+      kb.bossPasses++;
+      vibrate(70);
+      this.shake = Math.min(7, this.shake + 4);
+      const shieldParts = B.parts.filter((pp) => pp.alive && pp.def.shield);
+      if (shieldParts.length > 0) {
+        for (const part of shieldParts) this.damagePart(part, B, KB.partDamagePerPass);
+      } else {
+        B.flashT = 0.08;
+        this.damageBoss(KB.bossDamagePerPass);
+      }
+    }
+    // 화면 밖으로 나가면 다음 패스
+    if (kb.y < -260) kb.img.setVisible(false);
+    this.reapEnemies();
+    for (const b of this.ebullets) this.pool.release(b.img);
+    this.ebullets.length = 0;
+  }
+
   private updateJW(dt: number): void {
     const jw = this.jw;
     if (!jw) return;
@@ -1906,6 +2062,7 @@ export class GameScene extends Phaser.Scene {
     if (this.sp) this.updateSuper(dt);
     if (this.ps) this.updatePS(dt);
     if (this.jw) this.updateJW(dt);
+    if (this.kb) this.updateKB(dt);
     if (this.auto) this.updateAutoPilot(dt);
 
     this.updatePlayer(dt);
@@ -1928,7 +2085,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     // 슈퍼 진행 중에는 상점 전환을 보류 (연출 강제 절단 방지)
-    if (this.pendingShop > 0 && !this.sp && !this.ps && !this.jw) {
+    if (this.pendingShop > 0 && !this.sp && !this.ps && !this.jw && !this.kb) {
       this.pendingShop -= dt;
       if (this.pendingShop <= 0 && this.alive) {
         if (this.session.campaignDone) {
@@ -2049,7 +2206,7 @@ export class GameScene extends Phaser.Scene {
       this.playerFire();
       this.fireCd = cooldownFor(this.session.cur, weaponLevel(this.session));
     }
-    if (this.inv > 0 && !this.sp && !this.ps && !this.jw) this.inv -= dt;
+    if (this.inv > 0 && !this.sp && !this.ps && !this.jw && !this.kb) this.inv -= dt;
 
     // 후방무기 (피드백 4 — 무기 체계 확장)
     const rear = this.session.rear ? DATA.equipment.rear[this.session.rear] : undefined;
@@ -2132,10 +2289,11 @@ export class GameScene extends Phaser.Scene {
         !this.sp &&
         !this.ps &&
         !this.jw &&
+        !this.kb &&
         Math.floor(this.worldT * 20) % 2 === 1
       ),
     );
-    if (this.sp || this.ps || this.jw) this.auraImg.setPosition(this.px, this.py);
+    if (this.sp || this.ps || this.jw || this.kb) this.auraImg.setPosition(this.px, this.py);
   }
 
   private updateWaves(dt: number): void {
@@ -2253,6 +2411,12 @@ export class GameScene extends Phaser.Scene {
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const e = this.enemies[i];
       if (!e) continue;
+      // 스플래시 등으로 이미 죽은 개체는 행동·사격·탄 흡수 전에 즉시 리핑
+      if (e.dead) {
+        this.pool.release(e.img);
+        this.enemies.splice(i, 1);
+        continue;
+      }
       e.t += dt;
       if (e.hcd > 0) e.hcd -= dt;
       const def = e.def;
@@ -2350,6 +2514,7 @@ export class GameScene extends Phaser.Scene {
           // 관통탄은 겹친 프레임마다 히트하므로 60fps 기준으로 정규화
           e.hp -= b.pierce > 0 ? b.dmg * Math.min(3, dt * 60) : b.dmg;
           e.flashT = 0.05;
+          if (b.splash) this.splashHit(b.x, b.y, b.splash, b.dmg);
           if (b.pierce > 0) b.pierce--;
           else {
             this.pool.release(b.img);
@@ -2487,6 +2652,7 @@ export class GameScene extends Phaser.Scene {
       }
       if (hitPart) {
         const dmg = b.pierce > 0 ? b.dmg * Math.min(3, dt * 60) : b.dmg;
+        if (b.splash) this.splashHit(b.x, b.y, b.splash, b.dmg);
         if (b.pierce > 0) b.pierce--;
         else {
           this.pool.release(b.img);
@@ -2498,6 +2664,7 @@ export class GameScene extends Phaser.Scene {
       if (aabb(b.x, b.y, b.w, b.h, B.x, B.y, def.hitbox.w, def.hitbox.h)) {
         const shielded = this.coreShielded(B);
         const dmg = b.pierce > 0 ? b.dmg * Math.min(3, dt * 60) : b.dmg;
+        if (b.splash) this.splashHit(b.x, b.y, b.splash, b.dmg);
         if (b.pierce > 0) b.pierce--;
         else {
           this.pool.release(b.img);
