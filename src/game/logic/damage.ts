@@ -33,3 +33,40 @@ export function aabb(
 ): boolean {
   return Math.abs(ax - bx) * 2 < aw + bw && Math.abs(ay - by) * 2 < ah + bh;
 }
+
+/**
+ * Tests a moving AABB against a stationary AABB over the whole frame.
+ * This prevents fast projectiles from tunnelling through small targets when
+ * frame time spikes, while keeping the collision contract independent of FPS.
+ */
+export function sweptAabb(
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+  movingW: number,
+  movingH: number,
+  targetX: number,
+  targetY: number,
+  targetW: number,
+  targetH: number,
+): boolean {
+  const dx = toX - fromX;
+  const dy = toY - fromY;
+  const halfX = (movingW + targetW) / 2;
+  const halfY = (movingH + targetH) / 2;
+  let enter = 0;
+  let exit = 1;
+
+  const axis = (start: number, delta: number, center: number, half: number): boolean => {
+    if (Math.abs(delta) < 1e-9) return Math.abs(start - center) < half;
+    let near = (center - half - start) / delta;
+    let far = (center + half - start) / delta;
+    if (near > far) [near, far] = [far, near];
+    enter = Math.max(enter, near);
+    exit = Math.min(exit, far);
+    return enter <= exit;
+  };
+
+  return axis(fromX, dx, targetX, halfX) && axis(fromY, dy, targetY, halfY);
+}

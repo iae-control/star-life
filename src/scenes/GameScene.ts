@@ -4,11 +4,18 @@ import Phaser from 'phaser';
 
 import { GAME_HEIGHT, GAME_WIDTH, SceneKeys } from '../config';
 import { DATA, t } from '../data';
-import type { BossData, BossPhase, EnemyTypeData, LevelData } from '../data/schemas';
+import type {
+  BossData,
+  BossPhase,
+  EnemyTypeData,
+  GimmickData,
+  LevelData,
+  SectorData,
+} from '../data/schemas';
 import { DIFficulty, PLAYER, STICK, SUPER } from '../game/logic/balance';
-import { aabb, applyDamage } from '../game/logic/damage';
+import { aabb, applyDamage, sweptAabb } from '../game/logic/damage';
 import { cooldownFor, firePattern, type ShotSpec } from '../game/logic/weapons';
-import { buildLevelWave, type SpawnEvent } from '../game/logic/waves';
+import { buildLevelWave, levelWaveCount, type SpawnEvent } from '../game/logic/waves';
 import {
   newSession,
   PILOT_REAR,
@@ -32,6 +39,10 @@ const clamp = Phaser.Math.Clamp;
 
 interface Bullet extends ShotSpec {
   t: number;
+  prevX: number;
+  prevY: number;
+  trailT: number;
+  hitTargets: Set<object>;
   /** 유도 미사일 여부 (후방무기 seeker) */
   homing?: boolean;
   img: Phaser.GameObjects.Image;
@@ -88,6 +99,9 @@ interface BossPart {
   alive: boolean;
   flashT: number;
   fireT: number;
+  x: number;
+  y: number;
+  rotation: number;
   img: Phaser.GameObjects.Image;
 }
 interface BossState {
@@ -98,6 +112,7 @@ interface BossState {
   hp: number;
   hpMax: number;
   phase: number;
+  stage: number;
   cool: number;
   hcd: number;
   dir: number;
@@ -131,6 +146,34 @@ interface Spark {
   vx: number;
   vy: number;
   t: number;
+}
+interface Impact {
+  core: Phaser.GameObjects.Image;
+  ring: Phaser.GameObjects.Image;
+  t: number;
+  scale: number;
+}
+type EnvironmentalHazardKind = 'ice' | 'fireball' | 'gas' | 'coolant' | 'prominence' | 'lightning';
+interface EnvironmentalHazard {
+  kind: EnvironmentalHazardKind;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  ax: number;
+  ay: number;
+  t: number;
+  life: number;
+  activeAt: number;
+  hitW: number;
+  hitH: number;
+  damage: number;
+  side: -1 | 0 | 1;
+  reach: number;
+  emitsGas: number;
+  hit: boolean;
+  img: Phaser.GameObjects.Image;
+  warning?: Phaser.GameObjects.Rectangle;
 }
 interface OrbEnt {
   x: number;
@@ -282,6 +325,18 @@ const DEPTH = {
   debug: 30,
 };
 
+const IMPACT_VISUALS: Record<
+  string,
+  { color: number; scale: number; sparks: number; recoil: number }
+> = {
+  spark: { color: 0xffd37a, scale: 0.42, sparks: 3, recoil: 0.08 },
+  pulse: { color: 0x5ac8ff, scale: 0.52, sparks: 4, recoil: 0.12 },
+  plasma: { color: 0x64f57a, scale: 0.68, sparks: 5, recoil: 0.16 },
+  arc: { color: 0x9ff6ff, scale: 0.62, sparks: 6, recoil: 0.14 },
+  scorch: { color: 0xff5d78, scale: 0.46, sparks: 2, recoil: 0.1 },
+  blast: { color: 0xff9b42, scale: 0.95, sparks: 8, recoil: 0.5 },
+};
+
 export class GameScene extends Phaser.Scene {
   private session!: GameSession;
   private level!: LevelData;
@@ -305,11 +360,13 @@ export class GameScene extends Phaser.Scene {
   private ebullets: EBul[] = [];
   private enemies: Enemy[] = [];
   private booms: Boom[] = [];
+  private impacts: Impact[] = [];
   private sparks: Spark[] = [];
   private orbs: OrbEnt[] = [];
   private texts: FloatText[] = [];
   private textPool: Phaser.GameObjects.Text[] = [];
   private boss: BossState | null = null;
+  private bossLinks!: Phaser.GameObjects.Graphics;
   private sp: SuperState | null = null;
   private ps: RacketState | null = null;
   private jw: JiwooState | null = null;
@@ -338,6 +395,8 @@ export class GameScene extends Phaser.Scene {
 
   // 배경/카메라
   private spaceBg!: SpaceBackground;
+  private sectorLandmark: Phaser.GameObjects.Image | null = null;
+  private sectorLandmarkY = 118;
   private scrollSpd = 45;
   private shake = 0;
   private worldT = 0;
@@ -385,20 +444,35 @@ export class GameScene extends Phaser.Scene {
     [];
   private warpPulseT = 0;
   private scrollRev = 0;
+  private currentSector: SectorData | null = null;
+  private gimmickTimers = new Map<string, number>();
+  private envHazards: EnvironmentalHazard[] = [];
+  private environmentWind = 0;
+  private environmentSpeed = 1;
+  private environmentHeat = 0;
+  private heatDamageT = 0;
+  private envCameraX = 0;
+  private environmentOverlay!: Phaser.GameObjects.Rectangle;
   private touchTx = 0;
   private touchTy = 0;
   private keyMap!: Record<string, Phaser.Input.Keyboard.Key>;
 
   // HUD
+  private hudRoot!: Phaser.GameObjects.Container;
   private hudShieldBar!: Phaser.GameObjects.Rectangle;
   private hudArmorBar!: Phaser.GameObjects.Rectangle;
+  private hudWeaponAccent!: Phaser.GameObjects.Rectangle;
   private hudWpn!: Phaser.GameObjects.Text;
   private hudPips: Phaser.GameObjects.Rectangle[] = [];
   private hudWaveT!: Phaser.GameObjects.Text;
   private hudScore!: Phaser.GameObjects.Text;
   private hudMute!: Phaser.GameObjects.Text;
+  private envStatus!: Phaser.GameObjects.Text;
+  private envBarBg!: Phaser.GameObjects.Rectangle;
+  private envBar!: Phaser.GameObjects.Rectangle;
   private bossBar!: Phaser.GameObjects.Rectangle;
   private bossLabel!: Phaser.GameObjects.Text;
+  private bossPartStatus!: Phaser.GameObjects.Text;
   private superBtn!: Phaser.GameObjects.Container;
   private superCount!: Phaser.GameObjects.Text;
   private bannerText!: Phaser.GameObjects.Text;
@@ -446,6 +520,7 @@ export class GameScene extends Phaser.Scene {
     this.ebullets = [];
     this.enemies = [];
     this.booms = [];
+    this.impacts = [];
     this.sparks = [];
     this.orbs = [];
     this.texts = [];
@@ -467,6 +542,8 @@ export class GameScene extends Phaser.Scene {
     this.vseq = 0;
     this.shake = 0;
     this.worldT = 0;
+    this.sectorLandmark = null;
+    this.sectorLandmarkY = 118;
     this.touchOn = false;
     this.dragPointerId = -1;
     this.stickOn = false;
@@ -481,6 +558,14 @@ export class GameScene extends Phaser.Scene {
     this.heatwaves = [];
     this.warpPulseT = 0;
     this.scrollRev = 0;
+    this.currentSector = null;
+    this.gimmickTimers = new Map();
+    this.envHazards = [];
+    this.environmentWind = 0;
+    this.environmentSpeed = 1;
+    this.environmentHeat = 0;
+    this.heatDamageT = 0;
+    this.envCameraX = 0;
     this.bubbleMsg = '';
     this.hudPips = [];
     this.flashes = [];
@@ -524,9 +609,18 @@ export class GameScene extends Phaser.Scene {
       .image(0, 0, 'vignette')
       .setOrigin(0, 0)
       .setDepth(DEPTH.hud - 1);
+    this.environmentOverlay = this.add
+      .rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0xff7a28, 0)
+      .setOrigin(0, 0)
+      .setDepth(DEPTH.hud - 0.8)
+      .setBlendMode(Phaser.BlendModes.ADD);
 
     this.pool = new ImagePool(this, 'b-pulse', DEPTH.bullet, 64);
     this.fxPool = new ImagePool(this, 'boom', DEPTH.boom, 16);
+    this.bossLinks = this.add
+      .graphics()
+      .setDepth(DEPTH.enemy - 0.05)
+      .setBlendMode(Phaser.BlendModes.ADD);
 
     this.flameImg = this.add
       .image(this.px, this.py + 15, 'engine-flame')
@@ -538,15 +632,8 @@ export class GameScene extends Phaser.Scene {
       .setBlendMode(Phaser.BlendModes.ADD)
       .setVisible(false);
     this.playerImg = this.add
-      .image(
-        this.px,
-        this.py,
-        { parksulhee: 'az-ship-ps', youngjioo: 'az-ship-jw', keunaebi: 'az-ship-kb' }[
-          this.session.pilot as string
-        ] ?? 'az-ship',
-        0,
-      )
-      .setScale(2)
+      .image(this.px, this.py, 'hero-fighter-v2')
+      .setScale(0.105)
       .setDepth(DEPTH.player);
     // 엔진 화염은 시트에 포함(행 플리커) — 별도 화염 이미지는 끈다
     this.flameImg.setVisible(false);
@@ -564,6 +651,7 @@ export class GameScene extends Phaser.Scene {
       .setDepth(DEPTH.banner + 1)
       .setAlpha(0)
       .setVisible(false);
+    this.hudRoot.add(this.whiteFlash);
     this.setupInput();
     if (this.debug) this.createDebug();
     // 튜토리얼: 첫 플레이 L1 도입 (PLAN 4장 — 90초 내 자연 학습)
@@ -621,7 +709,7 @@ export class GameScene extends Phaser.Scene {
     if (
       data?.replayWave &&
       this.session.levelWave > 0 &&
-      this.session.levelWave <= this.level.waves.length
+      this.session.levelWave <= levelWaveCount(this.session.level - 1)
     ) {
       this.session.levelWave--;
       this.session.wave = Math.max(0, this.session.wave - 1);
@@ -632,8 +720,19 @@ export class GameScene extends Phaser.Scene {
 
   /* ---------- HUD ---------- */
   private createHud(): void {
-    this.add.rectangle(0, 0, GAME_WIDTH, 30, 0x040814, 0.88).setOrigin(0, 0).setDepth(DEPTH.hud);
-    this.add.rectangle(0, 30, GAME_WIDTH, 1, 0x78b4ff, 0.25).setOrigin(0, 0).setDepth(DEPTH.hud);
+    const hudStart = this.children.list.length;
+    const frame = this.add.graphics().setDepth(DEPTH.hud);
+    frame.fillStyle(0x020714, 0.9);
+    frame.fillRoundedRect(3, 3, GAME_WIDTH - 6, 28, 8);
+    frame.lineStyle(1, 0x79c9ff, 0.42);
+    frame.strokeRoundedRect(3.5, 3.5, GAME_WIDTH - 7, 27, 8);
+    frame.lineStyle(2, 0x2a69a8, 0.38);
+    frame.lineBetween(111, 7, 111, 27);
+    frame.lineBetween(238, 7, 238, 27);
+    this.add
+      .rectangle(5, 30, GAME_WIDTH - 10, 1, 0x78b4ff, 0.32)
+      .setOrigin(0, 0)
+      .setDepth(DEPTH.hud);
 
     uiText(this, 7, 9, 'SHD', 9, '#7ecbff').setDepth(DEPTH.hud + 1);
     this.add
@@ -656,16 +755,20 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0, 0)
       .setDepth(DEPTH.hud + 1);
 
-    this.hudWpn = uiText(this, 114, 9, '', 9, '#8aff8a').setDepth(DEPTH.hud + 1);
+    this.hudWeaponAccent = this.add
+      .rectangle(114, 5, 3, 20, 0x4db8ff, 0.9)
+      .setOrigin(0, 0)
+      .setDepth(DEPTH.hud + 1);
+    this.hudWpn = uiText(this, 121, 9, '', 9, '#8aff8a').setDepth(DEPTH.hud + 1);
     for (let i = 0; i < DATA.weapons.maxLevel; i++) {
       this.hudPips.push(
         this.add
-          .rectangle(156 + i * 6, 5, 4, 7, 0x8aff8a)
+          .rectangle(171 + i * 5, 5, 3, 7, 0x8aff8a)
           .setOrigin(0, 0)
           .setDepth(DEPTH.hud + 1),
       );
     }
-    this.hudWaveT = uiText(this, 114, 22, '', 9, '#cfd8ff').setDepth(DEPTH.hud + 1);
+    this.hudWaveT = uiText(this, 121, 22, '', 9, '#cfd8ff').setDepth(DEPTH.hud + 1);
     this.hudScore = uiText(this, GAME_WIDTH - 7, 9, '', 11, '#fff2b0', 'right').setDepth(
       DEPTH.hud + 1,
     );
@@ -680,6 +783,24 @@ export class GameScene extends Phaser.Scene {
       .setDepth(DEPTH.hud + 1)
       .setVisible(false);
     this.bossLabel = uiText(this, 34, GAME_HEIGHT - 12, 'BOSS', 9, '#ff9a9a')
+      .setDepth(DEPTH.hud + 1)
+      .setVisible(false);
+    this.bossPartStatus = uiText(this, GAME_WIDTH - 34, GAME_HEIGHT - 12, '', 8, '#8fcfff', 'right')
+      .setDepth(DEPTH.hud + 1)
+      .setVisible(false);
+
+    this.envBarBg = this.add
+      .rectangle(GAME_WIDTH / 2 - 70, 35, 140, 4, 0x101827, 0.92)
+      .setOrigin(0, 0)
+      .setStrokeStyle(1, 0x89dff2, 0.45)
+      .setDepth(DEPTH.hud)
+      .setVisible(false);
+    this.envBar = this.add
+      .rectangle(GAME_WIDTH / 2 - 69, 36, 138, 2, 0x59ddff, 0.95)
+      .setOrigin(0, 0)
+      .setDepth(DEPTH.hud + 1)
+      .setVisible(false);
+    this.envStatus = uiText(this, GAME_WIDTH / 2, 46, '', 8, '#9fefff', 'center')
       .setDepth(DEPTH.hud + 1)
       .setVisible(false);
 
@@ -707,13 +828,17 @@ export class GameScene extends Phaser.Scene {
     this.bannerText = uiText(this, GAME_WIDTH / 2, 200, '', 22, '#e8ecff', 'center')
       .setDepth(DEPTH.banner)
       .setVisible(false);
+
+    const hudObjects = this.children.list.slice(hudStart) as Phaser.GameObjects.GameObject[];
+    this.hudRoot = this.add.container(0, 0, hudObjects).setDepth(DEPTH.hud);
   }
 
   private createBubble(): void {
     this.bubbleBg = this.add.graphics();
     this.bubbleText = this.add
       .text(0, 0, '', {
-        fontFamily: 'Galmuri11, "Courier New", monospace',
+        fontFamily:
+          'Pretendard, "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", Arial, sans-serif',
         fontStyle: 'bold',
         fontSize: '11px',
         color: '#101638',
@@ -723,6 +848,7 @@ export class GameScene extends Phaser.Scene {
       .container(0, 0, [this.bubbleBg, this.bubbleText])
       .setDepth(DEPTH.bubble)
       .setVisible(false);
+    this.hudRoot.add(this.bubble);
   }
 
   private showBubble(msg: string, bx: number, by: number): void {
@@ -811,8 +937,10 @@ export class GameScene extends Phaser.Scene {
       this.pool.release(this.boss.img);
       this.pool.release(this.boss.glow);
       this.boss = null;
+      this.bossLinks.clear();
       this.bossBar.setVisible(false);
       this.bossLabel.setVisible(false);
+      this.bossPartStatus.setVisible(false);
     }
     this.spawnQ = [];
     this.waveClearT = -1;
@@ -877,8 +1005,8 @@ export class GameScene extends Phaser.Scene {
       for (const part of B.parts) {
         if (!part.alive) continue;
         g.strokeRect(
-          B.x + part.def.dx - part.def.hitbox.w / 2,
-          B.y + part.def.dy - part.def.hitbox.h / 2,
+          part.x - part.def.hitbox.w / 2,
+          part.y - part.def.hitbox.h / 2,
           part.def.hitbox.w,
           part.def.hitbox.h,
         );
@@ -939,7 +1067,8 @@ export class GameScene extends Phaser.Scene {
         this.dragPointerId = p.id;
         this.stickOn = true;
         // 좌측하단 고정 스틱을 잡으면 그 자리, 그 외엔 터치 지점에 플로팅
-        const nearHome = Math.hypot(p.worldX - STICK.homeX, p.worldY - STICK.homeY) < STICK.grabRadius;
+        const nearHome =
+          Math.hypot(p.worldX - STICK.homeX, p.worldY - STICK.homeY) < STICK.grabRadius;
         // 플로팅 베이스는 터치 지점 그대로(클램프 금지) — 클램프하면 그 오프셋이 유령 편향으로 주입된다
         this.stickBaseX = nearHome ? STICK.homeX : p.worldX;
         this.stickBaseY = nearHome ? STICK.homeY : p.worldY;
@@ -1015,6 +1144,87 @@ export class GameScene extends Phaser.Scene {
   }
 
   /* ---------- 웨이브 ---------- */
+  private sectorForWave(routeWave: number): SectorData | null {
+    const sectors = this.level.sectors;
+    if (!sectors?.length) return null;
+    let selected: SectorData | null = null;
+    for (const sector of sectors) {
+      if (sector.startWave <= routeWave) selected = sector;
+      else break;
+    }
+    return selected ?? sectors[0] ?? null;
+  }
+
+  private clearSectorEnvironment(): void {
+    for (const hazard of this.envHazards) {
+      hazard.warning?.destroy();
+      hazard.img.destroy();
+    }
+    this.envHazards = [];
+    for (const fog of this.fogs) fog.img.destroy();
+    this.fogs = [];
+    for (const vent of this.vents) {
+      vent.warnImg.destroy();
+      vent.img?.destroy();
+    }
+    this.vents = [];
+    for (const wave of this.heatwaves) for (const img of wave.imgs) this.fxPool.release(img);
+    this.heatwaves = [];
+    this.gimmickTimers.clear();
+    this.gimT = 0;
+    this.windT = 0;
+    this.windCur = 0;
+    this.environmentWind = 0;
+    this.environmentSpeed = 1;
+    this.environmentHeat = 0;
+    this.heatDamageT = 0;
+    this.envCameraX = 0;
+    this.environmentOverlay.setAlpha(0);
+    this.playerImg.clearTint();
+  }
+
+  private enterSector(routeWave: number): boolean {
+    const next = this.sectorForWave(routeWave);
+    if (!next || next.id === this.currentSector?.id) return false;
+    this.clearSectorEnvironment();
+    this.currentSector = next;
+    this.sectorLandmark?.destroy();
+    this.sectorLandmark = null;
+    for (const prop of this.props) prop.img.destroy();
+    this.props = [];
+    this.propT = 0;
+    this.spaceBg.destroy();
+    const background = next.background ?? this.level.background;
+    this.spaceBg = new SpaceBackground(this, DEPTH.bg, background);
+    const landmarkKey =
+      next.id.includes('ice') || next.id.includes('frozen')
+        ? 'planet-ice'
+        : next.id.includes('volcanic')
+          ? 'planet-volcanic'
+          : next.id.includes('desert') || next.id.includes('uy-scuti')
+            ? 'planet-desert'
+            : next.id.includes('water')
+              ? 'planet-ocean'
+              : next.id.includes('rock') || next.id.includes('meteor')
+                ? 'planet-rock'
+                : null;
+    if (landmarkKey) {
+      const side = routeWave % 2 === 0 ? 1 : -1;
+      this.sectorLandmarkY = 118;
+      this.sectorLandmark = this.add
+        .image(side > 0 ? GAME_WIDTH - 34 : 34, this.sectorLandmarkY, landmarkKey)
+        .setDepth(DEPTH.bg + 0.45)
+        .setScale(0.92)
+        .setAlpha(0.84)
+        .setBlendMode(Phaser.BlendModes.SCREEN);
+    }
+    playMusic(background.theme);
+    const bonus =
+      next.bonusMultiplier && next.bonusMultiplier > 1 ? `  x${next.bonusMultiplier}` : '';
+    this.banner(`${t(next.nameKey)}${bonus}`, 2.5, '#9fefff');
+    return true;
+  }
+
   private nextWave(): void {
     if (this.session.endless) {
       // 엔들리스: 전 레벨 웨이브 풀에서 무작위, 6웨이브마다 보스 순환
@@ -1039,12 +1249,14 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     const li = Math.min(this.session.level, DATA.levels.levels.length) - 1;
-    const isBossWave = this.session.levelWave >= this.level.waves.length;
+    const routeWave = this.session.levelWave;
+    const isBossWave = routeWave >= levelWaveCount(li);
+    const sectorChanged = this.enterSector(routeWave);
     this.spawnQ = buildLevelWave(li, this.session.levelWave);
     if (!isBossWave) {
       this.session.wave++;
       this.session.levelWave++;
-      this.banner(t('banner.wave', this.session.wave), 1.6, '#ffd75e');
+      if (!sectorChanged) this.banner(t('banner.wave', this.session.wave), 1.6, '#ffd75e');
       this.scrollSpd = this.level.scroll.base + this.session.wave * this.level.scroll.perWave;
     }
     this.waveT = 0;
@@ -1132,7 +1344,7 @@ export class GameScene extends Phaser.Scene {
     }
     e.img.setDepth(DEPTH.enemy);
     if (AZ_ENEMY_FRAMES[def.sprite]) e.img.setFrame(0);
-    if (def.scale) e.img.setScale(def.scale);
+    if (def.scale) e.img.setScale(AZ_ENEMY_FRAMES[def.sprite] ? def.scale / 3 : def.scale);
     this.enemies.push(e);
   }
 
@@ -1148,10 +1360,21 @@ export class GameScene extends Phaser.Scene {
     const glow = this.pool.get('boss-glow', GAME_WIDTH / 2, -80);
     glow.setDepth(DEPTH.enemy - 0.2).setBlendMode(Phaser.BlendModes.ADD);
     const img = this.pool.get(def.sprite, GAME_WIDTH / 2, -80);
-    img.setDepth(DEPTH.enemy);
+    img.setDepth(DEPTH.enemy).setScale(def.layoutVersion === 2 ? 1.24 : 1);
     const parts: BossPart[] = (def.parts ?? []).map((pd) => {
       const img = this.pool.get(pd.sprite, GAME_WIDTH / 2 + pd.dx, -80 + pd.dy);
-      img.setDepth(DEPTH.enemy + 0.1);
+      const roleDepth =
+        pd.role === 'decor'
+          ? -0.08
+          : pd.role === 'structure'
+            ? 0
+            : pd.role === 'armor'
+              ? 0.06
+              : 0.12;
+      img
+        .setDepth(DEPTH.enemy + roleDepth)
+        .setScale(pd.scale ?? 1)
+        .setRotation(pd.rotation ?? 0);
       const hp = (pd.hp.base + w * pd.hp.perWave) * this.diff.hp;
       return {
         def: pd,
@@ -1160,6 +1383,9 @@ export class GameScene extends Phaser.Scene {
         alive: true,
         flashT: 0,
         fireT: (pd.fireEvery ?? 2) * 0.7,
+        x: GAME_WIDTH / 2 + pd.dx,
+        y: -80 + pd.dy,
+        rotation: pd.rotation ?? 0,
         img,
       };
     });
@@ -1171,6 +1397,7 @@ export class GameScene extends Phaser.Scene {
       hp,
       hpMax: hp,
       phase: -1,
+      stage: 0,
       cool: 1.2,
       hcd: 0,
       dir: 1,
@@ -1190,6 +1417,7 @@ export class GameScene extends Phaser.Scene {
     this.scrollSpd = this.level.scroll.boss;
     this.bossBar.setVisible(true);
     this.bossLabel.setVisible(true);
+    this.bossPartStatus.setVisible(true);
   }
 
   /* ---------- 발사/피해 ---------- */
@@ -1221,6 +1449,10 @@ export class GameScene extends Phaser.Scene {
       stretch: false,
       homing,
       t: 0,
+      prevX: x,
+      prevY: y,
+      trailT: 0,
+      hitTargets: new Set<object>(),
       img,
     });
   }
@@ -1240,9 +1472,9 @@ export class GameScene extends Phaser.Scene {
       if (this.coreShielded(B)) {
         // 실드 페이즈: 무적 코어 대신 살아 있는 파츠를 조준
         for (const part of B.parts) {
-          if (!part.alive) continue;
-          const px2 = B.x + part.def.dx;
-          const py2 = B.y + part.def.dy;
+          if (!part.alive || !this.partActive(part, B) || !this.partExposed(part, B)) continue;
+          const px2 = part.x;
+          const py2 = part.y;
           const d = (px2 - x) * (px2 - x) + (py2 - y) * (py2 - y);
           if (d < bd) {
             bd = d;
@@ -1265,11 +1497,25 @@ export class GameScene extends Phaser.Scene {
       const img = this.pool.get(s.sprite, s.x, s.y);
       img.setDepth(DEPTH.bullet).setBlendMode(Phaser.BlendModes.ADD);
       if (s.stretch) img.setScale(1, 1.3);
-      this.bullets.push({ ...s, t: 0, img });
+      if (s.rotateToVelocity) img.setRotation(Math.atan2(s.vy, s.vx) + Math.PI / 2);
+      this.bullets.push({
+        ...s,
+        t: 0,
+        prevX: s.x,
+        prevY: s.y,
+        trailT: 0,
+        hitTargets: new Set<object>(),
+        img,
+      });
     }
+    const visual = IMPACT_VISUALS[shots[0]?.impactFx ?? 'pulse'] ?? IMPACT_VISUALS.pulse!;
     const mz = this.fxPool.get('muzzle', this.px, this.py - 19);
-    mz.setDepth(DEPTH.bullet + 0.5).setBlendMode(Phaser.BlendModes.ADD);
+    mz.setDepth(DEPTH.bullet + 0.5)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setTint(visual.color)
+      .setScale(0.85 + visual.scale * 0.35);
     this.flashes.push({ img: mz, t: 0 });
+    this.shake = Math.min(7, this.shake + visual.recoil);
     SFX.shoot(this.session.cur);
   }
 
@@ -1342,8 +1588,8 @@ export class GameScene extends Phaser.Scene {
   private executePartPhase(part: BossPart, B: BossState): void {
     const ph = part.def.phase;
     if (!ph) return;
-    const px = B.x + part.def.dx;
-    const py = B.y + part.def.dy;
+    const px = part.x;
+    const py = part.y;
     if (ph.type === 'aimed') {
       this.eFire(px, py + 8, ph.speed, ph.big);
     } else if (ph.type === 'fan') {
@@ -1356,27 +1602,137 @@ export class GameScene extends Phaser.Scene {
       for (let k = 0; k < ph.count; k++)
         this.eFireAngle(px, py, (k / ph.count) * Math.PI * 2, ph.speed);
       SFX.eshoot();
+    } else if (ph.type === 'spiral') {
+      for (let arm = 0; arm < ph.arms; arm++)
+        this.eFireAngle(px, py, B.spiralAngle + (arm / ph.arms) * Math.PI * 2, ph.speed);
+      B.spiralAngle += ph.rotStep;
+      SFX.eshoot();
+    } else {
+      for (let k = 0; k < ph.count; k++)
+        this.spawnEnemyAt(ph.enemy, px + rnd(-18, 18), py + rnd(6, 24), {});
     }
   }
 
   /** 실드 파츠가 살아 있는 동안 코어는 무적 */
+  private bossStageId(B: BossState): string | null {
+    return B.def.stages?.[B.stage]?.id ?? null;
+  }
+
+  private partActive(part: BossPart, B: BossState): boolean {
+    const stages = part.def.activeStages;
+    const stageId = this.bossStageId(B);
+    return !stages || !stageId || stages.includes(stageId);
+  }
+
+  private partExposed(part: BossPart, B: BossState): boolean {
+    const gates = part.def.exposedBy;
+    if (!gates?.length) return true;
+    return gates.every((id) => !B.parts.find((candidate) => candidate.def.id === id)?.alive);
+  }
+
+  private partProtectsCore(part: BossPart): boolean {
+    return part.def.shield || part.def.protects?.includes('core') === true;
+  }
+
+  private updateBossAssembly(B: BossState): void {
+    const resolved = new Set<string>();
+    for (let pass = 0; pass < B.parts.length + 1; pass++) {
+      let progressed = false;
+      for (const part of B.parts) {
+        if (resolved.has(part.def.id)) continue;
+        const parent = part.def.parentId
+          ? B.parts.find((candidate) => candidate.def.id === part.def.parentId)
+          : undefined;
+        if (parent && !resolved.has(parent.def.id)) continue;
+
+        let localX = part.def.dx;
+        let localY = part.def.dy;
+        const motion = part.def.motion;
+        if (motion?.type === 'oscillate') {
+          const offset = Math.sin(B.t * motion.speed + (motion.phase ?? 0)) * motion.amplitude;
+          if (motion.axis === 'x') localX += offset;
+          else localY += offset;
+        } else if (motion?.type === 'orbit') {
+          const angle = B.t * motion.speed + (motion.phase ?? 0);
+          localX += Math.cos(angle) * motion.radiusX;
+          localY += Math.sin(angle) * motion.radiusY;
+        }
+
+        const parentX = parent?.alive ? parent.x : B.x;
+        const parentY = parent?.alive ? parent.y : B.y;
+        const parentRot = parent?.alive ? parent.rotation : 0;
+        part.x = parentX + Math.cos(parentRot) * localX - Math.sin(parentRot) * localY;
+        part.y = parentY + Math.sin(parentRot) * localX + Math.cos(parentRot) * localY;
+        part.rotation = parentRot + (part.def.rotation ?? 0);
+        part.img
+          .setPosition(part.x, part.y)
+          .setRotation(part.rotation)
+          .setVisible(part.alive && this.partActive(part, B))
+          .setAlpha(this.partExposed(part, B) ? 1 : 0.42);
+        resolved.add(part.def.id);
+        progressed = true;
+      }
+      if (!progressed) break;
+    }
+
+    this.bossLinks.clear();
+    for (const part of B.parts) {
+      if (!part.alive || !this.partActive(part, B) || !this.partProtectsCore(part)) continue;
+      this.bossLinks.lineStyle(2, 0x6cc9ff, 0.32 + Math.sin(B.t * 5 + part.x) * 0.12);
+      this.bossLinks.lineBetween(part.x, part.y, B.x, B.y);
+    }
+    if (this.coreShielded(B)) {
+      this.bossLinks.lineStyle(2, 0x78d8ff, 0.3 + Math.sin(B.t * 4) * 0.12);
+      this.bossLinks.strokeCircle(B.x, B.y, Math.max(B.def.hitbox.w, B.def.hitbox.h) * 0.62);
+    }
+  }
+
+  private advanceBossStage(B: BossState): void {
+    const current = B.def.stages?.[B.stage];
+    if (!current?.advanceWhenDestroyed || !B.def.stages?.[B.stage + 1]) return;
+    const ready = current.advanceWhenDestroyed.every(
+      (id) => !B.parts.find((part) => part.def.id === id)?.alive,
+    );
+    if (!ready) return;
+    B.stage++;
+    B.phase = -1;
+    B.cool = 0.8;
+    const next = B.def.stages[B.stage];
+    this.banner(next?.nameKey ? t(next.nameKey) : `PHASE ${B.stage + 1}`, 1.7, '#8fe8ff');
+    this.shake = Math.max(this.shake, 4);
+    SFX.warn();
+  }
+
   private coreShielded(B: BossState): boolean {
-    return B.parts.some((p) => p.alive && p.def.shield);
+    const stage = B.def.stages?.[B.stage];
+    if (stage && !stage.coreTargetable) return true;
+    return B.parts.some(
+      (part) =>
+        part.alive &&
+        this.partActive(part, B) &&
+        this.partExposed(part, B) &&
+        this.partProtectsCore(part),
+    );
   }
 
   private damagePart(part: BossPart, B: BossState, dmg: number): void {
     if (!part.alive) return;
-    part.hp -= dmg;
+    part.hp -= dmg * (part.def.damageMultiplier ?? 1);
     part.flashT = 0.05;
     if (part.hp <= 0) {
       part.alive = false;
       part.img.clearTint();
-      vibrate(50);
-      this.slomo(0.35, 0.22);
-      this.addBoom(B.x + part.def.dx, B.y + part.def.dy, 1.6, true);
-      this.session.score += 800;
-      this.addFloatText(B.x + part.def.dx, B.y + part.def.dy, '+800', '#ffd76a');
+      const major = ['shield', 'engine', 'weakpoint'].includes(part.def.role ?? '');
+      if (major) {
+        vibrate(50);
+        this.slomo(0.45, 0.18);
+      }
+      this.addBoom(part.x, part.y, major ? 1.45 : 0.8, major);
+      const score = part.def.destroyScore ?? (major ? 500 : 180);
+      this.session.score += score;
+      this.addFloatText(part.x, part.y, `+${score}`, '#ffd76a');
       this.pool.release(part.img);
+      this.advanceBossStage(B);
     }
   }
 
@@ -1409,14 +1765,68 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** 착탄 스플래시(미사일) — 반경 내 잡몹 피해 + 경량 폭발 연출 (셰이크 없음) */
-  private splashHit(x: number, y: number, splash: { radius: number; ratio: number }, dmg: number): void {
+  private addImpact(x: number, y: number, bullet: ShotSpec, shielded = false): void {
+    const inferred =
+      bullet.impactFx ??
+      ({
+        'b-vulcan': 'spark',
+        'b-pulse': 'pulse',
+        'b-proton': 'plasma',
+        'b-light': 'arc',
+        'b-laser': 'scorch',
+        'b-missile': 'blast',
+      }[bullet.sprite] as string | undefined) ??
+      'spark';
+    const visual = IMPACT_VISUALS[inferred] ?? IMPACT_VISUALS.spark!;
+    const color = shielded ? 0x78c8ff : visual.color;
+    const core = this.fxPool.get('impact-core', x, y);
+    core
+      .setDepth(DEPTH.boom + 0.2)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setTint(color)
+      .setScale(visual.scale * 0.35);
+    const ring = this.fxPool.get('impact-ring', x, y);
+    ring
+      .setDepth(DEPTH.boom + 0.1)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setTint(color)
+      .setScale(visual.scale * 0.18)
+      .setRotation(rnd(0, Math.PI * 2));
+    this.impacts.push({ core, ring, t: 0, scale: visual.scale });
+
+    const sparkBudget = Math.min(visual.sparks, Math.max(0, 180 - this.sparks.length));
+    for (let k = 0; k < sparkBudget; k++) {
+      const a = rnd(0, Math.PI * 2);
+      const speed = rnd(35, 120) * visual.scale;
+      const spark = this.fxPool.get('spark', x, y);
+      spark
+        .setDepth(DEPTH.boom)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setTint(color)
+        .setScale(rnd(0.55, 1.2));
+      this.sparks.push({
+        img: spark,
+        vx: Math.cos(a) * speed,
+        vy: Math.sin(a) * speed,
+        t: 0.15,
+      });
+    }
+  }
+
+  private splashHit(
+    x: number,
+    y: number,
+    splash: { radius: number; ratio: number },
+    dmg: number,
+    exclude?: Enemy,
+  ): void {
     const sd = dmg * splash.ratio;
     const r2 = splash.radius * splash.radius;
     // 길이 스냅샷: killEnemy의 onDeath 분열체(순회 중 push)가 이 폭발에 소급 피격되지 않게
     const n = this.enemies.length;
     for (let i = 0; i < n; i++) {
       const e = this.enemies[i];
-      if (!e || e.dead) continue;
+      if (!e || e.dead || e === exclude) continue;
       const dx = e.x - x;
       const dy = e.y - y;
       if (dx * dx + dy * dy < r2) {
@@ -1433,7 +1843,10 @@ export class GameScene extends Phaser.Scene {
       .setScale(1.1)
       .setRotation(rnd(0, 6.283));
     const ring = this.fxPool.get('boom-ring', x, y);
-    ring.setDepth(DEPTH.boom + 0.1).setBlendMode(Phaser.BlendModes.ADD).setScale(0.35);
+    ring
+      .setDepth(DEPTH.boom + 0.1)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setScale(0.35);
     this.booms.push({ x, y, t: 0.25, scale: splash.radius / 44, img, ring });
     SFX.boom();
   }
@@ -1442,9 +1855,10 @@ export class GameScene extends Phaser.Scene {
     if (e.dead) return;
     e.dead = true;
     this.session.kills++;
-    this.session.score += e.score;
+    const score = Math.round(e.score * (this.currentSector?.bonusMultiplier ?? 1));
+    this.session.score += score;
     this.addBoom(e.x, e.y, 1.3, false);
-    this.addFloatText(e.x, e.y, `+${e.score}`, '#ffd76a');
+    this.addFloatText(e.x, e.y, `+${score}`, '#ffd76a');
     const orb = DATA.enemies.orb;
     const chance = e.def.behavior === 'turret' ? orb.chanceTurret : orb.chance;
     if (Math.random() < chance) this.dropOrb(e.x, e.y);
@@ -1466,6 +1880,14 @@ export class GameScene extends Phaser.Scene {
     if (B.hp <= 0) {
       const bx = B.x;
       const by = B.y;
+      this.inv = Math.max(this.inv, B.def.shopDelay + 2);
+      for (const hostile of this.ebullets) this.pool.release(hostile.img);
+      this.ebullets = [];
+      for (const enemy of this.enemies) {
+        if (!enemy.dead) this.addBoom(enemy.x, enemy.y, 0.65, false);
+        this.pool.release(enemy.img);
+      }
+      this.enemies = [];
       for (let k = 0; k < 6; k++) {
         this.time.delayedCall(k * 130, () => {
           if (this.scene.isActive(SceneKeys.Game))
@@ -1487,7 +1909,7 @@ export class GameScene extends Phaser.Scene {
       for (const part of B.parts) {
         if (part.alive) {
           part.alive = false;
-          this.addBoom(B.x + part.def.dx, B.y + part.def.dy, 1.4, false);
+          this.addBoom(part.x, part.y, 1.4, false);
           this.pool.release(part.img);
         }
       }
@@ -1511,8 +1933,10 @@ export class GameScene extends Phaser.Scene {
       }
       // 엔들리스는 levelWave를 계속 누적 — 순환 인덱스(cycle/6)가 진행된다
       this.boss = null;
+      this.bossLinks.clear();
       this.bossBar.setVisible(false);
       this.bossLabel.setVisible(false);
+      this.bossPartStatus.setVisible(false);
       this.scrollSpd = this.level.scroll.base + this.session.wave * this.level.scroll.perWave;
     }
   }
@@ -1777,7 +2201,13 @@ export class GameScene extends Phaser.Scene {
         B.hcd = B.def.hitCooldown;
         // 실드 파츠가 살아 있으면 팬텀도 파츠부터 부순다 (코어 무적 우회 방지)
         const shieldPart =
-          B.parts.find((pp) => pp.alive && pp.def.shield) ?? B.parts.find((pp) => pp.alive);
+          B.parts.find(
+            (pp) =>
+              pp.alive &&
+              this.partActive(pp, B) &&
+              this.partExposed(pp, B) &&
+              this.partProtectsCore(pp),
+          ) ?? B.parts.find((pp) => pp.alive && this.partActive(pp, B));
         if (shieldPart) this.damagePart(shieldPart, B, SUPER.phantomBossDamage);
         else this.damageBoss(SUPER.phantomBossDamage);
       }
@@ -1878,9 +2308,12 @@ export class GameScene extends Phaser.Scene {
           ps.bossSwings++;
           vibrate(70);
           this.shake = Math.min(7, this.shake + 4);
-          const shieldParts = B.parts.filter((pp) => pp.alive && pp.def.shield);
+          const shieldParts = B.parts
+            .filter((pp) => pp.alive && this.partActive(pp, B) && this.partProtectsCore(pp))
+            .slice(0, 3);
           if (shieldParts.length > 0) {
-            for (const part of shieldParts) this.damagePart(part, B, PS.partDamagePerSwing);
+            const damage = (PS.partDamagePerSwing * 2) / shieldParts.length;
+            for (const part of shieldParts) this.damagePart(part, B, damage);
           } else {
             B.flashT = 0.08;
             this.damageBoss(PS.bossDamagePerSwing);
@@ -1944,7 +2377,9 @@ export class GameScene extends Phaser.Scene {
         const bhb = B.def.hitbox;
         if (aabb(bn.x, bn.y, 22, 12, B.x, B.y, bhb.w + 10, bhb.h + 10)) {
           bn.bhcd = 0.6;
-          const shieldParts = B.parts.filter((pp) => pp.alive && pp.def.shield);
+          const shieldParts = B.parts.filter(
+            (pp) => pp.alive && this.partActive(pp, B) && this.partProtectsCore(pp),
+          );
           if (shieldParts.length > 0) {
             const part = shieldParts[Math.floor(Math.random() * shieldParts.length)];
             if (part) this.damagePart(part, B, 4);
@@ -2066,9 +2501,12 @@ export class GameScene extends Phaser.Scene {
     kb.bossHits++;
     vibrate(70);
     this.shake = Math.min(7, this.shake + 4);
-    const shieldParts = B.parts.filter((pp) => pp.alive && pp.def.shield);
+    const shieldParts = B.parts
+      .filter((pp) => pp.alive && this.partActive(pp, B) && this.partProtectsCore(pp))
+      .slice(0, 3);
     if (shieldParts.length > 0) {
-      for (const part of shieldParts) this.damagePart(part, B, KB.partDamagePerHit);
+      const damage = (KB.partDamagePerHit * 2) / shieldParts.length;
+      for (const part of shieldParts) this.damagePart(part, B, damage);
     } else {
       B.flashT = 0.08;
       this.damageBoss(KB.bossDamagePerHit);
@@ -2144,9 +2582,12 @@ export class GameScene extends Phaser.Scene {
           jw.bossHits++;
           vibrate(50);
           this.shake = Math.min(7, this.shake + 3);
-          const shieldParts = B.parts.filter((pp) => pp.alive && pp.def.shield);
+          const shieldParts = B.parts
+            .filter((pp) => pp.alive && this.partActive(pp, B) && this.partProtectsCore(pp))
+            .slice(0, 3);
           if (shieldParts.length > 0) {
-            for (const part of shieldParts) this.damagePart(part, B, JW.partDamagePerHit);
+            const damage = (JW.partDamagePerHit * 2) / shieldParts.length;
+            for (const part of shieldParts) this.damagePart(part, B, damage);
           } else {
             B.flashT = 0.08;
             this.damageBoss(JW.bossDamagePerHit);
@@ -2258,9 +2699,13 @@ export class GameScene extends Phaser.Scene {
 
     if (this.shake > 0) {
       this.shake = Math.max(0, this.shake - 14 * dt);
-      this.cameras.main.setScroll(rnd(-this.shake, this.shake), rnd(-this.shake, this.shake));
+      const shakeX = rnd(-this.shake, this.shake);
+      const shakeY = rnd(-this.shake, this.shake);
+      this.cameras.main.setScroll(shakeX + this.envCameraX, shakeY);
+      this.hudRoot.setPosition(shakeX + this.envCameraX, shakeY);
     } else {
-      this.cameras.main.setScroll(0, 0);
+      this.cameras.main.setScroll(this.envCameraX, 0);
+      this.hudRoot.setPosition(this.envCameraX, 0);
     }
   }
 
@@ -2339,17 +2784,23 @@ export class GameScene extends Phaser.Scene {
       }
     }
     // 태양풍(기믹): 속도 대입에 소멸되지 않도록 위치 변위로 — 조작 방식과 무관하게 동일한 밀림
-    const gw = this.level.gimmick;
-    if (gw?.type === 'wind') this.px += this.windCur * gw.force * 0.62 * dt;
-    this.px = clamp(this.px + this.pvx * dt, PLAYER.minX, PLAYER.maxX);
-    this.py = clamp(this.py + this.pvy * dt, PLAYER.minY, PLAYER.maxY);
+    this.px += this.environmentWind * 0.62 * dt;
+    this.px = clamp(this.px + this.pvx * dt * this.environmentSpeed, PLAYER.minX, PLAYER.maxX);
+    this.py = clamp(this.py + this.pvy * dt * this.environmentSpeed, PLAYER.minY, PLAYER.maxY);
 
     this.fireCd -= dt;
     const wantFire =
       this.touchOn || this.stickOn || this.keyMap?.space?.isDown || this.keyMap?.z?.isDown;
-    if (wantFire && this.fireCd <= 0) {
-      this.playerFire();
-      this.fireCd = cooldownFor(this.session.cur, weaponLevel(this.session));
+    if (wantFire) {
+      const cadence = cooldownFor(this.session.cur, weaponLevel(this.session));
+      let catchUp = 0;
+      while (this.fireCd <= 0 && catchUp < 4) {
+        this.playerFire();
+        this.fireCd += cadence;
+        catchUp++;
+      }
+    } else {
+      this.fireCd = Math.max(0, this.fireCd);
     }
     if (this.inv > 0 && !this.sp && !this.ps && !this.jw && !this.kb) this.inv -= dt;
 
@@ -2397,9 +2848,7 @@ export class GameScene extends Phaser.Scene {
             vy: Math.abs(Math.sin(ang)) * sp,
             life: 3.4 + 1.3 * durUps,
             bhcd: 0,
-            img: this.pool
-              .get('b-bone', this.px, this.py + 14)
-              .setDepth(DEPTH.bullet),
+            img: this.pool.get('b-bone', this.px, this.py + 14).setDepth(DEPTH.bullet),
           });
           SFX.swoosh();
         }
@@ -2463,9 +2912,10 @@ export class GameScene extends Phaser.Scene {
 
     // 렌더 반영 — 뱅킹은 시트 열(0..4), 엔진 플리커는 행(0/1)
     this.playerImg.setPosition(Math.round(this.px), Math.round(this.py));
-    const bank = clamp(Math.round(this.pvx / 130), -2, 2) + 2;
-    const flick = Math.floor(this.worldT * 14) % 2;
-    this.playerImg.setFrame(flick * 5 + bank);
+    const bank = clamp(this.pvx / 240, -1, 1);
+    this.playerImg
+      .setRotation(bank * 0.1)
+      .setScale(0.105 * (1 + Math.sin(this.worldT * 18) * 0.006));
     this.playerImg.setVisible(
       !(
         this.inv > 0 &&
@@ -2501,8 +2951,10 @@ export class GameScene extends Phaser.Scene {
     for (let i = this.bullets.length - 1; i >= 0; i--) {
       const b = this.bullets[i];
       if (!b) continue;
+      b.prevX = b.x;
+      b.prevY = b.y;
       b.t += dt;
-      if (b.homing) {
+      if (b.homing || b.guidance) {
         const gh = this.boss?.entered ? this.boss.def.gravity : undefined;
         if (gh && this.boss) {
           const dx = this.boss.x - b.x;
@@ -2514,17 +2966,24 @@ export class GameScene extends Phaser.Scene {
             b.vy += (dy / L) * f * dt;
           }
         }
-        const tgt = this.nearestTarget(b.x, b.y);
-        if (tgt) {
-          const L = Math.hypot(tgt.x - b.x, tgt.y - b.y) || 1;
-          const want = 430;
-          b.vx += ((tgt.x - b.x) / L) * want * 3.2 * dt;
-          b.vy += ((tgt.y - b.y) / L) * want * 3.2 * dt;
-          const sp = Math.hypot(b.vx, b.vy) || 1;
-          b.vx = (b.vx / sp) * Math.min(sp, want);
-          b.vy = (b.vy / sp) * Math.min(sp, want);
-          b.img.setRotation(Math.atan2(b.vy, b.vx) + Math.PI / 2);
+        const guidance = b.guidance ?? {
+          speed: 430,
+          turnRate: 3.2,
+          acquireRadius: 420,
+          armingTime: 0,
+        };
+        const tgt = b.t >= guidance.armingTime ? this.nearestTarget(b.x, b.y) : null;
+        const targetDistance = tgt ? Math.hypot(tgt.x - b.x, tgt.y - b.y) : Infinity;
+        const currentSpeed = Math.max(90, Math.hypot(b.vx, b.vy));
+        let angle = Math.atan2(b.vy, b.vx);
+        if (tgt && targetDistance <= guidance.acquireRadius) {
+          const desired = Math.atan2(tgt.y - b.y, tgt.x - b.x);
+          const delta = Phaser.Math.Angle.Wrap(desired - angle);
+          angle += clamp(delta, -guidance.turnRate * dt, guidance.turnRate * dt);
         }
+        const speed = Phaser.Math.Linear(currentSpeed, guidance.speed, clamp(dt * 4, 0, 1));
+        b.vx = Math.cos(angle) * speed;
+        b.vy = Math.sin(angle) * speed;
         b.x += b.vx * dt;
         b.y += b.vy * dt;
       } else if (b.x0 !== undefined) {
@@ -2546,7 +3005,25 @@ export class GameScene extends Phaser.Scene {
         b.x += b.vx * dt;
         b.y += b.vy * dt;
       }
+      if (b.rotateToVelocity || b.homing || b.guidance)
+        b.img.setRotation(Math.atan2(b.vy, b.vx) + Math.PI / 2);
       b.img.setPosition(b.x, b.y);
+
+      if (b.trail) {
+        b.trailT += dt;
+        if (b.trailT >= b.trail.interval && this.sparks.length < 180) {
+          b.trailT %= b.trail.interval;
+          const trail = this.fxPool.get(b.trail.texture, b.prevX, b.prevY);
+          trail
+            .setDepth(DEPTH.bullet - 0.2)
+            .setBlendMode(Phaser.BlendModes.ADD)
+            .setTint(0xffa45c)
+            .setAlpha(0.72)
+            .setScale(b.trail.scale)
+            .setRotation(Math.atan2(b.vy, b.vx) + Math.PI / 2);
+          this.sparks.push({ img: trail, vx: -b.vx * 0.025, vy: -b.vy * 0.025, t: 0.42 });
+        }
+      }
       if (b.y < -30 || b.y > GAME_HEIGHT + 30 || b.x < -30 || b.x > GAME_WIDTH + 30) {
         this.pool.release(b.img);
         this.bullets.splice(i, 1);
@@ -2556,13 +3033,14 @@ export class GameScene extends Phaser.Scene {
 
   private updateEBullets(dt: number): void {
     const eb = DATA.enemies.ebullet;
+    const activeGimmick = this.currentSector ? this.currentSector.gimmicks[0] : this.level.gimmick;
     for (let i = this.ebullets.length - 1; i >= 0; i--) {
       const b = this.ebullets[i];
       if (!b) continue;
       b.x += b.vx * dt;
       b.y += b.vy * dt;
       // warp 기믹: 좌우로 나간 적탄이 반대편에서 1회 재진입
-      if (this.level.gimmick?.type === 'warp' && !b.warped) {
+      if (activeGimmick?.type === 'warp' && !b.warped) {
         if (b.x < -8) {
           b.x += GAME_WIDTH + 16;
           b.warped = true;
@@ -2693,11 +3171,14 @@ export class GameScene extends Phaser.Scene {
       for (let j = this.bullets.length - 1; j >= 0; j--) {
         const b = this.bullets[j];
         if (!b) continue;
-        if (aabb(b.x, b.y, b.w, b.h, e.x, e.y, hb.w, hb.h)) {
+        if (b.hitTargets.has(e)) continue;
+        if (sweptAabb(b.prevX, b.prevY, b.x, b.y, b.w, b.h, e.x, e.y, hb.w, hb.h)) {
           // 관통탄은 겹친 프레임마다 히트하므로 60fps 기준으로 정규화
-          e.hp -= b.pierce > 0 ? b.dmg * Math.min(3, dt * 60) : b.dmg;
+          b.hitTargets.add(e);
+          e.hp -= b.dmg;
           e.flashT = 0.05;
-          if (b.splash) this.splashHit(b.x, b.y, b.splash, b.dmg);
+          this.addImpact(b.x, b.y, b);
+          if (b.splash) this.splashHit(b.x, b.y, b.splash, b.dmg, e);
           if (b.pierce > 0) b.pierce--;
           else {
             this.pool.release(b.img);
@@ -2746,8 +3227,12 @@ export class GameScene extends Phaser.Scene {
       }
     } else {
       const mv = def.movement;
+      const engines = B.parts.filter((part) => part.def.role === 'engine');
+      const mobility = engines.length
+        ? 0.55 + (engines.filter((part) => part.alive).length / engines.length) * 0.45
+        : 1;
       if (mv.type === 'patrol') {
-        B.x += B.dir * (mv.base + this.session.wave * mv.perWave) * dt;
+        B.x += B.dir * (mv.base + this.session.wave * mv.perWave) * mobility * dt;
         if (B.x < mv.minX) {
           B.x = mv.minX;
           B.dir = 1;
@@ -2764,40 +3249,44 @@ export class GameScene extends Phaser.Scene {
           B.wanderTx = rnd(mv.minX, mv.maxX);
           B.wanderTy = rnd(mv.minY, mv.maxY);
         } else {
-          B.x += (dx / L) * mv.speed * dt;
-          B.y += (dy / L) * mv.speed * dt;
+          B.x += (dx / L) * mv.speed * mobility * dt;
+          B.y += (dy / L) * mv.speed * mobility * dt;
         }
       } else {
-        B.x = B.cx + Math.sin(B.t * mv.freq * Math.PI * 2) * mv.amp;
-        B.y = def.entryY + Math.sin(B.t * mv.bobFreq * Math.PI * 2) * mv.bobAmp;
+        B.x = B.cx + Math.sin(B.t * mv.freq * mobility * Math.PI * 2) * mv.amp * mobility;
+        B.y = def.entryY + Math.sin(B.t * mv.bobFreq * mobility * Math.PI * 2) * mv.bobAmp;
       }
       B.cool -= dt;
       if (B.cool <= 0 && this.alive) {
         B.phase = (B.phase + 1) % def.phases.length;
         const ph = def.phases[B.phase];
         if (ph) {
-          this.executeBossPhase(ph);
+          if (this.ebullets.length < 210) this.executeBossPhase(ph);
+          const stageScale = def.stages?.[B.stage]?.coolScale ?? 1;
           B.cool =
-            ph.cool ?? Math.max(def.cool.min, def.cool.base + this.session.wave * def.cool.perWave);
+            (ph.cool ??
+              Math.max(def.cool.min, def.cool.base + this.session.wave * def.cool.perWave)) *
+            stageScale;
         }
       }
     }
     B.img.setPosition(B.x, B.y);
-    B.img.setScale(1 + Math.sin(B.t * 2.4) * 0.02);
+    const bodyScale = def.layoutVersion === 2 ? 1.24 : 1;
+    B.img.setScale(bodyScale + Math.sin(B.t * 2.4) * 0.018);
+    this.updateBossAssembly(B);
     // 파츠: 앵커 추적 + 자체 사격
     for (const part of B.parts) {
       if (!part.alive) continue;
-      part.img.setPosition(B.x + part.def.dx, B.y + part.def.dy);
       if (part.flashT > 0) {
         part.flashT -= dt;
         part.img.setTintFill(0xffffff);
         if (part.flashT <= 0) part.img.clearTint();
       }
-      if (part.def.phase && B.entered && this.alive) {
+      if (part.def.phase && B.entered && this.alive && this.partActive(part, B)) {
         part.fireT -= dt;
         if (part.fireT <= 0) {
           part.fireT = part.def.fireEvery ?? 2;
-          this.executePartPhase(part, B);
+          if (this.ebullets.length < 210) this.executePartPhase(part, B);
         }
       }
     }
@@ -2810,21 +3299,32 @@ export class GameScene extends Phaser.Scene {
       if (B.flashT <= 0) B.img.clearTint();
     }
 
+    // The entrance silhouette and telegraph are guaranteed before the boss can be damaged.
+    if (!B.entered) return;
+
     for (let j = this.bullets.length - 1; j >= 0; j--) {
       const b = this.bullets[j];
       if (!b) continue;
       // 파츠 히트 우선
       let hitPart: BossPart | null = null;
       for (const part of B.parts) {
-        if (!part.alive) continue;
         if (
-          aabb(
+          !part.alive ||
+          !this.partActive(part, B) ||
+          !this.partExposed(part, B) ||
+          b.hitTargets.has(part)
+        )
+          continue;
+        if (
+          sweptAabb(
+            b.prevX,
+            b.prevY,
             b.x,
             b.y,
             b.w,
             b.h,
-            B.x + part.def.dx,
-            B.y + part.def.dy,
+            part.x,
+            part.y,
             part.def.hitbox.w,
             part.def.hitbox.h,
           )
@@ -2834,7 +3334,9 @@ export class GameScene extends Phaser.Scene {
         }
       }
       if (hitPart) {
-        const dmg = b.pierce > 0 ? b.dmg * Math.min(3, dt * 60) : b.dmg;
+        b.hitTargets.add(hitPart);
+        const dmg = b.dmg;
+        this.addImpact(b.x, b.y, b);
         if (b.splash) this.splashHit(b.x, b.y, b.splash, b.dmg);
         if (b.pierce > 0) b.pierce--;
         else {
@@ -2844,9 +3346,14 @@ export class GameScene extends Phaser.Scene {
         this.damagePart(hitPart, B, dmg);
         continue;
       }
-      if (aabb(b.x, b.y, b.w, b.h, B.x, B.y, def.hitbox.w, def.hitbox.h)) {
+      if (
+        !b.hitTargets.has(B) &&
+        sweptAabb(b.prevX, b.prevY, b.x, b.y, b.w, b.h, B.x, B.y, def.hitbox.w, def.hitbox.h)
+      ) {
+        b.hitTargets.add(B);
         const shielded = this.coreShielded(B);
-        const dmg = b.pierce > 0 ? b.dmg * Math.min(3, dt * 60) : b.dmg;
+        const dmg = b.dmg;
+        this.addImpact(b.x, b.y, b, shielded);
         if (b.splash) this.splashHit(b.x, b.y, b.splash, b.dmg);
         if (b.pierce > 0) b.pierce--;
         else {
@@ -2862,6 +3369,26 @@ export class GameScene extends Phaser.Scene {
           this.damageBoss(dmg);
         }
         if (!this.boss) return;
+      }
+    }
+    if (this.boss && this.alive) {
+      for (const part of B.parts) {
+        if (!part.alive || !this.partActive(part, B)) continue;
+        if (
+          aabb(
+            part.x,
+            part.y,
+            part.def.hitbox.w,
+            part.def.hitbox.h,
+            this.px,
+            this.py,
+            PLAYER.hitW,
+            PLAYER.hitH,
+          )
+        ) {
+          this.damagePlayer(Math.max(8, Math.round(def.touchDamage * 0.65)));
+          break;
+        }
       }
     }
     if (
@@ -2955,13 +3482,311 @@ export class GameScene extends Phaser.Scene {
 
   /** 티리안식 대형 지형 구조물 — 테마별 프롭이 스크롤을 따라 흘러간다 */
   /** 스테이지 기믹 — 테마별 환경 요소 (levels.json gimmick, 데이터 주도) */
+  private gimmickTimer(key: string, dt: number, interval: number): boolean {
+    const next = (this.gimmickTimers.get(key) ?? 0) + dt;
+    if (next < interval) {
+      this.gimmickTimers.set(key, next);
+      return false;
+    }
+    this.gimmickTimers.set(key, next % interval);
+    return true;
+  }
+
+  private addEnvironmentalHazard(
+    kind: EnvironmentalHazardKind,
+    texture: string,
+    x: number,
+    y: number,
+    options: Partial<Omit<EnvironmentalHazard, 'kind' | 'img' | 'x' | 'y'>> = {},
+  ): EnvironmentalHazard {
+    const img = this.add.image(x, y, texture).setDepth(DEPTH.ebullet + 0.35);
+    const hazard: EnvironmentalHazard = {
+      kind,
+      x,
+      y,
+      vx: 0,
+      vy: 0,
+      ax: 0,
+      ay: 0,
+      t: 0,
+      life: 5,
+      activeAt: 0,
+      hitW: img.width * 0.62,
+      hitH: img.height * 0.62,
+      damage: 0,
+      side: 0,
+      reach: 0,
+      emitsGas: 0,
+      hit: false,
+      img,
+      ...options,
+    };
+    if (hazard.activeAt > 0) img.setVisible(false);
+    this.envHazards.push(hazard);
+    return hazard;
+  }
+
+  private spawnGasClouds(duration: number): void {
+    for (let i = 0; i < 3; i++) {
+      const gas = this.addEnvironmentalHazard(
+        'gas',
+        'fog-cloud',
+        rnd(45, GAME_WIDTH - 45),
+        rnd(100, GAME_HEIGHT - 100),
+        {
+          vx: rnd(-12, 12),
+          vy: rnd(-4, 9),
+          life: duration,
+          hitW: 0,
+          hitH: 0,
+        },
+      );
+      gas.img
+        .setDepth(DEPTH.hud - 1.25)
+        .setScale(rnd(1.8, 2.8), rnd(1.4, 2.1))
+        .setTint(0xb3a79c)
+        .setAlpha(0)
+        .setBlendMode(Phaser.BlendModes.SCREEN);
+    }
+  }
+
+  private spawnIceStorm(g: Extract<GimmickData, { type: 'iceStorm' }>): void {
+    const direction = Math.sin(this.worldT * 0.37) >= 0 ? 1 : -1;
+    const shard = this.addEnvironmentalHazard(
+      'ice',
+      'hazard-ice',
+      direction > 0 ? -25 : GAME_WIDTH + 25,
+      rnd(55, GAME_HEIGHT * 0.64),
+      {
+        vx: direction * g.shardSpeed * rnd(0.6, 0.88),
+        vy: g.shardSpeed * rnd(0.26, 0.48),
+        life: 5,
+        hitW: 17,
+        hitH: 32,
+        damage: g.damage,
+      },
+    );
+    shard.img
+      .setScale(rnd(0.72, 1.18))
+      .setRotation(Math.atan2(shard.vy, shard.vx) + Math.PI / 2)
+      .setBlendMode(Phaser.BlendModes.ADD);
+  }
+
+  private spawnVolcanicEruption(g: Extract<GimmickData, { type: 'volcanic' }>): void {
+    const eruptionX = rnd(55, GAME_WIDTH - 55);
+    const warning = this.add
+      .rectangle(eruptionX, GAME_HEIGHT - 92, 52, 184, 0xff6429, 0.28)
+      .setDepth(DEPTH.ebullet - 0.2)
+      .setStrokeStyle(2, 0xffc04d, 0.8);
+    for (let i = 0; i < g.fireballs; i++) {
+      const fireball = this.addEnvironmentalHazard(
+        'fireball',
+        'hazard-fireball',
+        eruptionX + rnd(-9, 9),
+        GAME_HEIGHT + 25,
+        {
+          vx: rnd(-95, 95),
+          vy: rnd(-410, -300),
+          ay: rnd(175, 240),
+          life: 4.4,
+          activeAt: g.warn,
+          hitW: 25,
+          hitH: 25,
+          damage: g.damage,
+          emitsGas: i === 0 && Math.random() < g.gasChance ? g.gasDuration : 0,
+          warning: i === 0 ? warning : undefined,
+        },
+      );
+      fireball.img.setScale(rnd(0.7, 1.08)).setBlendMode(Phaser.BlendModes.ADD);
+    }
+    this.shake = Math.min(7, this.shake + 1.4);
+  }
+
+  private spawnCoolant(): void {
+    const coolant = this.addEnvironmentalHazard(
+      'coolant',
+      'coolant-item',
+      rnd(38, GAME_WIDTH - 38),
+      -28,
+      {
+        vx: rnd(-12, 12),
+        vy: 86,
+        life: 9,
+        hitW: 30,
+        hitH: 38,
+      },
+    );
+    coolant.img.setDepth(DEPTH.orb + 0.25).setBlendMode(Phaser.BlendModes.ADD);
+  }
+
+  private spawnProminence(g: Extract<GimmickData, { type: 'prominence' }>): void {
+    const side: -1 | 1 = Math.random() < 0.5 ? -1 : 1;
+    const y = rnd(105, GAME_HEIGHT - 125);
+    const warning = this.add
+      .rectangle(GAME_WIDTH / 2, y, GAME_WIDTH, 7, 0xff5638, 0.3)
+      .setDepth(DEPTH.ebullet - 0.2);
+    const prominence = this.addEnvironmentalHazard(
+      'prominence',
+      'hazard-prominence',
+      side < 0 ? -98 : GAME_WIDTH + 98,
+      y,
+      {
+        life: 2.6,
+        activeAt: g.warn,
+        hitW: Math.min(170, g.reach),
+        hitH: 48,
+        damage: g.damage,
+        side,
+        reach: g.reach,
+        warning,
+      },
+    );
+    prominence.img
+      .setFlipX(side > 0)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setScale(Math.max(0.72, Math.min(1.3, g.reach / 170)), rnd(0.82, 1.18));
+  }
+
+  private spawnLightning(g: Extract<GimmickData, { type: 'electricStorm' }>): void {
+    const x = rnd(38, GAME_WIDTH - 38);
+    const warning = this.add
+      .rectangle(x, GAME_HEIGHT / 2, 36, GAME_HEIGHT, 0x58d7ff, 0.12)
+      .setDepth(DEPTH.ebullet - 0.2)
+      .setStrokeStyle(2, 0xd8fbff, 0.7);
+    const strike = this.addEnvironmentalHazard(
+      'lightning',
+      'hazard-lightning',
+      x,
+      GAME_HEIGHT / 2,
+      {
+        life: 0.32,
+        activeAt: g.warn,
+        hitW: 26,
+        hitH: GAME_HEIGHT,
+        damage: g.damage,
+        warning,
+      },
+    );
+    strike.img.setDisplaySize(46, GAME_HEIGHT).setBlendMode(Phaser.BlendModes.ADD);
+  }
+
+  private updateEnvironmentalHazards(dt: number, canHurt: boolean): void {
+    for (let i = this.envHazards.length - 1; i >= 0; i--) {
+      const hazard = this.envHazards[i];
+      if (!hazard) continue;
+      hazard.t += dt;
+      if (hazard.t < hazard.activeAt) {
+        hazard.warning?.setAlpha(0.14 + (Math.floor(hazard.t * 12) % 2) * 0.28);
+        continue;
+      }
+      if (!hazard.img.visible) hazard.img.setVisible(true);
+      if (hazard.warning) {
+        hazard.warning.destroy();
+        hazard.warning = undefined;
+        hazard.img.setVisible(true);
+        if (hazard.kind !== 'lightning') SFX.swoosh();
+      }
+      if (hazard.emitsGas > 0) {
+        this.spawnGasClouds(hazard.emitsGas);
+        hazard.emitsGas = 0;
+      }
+      const age = hazard.t - hazard.activeAt;
+      hazard.vx += hazard.ax * dt;
+      hazard.vy += hazard.ay * dt;
+      if (hazard.kind === 'prominence') {
+        const extension = Math.sin(clamp(age / hazard.life, 0, 1) * Math.PI);
+        hazard.x =
+          hazard.side < 0
+            ? -98 + extension * hazard.reach
+            : GAME_WIDTH + 98 - extension * hazard.reach;
+        hazard.img.setScale(hazard.img.scaleX, 0.92 + Math.sin(this.worldT * 8) * 0.13);
+      } else {
+        hazard.x += hazard.vx * dt;
+        hazard.y += hazard.vy * dt;
+      }
+      hazard.img.setPosition(hazard.x, hazard.y);
+      if (hazard.kind === 'ice' || hazard.kind === 'fireball') {
+        hazard.img.rotation += dt * (hazard.kind === 'ice' ? 2.2 : 4.8);
+      } else if (hazard.kind === 'gas') {
+        const fade = Math.min(1, age * 1.5, (hazard.life - age) * 1.5);
+        hazard.img.setAlpha(clamp(fade, 0, 1) * 0.68);
+        hazard.img.rotation += dt * 0.04;
+      } else if (hazard.kind === 'coolant') {
+        hazard.img.rotation = Math.sin(this.worldT * 3 + hazard.x) * 0.14;
+        hazard.img.setScale(1 + Math.sin(this.worldT * 6) * 0.08);
+      } else if (hazard.kind === 'lightning') {
+        hazard.img.setAlpha(Math.random() > 0.3 ? 1 : 0.42);
+        this.environmentOverlay.setFillStyle(0xb9efff, 1).setAlpha(0.13);
+      }
+
+      if (
+        hazard.kind === 'coolant' &&
+        this.alive &&
+        aabb(
+          hazard.x,
+          hazard.y,
+          hazard.hitW,
+          hazard.hitH,
+          this.px,
+          this.py,
+          PLAYER.hitW,
+          PLAYER.hitH,
+        )
+      ) {
+        this.environmentHeat = Math.min(this.environmentHeat, 0.12);
+        this.heatDamageT = 0;
+        this.addFloatText(hazard.x, hazard.y, 'COOLED', '#79f5ff');
+        SFX.pow();
+        hazard.hit = true;
+      } else if (
+        !hazard.hit &&
+        canHurt &&
+        this.alive &&
+        hazard.damage > 0 &&
+        aabb(
+          hazard.x,
+          hazard.y,
+          hazard.hitW,
+          hazard.hitH,
+          this.px,
+          this.py,
+          PLAYER.hitW,
+          PLAYER.hitH,
+        )
+      ) {
+        hazard.hit = true;
+        this.damagePlayer(hazard.damage);
+      }
+
+      const expired =
+        hazard.hit ||
+        age >= hazard.life ||
+        hazard.y > GAME_HEIGHT + 100 ||
+        hazard.x < -240 ||
+        hazard.x > GAME_WIDTH + 240;
+      if (expired) {
+        hazard.img.destroy();
+        this.envHazards.splice(i, 1);
+      }
+    }
+  }
+
   private updateGimmick(dt: number): void {
-    const g = this.level.gimmick;
-    if (!g) return;
+    const g = this.currentSector ? this.currentSector.gimmicks[0] : this.level.gimmick;
+    this.environmentWind = 0;
+    this.environmentSpeed = 1;
+    this.envCameraX = 0;
+    this.playerImg.clearTint();
+    this.environmentOverlay.setFillStyle(0xff7a28, 1).setAlpha(0);
+    if (!g) {
+      this.environmentOverlay.setAlpha(0);
+      this.updateEnvironmentalHazards(dt, this.pendingShop <= 0);
+      return;
+    }
     // 보스전 중·보스 격파 후 클리어 연출(pendingShop) 중에는 위험 기믹을 봉인:
     // 스폰 금지 + 타이머 홀드(게이트 해제 직후 즉발 방지) + 연출 중 피해 판정 정지
     const hazardGate = !!this.boss || this.pendingShop > 0;
-    const canHurt = this.pendingShop <= 0;
+    const canHurt = !hazardGate;
 
     if (g.type === 'fog') {
       // L1 성운: 안개 구름이 흘러가며 적을 가린다
@@ -3035,7 +3860,7 @@ export class GameScene extends Phaser.Scene {
       this.windT += dt;
       const target = this.windT % (g.period * 2) < g.period ? 1 : -1;
       this.windCur += (target - this.windCur) * Math.min(1, dt * 1.6);
-      for (const b of this.bullets) b.x += this.windCur * g.force * 0.35 * dt;
+      this.environmentWind = this.windCur * g.force;
       this.windStreakT += dt;
       if (this.windStreakT > 0.11) {
         this.windStreakT = 0;
@@ -3106,10 +3931,78 @@ export class GameScene extends Phaser.Scene {
         this.scrollRev = 1.3;
       }
       if (this.scrollRev > 0) this.scrollRev -= dt;
+    } else if (g.type === 'iceStorm') {
+      const gust = Math.sin(this.worldT * 0.72) * 0.72 + Math.sin(this.worldT * 2.1) * 0.28;
+      this.environmentWind = gust * g.windForce;
+      this.environmentSpeed = 1 - g.slow;
+      this.playerImg.setTint(0xb8efff);
+      if (!hazardGate && this.gimmickTimer('ice-shards', dt, g.shardEvery)) this.spawnIceStorm(g);
+    } else if (g.type === 'volcanic') {
+      if (!hazardGate && this.gimmickTimer('volcanic-eruption', dt, g.eruptionEvery)) {
+        this.spawnVolcanicEruption(g);
+      }
+    } else if (g.type === 'desertHeat') {
+      if (!hazardGate) this.environmentHeat = Math.min(1, this.environmentHeat + g.heatPerSec * dt);
+      if (!hazardGate && this.gimmickTimer('desert-coolant', dt, g.coolantEvery)) {
+        this.spawnCoolant();
+      }
+      if (this.environmentHeat >= 1 && canHurt) {
+        this.heatDamageT += dt;
+        if (this.heatDamageT >= g.damageEvery) {
+          this.heatDamageT %= g.damageEvery;
+          this.damagePlayer(5);
+          this.addFloatText(this.px, this.py - 22, 'OVERHEAT', '#ff9a55');
+        }
+      } else {
+        this.heatDamageT = 0;
+      }
+      const heatRatio = this.environmentHeat;
+      this.environmentOverlay.setAlpha(heatRatio * g.distortion * 0.16);
+      this.envCameraX = Math.sin(this.worldT * 11.5) * heatRatio * g.distortion * 2.2;
+    } else if (g.type === 'prominence') {
+      this.environmentWind =
+        (Math.sin(this.worldT * 0.58) + Math.sin(this.worldT * 1.73) * 0.35) * g.windForce;
+      if (!hazardGate && this.gimmickTimer('stellar-prominence', dt, g.interval)) {
+        this.spawnProminence(g);
+      }
+    } else if (g.type === 'electricStorm') {
+      if (!hazardGate && this.gimmickTimer('electric-strike', dt, g.interval)) {
+        this.spawnLightning(g);
+      }
+    } else if (g.type === 'meteorField') {
+      if (!hazardGate && this.gimmickTimer('meteor-field', dt, g.interval)) {
+        this.spawnEnemyAt(g.enemy, rnd(34, GAME_WIDTH - 34), -48, { vx: rnd(-34, 34) });
+      }
     }
+
+    for (const bullet of this.bullets) bullet.x += this.environmentWind * 0.35 * dt;
+    if ((g.type === 'iceStorm' || g.type === 'prominence') && Math.abs(this.environmentWind) > 2) {
+      this.windStreakT += dt;
+      if (this.windStreakT > 0.1) {
+        this.windStreakT = 0;
+        const streak = this.fxPool.get(
+          'wind-streak',
+          rnd(0, GAME_WIDTH),
+          rnd(45, GAME_HEIGHT - 35),
+        );
+        streak
+          .setDepth(DEPTH.bg + 1.1)
+          .setBlendMode(Phaser.BlendModes.ADD)
+          .setAlpha(g.type === 'iceStorm' ? 0.72 : 0.48)
+          .setTint(g.type === 'iceStorm' ? 0xb8f5ff : 0xffc077)
+          .setFlipX(this.environmentWind < 0);
+        this.sparks.push({ img: streak, vx: this.environmentWind * 4.2, vy: 0, t: 0.34 });
+      }
+    }
+    this.updateEnvironmentalHazards(dt, canHurt);
   }
 
   private updateProps(dt: number): void {
+    if (this.sectorLandmark) {
+      this.sectorLandmark.rotation += dt * 0.018;
+      this.sectorLandmark.y = this.sectorLandmarkY + Math.sin(this.worldT * 0.32) * 8;
+      this.sectorLandmark.setAlpha(0.78 + Math.sin(this.worldT * 0.7) * 0.06);
+    }
     this.propT += dt;
     if (this.propT >= this.nextPropAt) {
       this.propT = 0;
@@ -3118,13 +4011,19 @@ export class GameScene extends Phaser.Scene {
         nebula: ['prop-crystal'],
         protostar: ['prop-emberrock'],
         mainseq: ['prop-emberrock', 'az-asteroid-med-a'],
-        asteroids: ['az-asteroid-big-a', 'az-asteroid-big-b', 'az-asteroid-med-a', 'az-asteroid-med-b'],
+        asteroids: [
+          'az-asteroid-big-a',
+          'az-asteroid-big-b',
+          'az-asteroid-med-a',
+          'az-asteroid-med-b',
+        ],
         redgiant: ['prop-emberrock', 'az-asteroid-med-b'],
         supernova: ['az-asteroid-med-a', 'prop-rock'],
         blackhole: ['prop-derelict'],
         inside: ['prop-eye', 'prop-shellswirl', 'prop-derelict'],
       };
-      const keys = table[this.level.background.theme] ?? ['prop-rock'];
+      const theme = this.currentSector?.background?.theme ?? this.level.background.theme;
+      const keys = table[theme] ?? ['prop-rock'];
       const key = keys[Math.floor(Math.random() * keys.length)] ?? 'prop-rock';
       const img = this.add
         .image(rnd(45, GAME_WIDTH - 45), -90, key)
@@ -3147,6 +4046,25 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateFx(dt: number): void {
+    for (let i = this.impacts.length - 1; i >= 0; i--) {
+      const impact = this.impacts[i];
+      if (!impact) continue;
+      impact.t += dt;
+      const p = clamp(impact.t / 0.24, 0, 1);
+      impact.core
+        .setScale(impact.scale * (0.35 + p * 0.5))
+        .setAlpha(1 - p)
+        .setRotation(impact.core.rotation + dt * 4);
+      impact.ring
+        .setScale(impact.scale * (0.18 + p * 0.95))
+        .setAlpha((1 - p) * 0.9)
+        .setRotation(impact.ring.rotation - dt * 2);
+      if (p >= 1) {
+        this.fxPool.release(impact.core);
+        this.fxPool.release(impact.ring);
+        this.impacts.splice(i, 1);
+      }
+    }
     for (let i = this.booms.length - 1; i >= 0; i--) {
       const bm = this.booms[i];
       if (!bm) continue;
@@ -3205,11 +4123,15 @@ export class GameScene extends Phaser.Scene {
     const lvl = weaponLevel(s);
     if (s.cur !== this.lastWpnKey) {
       this.lastWpnKey = s.cur;
-      this.hudWpn.setText(wpn?.short ?? s.cur);
+      const color = wpn?.color ?? '#8aff8a';
+      const colorValue = Number.parseInt(color.slice(1), 16);
+      this.hudWpn.setText(wpn?.short ?? s.cur).setColor(color);
+      this.hudWeaponAccent.setFillStyle(colorValue, 0.95);
     }
     if (lvl !== this.lastWpnLvl) {
       this.lastWpnLvl = lvl;
-      this.hudPips.forEach((p, i) => p.setFillStyle(i < lvl ? 0x8aff8a : 0x37543f));
+      const colorValue = Number.parseInt((wpn?.color ?? '#8aff8a').slice(1), 16);
+      this.hudPips.forEach((p, i) => p.setFillStyle(i < lvl ? colorValue : 0x283747));
     }
     if (s.wave !== this.lastWave) {
       this.lastWave = s.wave;
@@ -3229,7 +4151,47 @@ export class GameScene extends Phaser.Scene {
       this.lastSuperN = s.superN;
       this.superCount.setText(`x${s.superN}`);
     }
+    const sectorGimmick = this.currentSector?.gimmicks[0];
+    const bonusMultiplier = this.currentSector?.bonusMultiplier ?? 1;
+    if (sectorGimmick?.type === 'desertHeat') {
+      const ratio = clamp(this.environmentHeat, 0, 1);
+      this.envBarBg.setVisible(true);
+      this.envBar
+        .setVisible(true)
+        .setScale(ratio, 1)
+        .setFillStyle(ratio > 0.78 ? 0xff6845 : 0xffb33f, 0.95);
+      this.envStatus
+        .setVisible(true)
+        .setText(`CORE HEAT  ${Math.round(this.environmentHeat * 100)}%`);
+    } else if (sectorGimmick) {
+      const labels: Partial<Record<GimmickData['type'], string>> = {
+        iceStorm: 'ICE STORM / FLIGHT CONTROL DEGRADED',
+        volcanic: 'VOLCANIC ACTIVITY',
+        prominence: 'STELLAR WIND / PROMINENCE',
+        electricStorm: 'ELECTRIC STORM',
+        meteorField: 'METEOR FIELD',
+        fog: 'LOW VISIBILITY',
+        warp: 'SPACETIME SHEAR',
+      };
+      this.envBarBg.setVisible(false);
+      this.envBar.setVisible(false);
+      this.envStatus.setVisible(true).setText(labels[sectorGimmick.type] ?? 'HAZARD ZONE');
+    } else if (bonusMultiplier > 1) {
+      this.envBarBg.setVisible(false);
+      this.envBar.setVisible(false);
+      this.envStatus.setVisible(true).setText(`BONUS ROUTE  x${bonusMultiplier}`);
+    } else {
+      this.envBarBg.setVisible(false);
+      this.envBar.setVisible(false);
+      this.envStatus.setVisible(false);
+    }
     const B = this.boss;
-    if (B) this.bossBar.setScale(clamp(B.hp / B.hpMax, 0, 1), 1);
+    if (B) {
+      this.bossBar.setScale(clamp(B.hp / B.hpMax, 0, 1), 1);
+      const partsAlive = B.parts.filter((part) => part.alive).length;
+      const shield = this.coreShielded(B) ? 'SHIELD' : 'CORE OPEN';
+      const status = `P${B.stage + 1}  ${shield}  ${partsAlive}/${B.parts.length}`;
+      if (this.bossPartStatus.text !== status) this.bossPartStatus.setText(status);
+    }
   }
 }

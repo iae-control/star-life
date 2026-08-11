@@ -115,6 +115,10 @@ const shootTable: Record<string, () => void> = {
     tone('square', 1400, 700, 0.05, 0.03);
   },
   laser: () => tone('sawtooth', 1500, 500, 0.08, 0.045),
+  missile: () => {
+    noiseBurst(0.12, 0.055, 2600, 420);
+    tone('sawtooth', 180, 72, 0.16, 0.06);
+  },
 };
 
 export const SFX = {

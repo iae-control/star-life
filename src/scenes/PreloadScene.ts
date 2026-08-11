@@ -11,6 +11,9 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   preload(): void {
+    this.load.image('bg-cinematic-nebula', 'assets/art/backgrounds/stellar-nursery-v2.webp');
+    this.load.image('hero-fighter-v2', 'assets/art/ships/hero-fighter-v2.webp');
+
     // ansimuz Spaceship Shooter / Starfighter (자유 라이선스, 크레딧 감사 표기)
     this.load.image('poodle', 'assets/poodle.png');
     this.load.spritesheet('az-ship', 'assets/ansimuz/ship.png', {
@@ -62,9 +65,9 @@ export class PreloadScene extends Phaser.Scene {
     generateTextures(this);
     // ansimuz 적 시트 — 데이터 tint를 음영 유지 팔레트 스왑 시트로 사전 생성
     const azFrame: Record<string, [number, number]> = {
-      'az-small': [16, 16],
-      'az-medium': [32, 16],
-      'az-big': [32, 32],
+      'az-small': [48, 48],
+      'az-medium': [96, 48],
+      'az-big': [96, 96],
     };
     for (const def of Object.values(DATA.enemies.types)) {
       const fr = azFrame[def.sprite];

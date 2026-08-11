@@ -114,8 +114,8 @@ export class SettingsScene extends Phaser.Scene {
         .zone(32, y - 16, GAME_WIDTH - 64, 34)
         .setOrigin(0, 0)
         .setInteractive({ useHandCursor: true })
-        .on('pointerdown', () => {
-          if (this.sel === i) row.change(1);
+        .on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+          if (this.sel === i) row.change(pointer.worldX < GAME_WIDTH / 2 ? -1 : 1);
           else this.sel = i;
           this.refresh();
         });

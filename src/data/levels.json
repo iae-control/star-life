@@ -15,6 +15,45 @@
         "perWave": 2.7,
         "boss": 16
       },
+      "waveRoute": [0, 1, 2, 0, 3, 4, 1, 5, 2, 3, 4, 5],
+      "sectors": [
+        {
+          "id": "nebula-water-garden",
+          "nameKey": "sector.nebula.water.name",
+          "taglineKey": "sector.nebula.water.tag",
+          "kind": "resource",
+          "startWave": 0,
+          "background": { "theme": "nebula", "nebulaAlpha": 0.95 },
+          "gimmicks": [{ "type": "fog", "interval": 6.0, "alpha": 0.42 }]
+        },
+        {
+          "id": "nebula-ice-front",
+          "nameKey": "sector.nebula.ice.name",
+          "taglineKey": "sector.nebula.ice.tag",
+          "kind": "hazard",
+          "startWave": 4,
+          "background": { "theme": "nebula", "nebulaAlpha": 0.72 },
+          "gimmicks": [
+            {
+              "type": "iceStorm",
+              "windForce": 72,
+              "slow": 0.18,
+              "shardEvery": 1.6,
+              "shardSpeed": 175,
+              "damage": 6
+            }
+          ]
+        },
+        {
+          "id": "nebula-bonus-lane",
+          "nameKey": "sector.nebula.bonus.name",
+          "taglineKey": "sector.nebula.bonus.tag",
+          "kind": "bonus",
+          "startWave": 9,
+          "gimmicks": [],
+          "bonusMultiplier": 1.35
+        }
+      ],
       "waves": [
         [
           {
@@ -288,6 +327,62 @@
         "perWave": 2.7,
         "boss": 16
       },
+      "waveRoute": [0, 1, 2, 0, 3, 1, 4, 2, 5, 3, 4],
+      "sectors": [
+        {
+          "id": "protostar-volcanic-forge",
+          "nameKey": "sector.protostar.volcanic.name",
+          "taglineKey": "sector.protostar.volcanic.tag",
+          "kind": "hazard",
+          "startWave": 0,
+          "gimmicks": [
+            {
+              "type": "volcanic",
+              "eruptionEvery": 7.5,
+              "warn": 1.1,
+              "fireballs": 5,
+              "damage": 8,
+              "gasChance": 0.35,
+              "gasDuration": 3.2
+            }
+          ]
+        },
+        {
+          "id": "protostar-desert-kiln",
+          "nameKey": "sector.protostar.desert.name",
+          "taglineKey": "sector.protostar.desert.tag",
+          "kind": "hazard",
+          "startWave": 4,
+          "background": { "theme": "protostar", "nebulaAlpha": 0.68 },
+          "gimmicks": [
+            {
+              "type": "desertHeat",
+              "heatPerSec": 0.12,
+              "coolantEvery": 8.0,
+              "damageEvery": 4.0,
+              "distortion": 0.42
+            }
+          ]
+        },
+        {
+          "id": "protostar-rock-belt",
+          "nameKey": "sector.protostar.rock.name",
+          "taglineKey": "sector.protostar.rock.tag",
+          "kind": "resource",
+          "startWave": 8,
+          "background": { "theme": "asteroids", "nebulaAlpha": 0.62 },
+          "gimmicks": [{ "type": "meteorField", "interval": 3.8, "enemy": "pr_shard" }]
+        },
+        {
+          "id": "protostar-bonus-drift",
+          "nameKey": "sector.protostar.bonus.name",
+          "taglineKey": "sector.protostar.bonus.tag",
+          "kind": "bonus",
+          "startWave": 10,
+          "gimmicks": [],
+          "bonusMultiplier": 1.4
+        }
+      ],
       "waves": [
         [
           {
@@ -562,6 +657,44 @@
         "perWave": 2.7,
         "boss": 16
       },
+      "waveRoute": [0, 1, 2, 3, 0, 4, 1, 5, 2, 3, 4, 5],
+      "sectors": [
+        {
+          "id": "mainseq-prominence-sea",
+          "nameKey": "sector.mainseq.prominence.name",
+          "taglineKey": "sector.mainseq.prominence.tag",
+          "kind": "hazard",
+          "startWave": 0,
+          "gimmicks": [
+            {
+              "type": "prominence",
+              "windForce": 58,
+              "interval": 6.8,
+              "warn": 1.0,
+              "reach": 220,
+              "damage": 8
+            }
+          ]
+        },
+        {
+          "id": "mainseq-electric-crown",
+          "nameKey": "sector.mainseq.electric.name",
+          "taglineKey": "sector.mainseq.electric.tag",
+          "kind": "hazard",
+          "startWave": 4,
+          "background": { "theme": "mainseq", "nebulaAlpha": 0.66 },
+          "gimmicks": [{ "type": "electricStorm", "interval": 5.8, "warn": 0.9, "damage": 9 }]
+        },
+        {
+          "id": "mainseq-bonus-orbit",
+          "nameKey": "sector.mainseq.bonus.name",
+          "taglineKey": "sector.mainseq.bonus.tag",
+          "kind": "bonus",
+          "startWave": 9,
+          "gimmicks": [],
+          "bonusMultiplier": 1.45
+        }
+      ],
       "waves": [
         [
           {
@@ -823,6 +956,52 @@
         "perWave": 2.5,
         "boss": 16
       },
+      "waveRoute": [0, 1, 2, 3, 4, 0, 2, 1, 3, 4, 2, 4],
+      "sectors": [
+        {
+          "id": "redgiant-betelgeuse",
+          "nameKey": "sector.redgiant.betelgeuse.name",
+          "taglineKey": "sector.redgiant.betelgeuse.tag",
+          "kind": "story",
+          "startWave": 0,
+          "gimmicks": [
+            {
+              "type": "prominence",
+              "windForce": 76,
+              "interval": 6.2,
+              "warn": 0.9,
+              "reach": 250,
+              "damage": 10
+            }
+          ]
+        },
+        {
+          "id": "redgiant-uy-scuti",
+          "nameKey": "sector.redgiant.uy.name",
+          "taglineKey": "sector.redgiant.uy.tag",
+          "kind": "story",
+          "startWave": 4,
+          "background": { "theme": "redgiant", "nebulaAlpha": 1.0 },
+          "gimmicks": [
+            {
+              "type": "desertHeat",
+              "heatPerSec": 0.16,
+              "coolantEvery": 7.0,
+              "damageEvery": 3.5,
+              "distortion": 0.58
+            }
+          ]
+        },
+        {
+          "id": "redgiant-bonus-shear",
+          "nameKey": "sector.redgiant.bonus.name",
+          "taglineKey": "sector.redgiant.bonus.tag",
+          "kind": "bonus",
+          "startWave": 9,
+          "gimmicks": [],
+          "bonusMultiplier": 1.5
+        }
+      ],
       "waves": [
         [
           {
@@ -1074,6 +1253,34 @@
         "perWave": 2.5,
         "boss": 18
       },
+      "waveRoute": [0, 1, 2, 3, 4, 0, 2, 1, 3, 4],
+      "sectors": [
+        {
+          "id": "supernova-meteor-field",
+          "nameKey": "sector.supernova.meteor.name",
+          "taglineKey": "sector.supernova.meteor.tag",
+          "kind": "hazard",
+          "startWave": 0,
+          "gimmicks": [{ "type": "meteorField", "interval": 3.0, "enemy": "sn_boulder" }]
+        },
+        {
+          "id": "supernova-electric-storm",
+          "nameKey": "sector.supernova.electric.name",
+          "taglineKey": "sector.supernova.electric.tag",
+          "kind": "hazard",
+          "startWave": 4,
+          "gimmicks": [{ "type": "electricStorm", "interval": 4.8, "warn": 0.72, "damage": 11 }]
+        },
+        {
+          "id": "supernova-bonus-eye",
+          "nameKey": "sector.supernova.bonus.name",
+          "taglineKey": "sector.supernova.bonus.tag",
+          "kind": "bonus",
+          "startWave": 8,
+          "gimmicks": [],
+          "bonusMultiplier": 1.55
+        }
+      ],
       "waves": [
         [
           {
@@ -1309,6 +1516,52 @@
         "perWave": 2.5,
         "boss": 14
       },
+      "waveRoute": [0, 1, 2, 3, 4, 0, 2, 1, 3, 4],
+      "sectors": [
+        {
+          "id": "blackhole-rock-graveyard",
+          "nameKey": "sector.blackhole.rock.name",
+          "taglineKey": "sector.blackhole.rock.tag",
+          "kind": "hazard",
+          "startWave": 0,
+          "gimmicks": [{ "type": "meteorField", "interval": 3.4, "enemy": "sn_boulder" }]
+        },
+        {
+          "id": "blackhole-event-horizon",
+          "nameKey": "sector.blackhole.horizon.name",
+          "taglineKey": "sector.blackhole.horizon.tag",
+          "kind": "story",
+          "startWave": 3,
+          "gimmicks": [{ "type": "warp", "pulseEvery": 9.0 }]
+        },
+        {
+          "id": "blackhole-frozen-core",
+          "nameKey": "sector.blackhole.ice.name",
+          "taglineKey": "sector.blackhole.ice.tag",
+          "kind": "hazard",
+          "startWave": 6,
+          "background": { "theme": "inside", "nebulaAlpha": 0.72 },
+          "gimmicks": [
+            {
+              "type": "iceStorm",
+              "windForce": 92,
+              "slow": 0.24,
+              "shardEvery": 1.25,
+              "shardSpeed": 215,
+              "damage": 9
+            }
+          ]
+        },
+        {
+          "id": "blackhole-final-bonus",
+          "nameKey": "sector.blackhole.bonus.name",
+          "taglineKey": "sector.blackhole.bonus.tag",
+          "kind": "bonus",
+          "startWave": 8,
+          "gimmicks": [],
+          "bonusMultiplier": 1.6
+        }
+      ],
       "waves": [
         [
           {

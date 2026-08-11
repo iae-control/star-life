@@ -3,7 +3,16 @@ import Phaser from 'phaser';
 
 import { GAME_HEIGHT, GAME_WIDTH, SceneKeys } from '../config';
 import { DATA, t } from '../data';
-import { loadBest, newSession, type GameSession } from '../game/session';
+import {
+  cyclePilotWeapon,
+  loadBest,
+  newSession,
+  PILOT_ORDER,
+  selectedPilotWeapon,
+  type GameSession,
+  type Pilot,
+  type WeaponKey,
+} from '../game/session';
 import { SpaceBackground } from '../systems/background';
 import { playMusic } from '../systems/Music';
 import { loadSave, updateSave, type Difficulty } from '../systems/Save';
@@ -28,6 +37,7 @@ export class TitleScene extends Phaser.Scene {
   private sel = 0;
   private diffText!: Phaser.GameObjects.Text;
   private pilotText!: Phaser.GameObjects.Text;
+  private weaponText!: Phaser.GameObjects.Text;
 
   constructor() {
     super(SceneKeys.Title);
@@ -56,15 +66,9 @@ export class TitleScene extends Phaser.Scene {
       ease: 'Sine.easeInOut',
     });
     this.ship = this.add
-      .image(
-        GAME_WIDTH / 2,
-        246,
-        { parksulhee: 'az-ship-ps', youngjioo: 'az-ship-jw', keunaebi: 'az-ship-kb' }[
-          save.settings.pilot as string
-        ] ?? 'az-ship',
-        0,
-      )
-      .setScale(4);
+      .image(GAME_WIDTH / 2, 246, 'hero-fighter-v2')
+      .setScale(0.2)
+      .setAngle(-2);
     this.orb = this.add.image(GAME_WIDTH / 2 + 92, 246, 'orb-P').setScale(1.4);
 
     uiText(this, GAME_WIDTH / 2, 132, '별의 일생', 40, '#dfe8ff', 'center');
@@ -121,41 +125,39 @@ export class TitleScene extends Phaser.Scene {
         });
     });
 
+    const selectorY = menuY + this.menu.length * 30 + 6;
     // 난이도 선택 (피드백 6)
-    this.diffText = uiText(
-      this,
-      GAME_WIDTH / 2,
-      menuY + this.menu.length * 30 + 14,
-      '',
-      10,
-      '#9aa6c8',
-      'center',
-    );
+    this.diffText = uiText(this, GAME_WIDTH / 2, selectorY, '', 10, '#9aa6c8', 'center');
     this.add
-      .zone(90, menuY + this.menu.length * 30 + 1, GAME_WIDTH - 180, 26)
+      .zone(90, selectorY - 13, GAME_WIDTH - 180, 26)
       .setOrigin(0, 0)
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', () => this.cycleDiff(1));
     // 조종사 선택 (정지우 / 박슬희)
-    this.pilotText = uiText(
-      this,
-      GAME_WIDTH / 2,
-      menuY + this.menu.length * 30 + 38,
-      '',
-      10,
-      '#9aa6c8',
-      'center',
-    );
+    this.pilotText = uiText(this, GAME_WIDTH / 2, selectorY + 22, '', 10, '#9aa6c8', 'center');
     this.add
-      .zone(90, menuY + this.menu.length * 30 + 25, GAME_WIDTH - 180, 26)
+      .zone(90, selectorY + 9, GAME_WIDTH - 180, 26)
       .setOrigin(0, 0)
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', () => this.cyclePilot());
+
+    // 주무기 선택 — 파일럿마다 시그니처/대체 무기 2개, 좌우 터치 지원
+    this.weaponText = uiText(this, GAME_WIDTH / 2, selectorY + 44, '', 10, '#8fd3ff', 'center');
+    this.add
+      .zone(90, selectorY + 31, (GAME_WIDTH - 180) / 2, 26)
+      .setOrigin(0, 0)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => this.cycleWeapon(-1));
+    this.add
+      .zone(GAME_WIDTH / 2, selectorY + 31, (GAME_WIDTH - 180) / 2, 26)
+      .setOrigin(0, 0)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => this.cycleWeapon(1));
     this.refreshMenu();
 
-    uiText(this, GAME_WIDTH / 2, 508, t('title.help1'), 8, '#9aa6c8', 'center');
-    uiText(this, GAME_WIDTH / 2, 524, t('title.help2'), 8, '#9aa6c8', 'center');
-    uiText(this, GAME_WIDTH / 2, 540, t('title.help3'), 8, '#9aa6c8', 'center');
+    uiText(this, GAME_WIDTH / 2, 518, t('title.help1'), 8, '#9aa6c8', 'center');
+    uiText(this, GAME_WIDTH / 2, 534, t('title.help2'), 8, '#9aa6c8', 'center');
+    uiText(this, GAME_WIDTH / 2, 550, t('title.help3'), 8, '#9aa6c8', 'center');
     const best = loadBest();
     if (best) uiText(this, GAME_WIDTH / 2, 570, t('title.best', best), 11, '#ffd76a', 'center');
 
@@ -185,8 +187,10 @@ export class TitleScene extends Phaser.Scene {
       this.sel = (this.sel + 1) % this.menu.length;
       this.refreshMenu();
     });
-    kb?.on('keydown-LEFT', () => this.cycleDiff(-1));
-    kb?.on('keydown-RIGHT', () => this.cycleDiff(1));
+    kb?.on('keydown-LEFT', () => this.cycleWeapon(-1));
+    kb?.on('keydown-RIGHT', () => this.cycleWeapon(1));
+    kb?.on('keydown-Q', () => this.cycleDiff(-1));
+    kb?.on('keydown-E', () => this.cycleDiff(1));
     const onKey = (e: KeyboardEvent): void => {
       if (!e.repeat) this.startGame(this.sel);
     };
@@ -198,18 +202,25 @@ export class TitleScene extends Phaser.Scene {
   }
 
   private cyclePilot(): void {
-    const order = ['jungjioo', 'parksulhee', 'youngjioo', 'keunaebi'] as const;
     updateSave((s) => {
-      const i = order.indexOf(s.settings.pilot as (typeof order)[number]);
-      s.settings.pilot = order[(i + 1) % order.length] ?? 'jungjioo';
+      const i = PILOT_ORDER.indexOf(s.settings.pilot);
+      s.settings.pilot = PILOT_ORDER[(i + 1) % PILOT_ORDER.length] ?? 'jungjioo';
     });
-    const pilot = loadSave().settings.pilot as string;
-    this.ship.setTexture(
-      { parksulhee: 'az-ship-ps', youngjioo: 'az-ship-jw', keunaebi: 'az-ship-kb' }[pilot] ??
-        'az-ship',
-      this.ship.frame.name,
-    );
+    this.ship.setAngle(this.ship.angle === -2 ? 2 : -2);
     this.refreshMenu();
+  }
+
+  private cycleWeapon(direction: number): void {
+    cyclePilotWeapon(loadSave().settings.pilot, direction);
+    this.refreshMenu();
+  }
+
+  private weaponName(pilot: Pilot, weapon: WeaponKey): string {
+    const definition = DATA.weapons.weapons[weapon];
+    // nameKey가 추가된 콘텐츠는 즉시 현지화하고, 구 데이터는 기존 영문 이름을 유지한다.
+    const nameKey = (definition as { nameKey?: string } | undefined)?.nameKey;
+    if (nameKey) return t(nameKey);
+    return definition?.name ?? `${pilot}:${weapon}`;
   }
 
   private cycleDiff(d: number): void {
@@ -231,6 +242,11 @@ export class TitleScene extends Phaser.Scene {
     const save = loadSave();
     this.diffText.setText(`${t('title.diff')}  ◀ ${t(`diff.${save.settings.difficulty}`)} ▶`);
     this.pilotText.setText(`${t('title.pilot')}  ◀ ${t(`pilot.${save.settings.pilot}`)} ▶`);
+    const weapon = selectedPilotWeapon(save.settings.pilot);
+    const weaponDef = DATA.weapons.weapons[weapon];
+    this.weaponText
+      .setText(`WPN  ◀ ${this.weaponName(save.settings.pilot, weapon)} ▶`)
+      .setColor(weaponDef?.color ?? '#8fd3ff');
   }
 
   update(_time: number, deltaMs: number): void {
@@ -240,7 +256,7 @@ export class TitleScene extends Phaser.Scene {
     const bob = Math.sin(this.t * 2) * 5;
     this.ship.setY(246 + bob);
     // 엔진 플리커 — 시트 행 전환
-    this.ship.setFrame(2 + (Math.floor(this.t * 12) % 2) * 5);
+    this.ship.setRotation(Math.sin(this.t * 1.4) * 0.025);
     this.orb.setPosition(
       GAME_WIDTH / 2 + Math.cos(this.t * 1.6) * 92,
       246 + bob + Math.sin(this.t * 1.6) * 44,

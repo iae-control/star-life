@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { aabb, applyDamage } from '../src/game/logic/damage';
+import { aabb, applyDamage, sweptAabb } from '../src/game/logic/damage';
 
 describe('applyDamage', () => {
   it('drains shield first', () => {
@@ -30,5 +30,19 @@ describe('aabb', () => {
     expect(aabb(0, 0, 10, 10, 9, 0, 10, 10)).toBe(true);
     expect(aabb(0, 0, 10, 10, 10, 0, 10, 10)).toBe(false);
     expect(aabb(0, 0, 10, 10, 0, 9.9, 10, 10)).toBe(true);
+  });
+});
+
+describe('sweptAabb', () => {
+  it('detects a fast projectile crossing a target between frames', () => {
+    expect(sweptAabb(0, 100, 0, 0, 4, 12, 0, 50, 20, 20)).toBe(true);
+  });
+
+  it('rejects a parallel near miss', () => {
+    expect(sweptAabb(30, 100, 30, 0, 4, 12, 0, 50, 20, 20)).toBe(false);
+  });
+
+  it('handles a stationary overlapping projectile', () => {
+    expect(sweptAabb(0, 50, 0, 50, 4, 12, 0, 50, 20, 20)).toBe(true);
   });
 });

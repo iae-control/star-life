@@ -52,7 +52,15 @@ export class ResultScene extends Phaser.Scene {
     uiText(this, GAME_WIDTH / 2, 328, t('result.wave', s.wave), 12, '#cfd8ff', 'center');
     if (s.score > 0 && s.score >= loadBest())
       uiText(this, GAME_WIDTH / 2, 357, t('result.newRecord'), 12, '#8aff8a', 'center');
-    this.prompt = uiText(this, GAME_WIDTH / 2, 427, t('result.retry'), 12, '#e8ecff', 'center');
+    this.prompt = uiText(
+      this,
+      GAME_WIDTH / 2,
+      427,
+      t(complete ? 'result.credits' : 'result.retry'),
+      12,
+      '#e8ecff',
+      'center',
+    );
 
     // 즉시 재시작 오입력 방지: 짧은 지연 + e.repeat 가드(발사키 홀드 자동반복 차단)
     this.time.delayedCall(400, () => {

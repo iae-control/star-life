@@ -13,6 +13,10 @@ const THEME_COLOR: Record<string, string> = {
   protostar: '#ff9a5a',
   mainseq: '#ffd75e',
   asteroids: '#c8b49a',
+  redgiant: '#ff765f',
+  supernova: '#dc9cff',
+  blackhole: '#9f8dff',
+  inside: '#79e5bd',
 };
 
 export class StageIntroScene extends Phaser.Scene {

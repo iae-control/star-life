@@ -708,7 +708,700 @@ function jwMountains(): HTMLCanvasElement {
   return c;
 }
 
+/** Smooth high-resolution two-frame enemy craft, replacing the legacy 16 px sheets. */
+function modernEnemySheet(
+  scene: Phaser.Scene,
+  key: string,
+  frameW: number,
+  frameH: number,
+  mass: 'light' | 'medium' | 'heavy',
+): void {
+  const [c, ctx] = canvas(frameW * 2, frameH);
+  for (let frame = 0; frame < 2; frame++) {
+    const ox = frame * frameW;
+    const cx = ox + frameW / 2;
+    const pulse = frame === 0 ? 0 : frameH * 0.035;
+    const bodyW = frameW * (mass === 'light' ? 0.18 : mass === 'medium' ? 0.16 : 0.22);
+    const top = frameH * 0.12;
+    const nose = frameH * 0.9;
+    ctx.save();
+    ctx.shadowColor = '#65e8ff';
+    ctx.shadowBlur = frameW * 0.08;
+
+    const wing = ctx.createLinearGradient(cx, top, cx, nose);
+    wing.addColorStop(0, '#d9f7ff');
+    wing.addColorStop(0.38, '#5d8dac');
+    wing.addColorStop(1, '#18253b');
+    ctx.fillStyle = wing;
+    const wingSpan = frameW * (mass === 'light' ? 0.43 : mass === 'medium' ? 0.45 : 0.47);
+    ctx.beginPath();
+    ctx.moveTo(cx - bodyW * 0.55, top + frameH * 0.2);
+    ctx.lineTo(cx - wingSpan, frameH * (0.46 + pulse / frameH));
+    ctx.lineTo(cx - frameW * 0.31, frameH * 0.72);
+    ctx.lineTo(cx - bodyW * 0.5, frameH * 0.63);
+    ctx.lineTo(cx + bodyW * 0.5, frameH * 0.63);
+    ctx.lineTo(cx + frameW * 0.31, frameH * 0.72);
+    ctx.lineTo(cx + wingSpan, frameH * (0.46 + pulse / frameH));
+    ctx.lineTo(cx + bodyW * 0.55, top + frameH * 0.2);
+    ctx.closePath();
+    ctx.fill();
+
+    const body = ctx.createLinearGradient(cx - bodyW, 0, cx + bodyW, 0);
+    body.addColorStop(0, '#15233b');
+    body.addColorStop(0.42, '#84cde8');
+    body.addColorStop(0.55, '#efffff');
+    body.addColorStop(1, '#223553');
+    ctx.fillStyle = body;
+    ctx.beginPath();
+    ctx.moveTo(cx, nose);
+    ctx.lineTo(cx - bodyW, frameH * 0.48);
+    ctx.lineTo(cx - bodyW * 0.5, top);
+    ctx.lineTo(cx + bodyW * 0.5, top);
+    ctx.lineTo(cx + bodyW, frameH * 0.48);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = frame === 0 ? '#7ef7ff' : '#f4fdff';
+    ctx.beginPath();
+    ctx.ellipse(cx, frameH * 0.46, bodyW * 0.35, frameH * 0.1, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(215,250,255,0.9)';
+    ctx.lineWidth = Math.max(1, frameW / 64);
+    ctx.beginPath();
+    ctx.moveTo(cx - wingSpan * 0.82, frameH * 0.5);
+    ctx.lineTo(cx - bodyW * 0.8, frameH * 0.43);
+    ctx.moveTo(cx + wingSpan * 0.82, frameH * 0.5);
+    ctx.lineTo(cx + bodyW * 0.8, frameH * 0.43);
+    ctx.stroke();
+
+    if (mass !== 'light') {
+      ctx.fillStyle = '#ffb45d';
+      const pod = frameW * 0.05;
+      for (const side of [-1, 1]) {
+        ctx.beginPath();
+        ctx.arc(cx + side * frameW * 0.31, frameH * 0.57, pod, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    if (mass === 'heavy') {
+      ctx.strokeStyle = '#7eeeff';
+      ctx.lineWidth = frameW * 0.025;
+      ctx.beginPath();
+      ctx.arc(cx, frameH * 0.5, frameW * 0.3, Math.PI * 0.18, Math.PI * 0.82);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  if (scene.textures.exists(key)) scene.textures.remove(key);
+  const texture = scene.textures.addCanvas(key, c);
+  if (!texture) return;
+  texture.add(0, 0, 0, 0, frameW, frameH);
+  texture.add(1, 0, frameW, 0, frameW, frameH);
+}
+
+function smoothTexture(
+  scene: Phaser.Scene,
+  key: string,
+  w: number,
+  h: number,
+  draw: (ctx: CanvasRenderingContext2D, w: number, h: number) => void,
+): void {
+  const [c, ctx] = canvas(w, h);
+  draw(ctx, w, h);
+  addCanvasTexture(scene, key, c);
+}
+
+/** High-resolution modular boss bodies and reusable hardpoints. */
+function modernBossTextures(scene: Phaser.Scene): void {
+  smoothTexture(scene, 'boss-amoeba', 170, 126, (ctx, w, h) => {
+    const cx = w / 2;
+    const cy = h / 2;
+    ctx.shadowColor = '#6dff9c';
+    ctx.shadowBlur = 20;
+    const membrane = ctx.createRadialGradient(cx - 18, cy - 19, 5, cx, cy, 72);
+    membrane.addColorStop(0, '#eeffd8');
+    membrane.addColorStop(0.28, '#74f279');
+    membrane.addColorStop(0.72, '#217d55');
+    membrane.addColorStop(1, 'rgba(10,34,38,0.15)');
+    ctx.fillStyle = membrane;
+    ctx.beginPath();
+    for (let i = 0; i <= 20; i++) {
+      const a = (i / 20) * Math.PI * 2;
+      const r = 55 + Math.sin(i * 2.7) * 8 + Math.cos(i * 1.4) * 5;
+      const x = cx + Math.cos(a) * r * 1.25;
+      const y = cy + Math.sin(a) * r * 0.78;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = 'rgba(177,255,194,0.9)';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    for (const [x, y, r] of [
+      [cx - 27, cy - 4, 14],
+      [cx + 24, cy + 8, 11],
+      [cx + 4, cy - 24, 8],
+    ] as const) {
+      const nucleus = ctx.createRadialGradient(x - 3, y - 4, 1, x, y, r);
+      nucleus.addColorStop(0, '#ffffd4');
+      nucleus.addColorStop(0.38, '#d5ff52');
+      nucleus.addColorStop(1, '#367d32');
+      ctx.fillStyle = nucleus;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(235,255,176,0.8)';
+      ctx.stroke();
+    }
+  });
+
+  smoothTexture(scene, 'boss-protocore', 184, 142, (ctx, w, h) => {
+    const cx = w / 2;
+    const cy = h / 2;
+    ctx.shadowColor = '#ffad42';
+    ctx.shadowBlur = 22;
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      ctx.save();
+      ctx.translate(cx + Math.cos(a) * 57, cy + Math.sin(a) * 40);
+      ctx.rotate(a);
+      const fin = ctx.createLinearGradient(-13, 0, 15, 0);
+      fin.addColorStop(0, '#2a3448');
+      fin.addColorStop(0.55, '#d7e4ed');
+      fin.addColorStop(1, '#6c321f');
+      ctx.fillStyle = fin;
+      ctx.beginPath();
+      ctx.moveTo(-16, -7);
+      ctx.lineTo(18, -11);
+      ctx.lineTo(27, 0);
+      ctx.lineTo(18, 11);
+      ctx.lineTo(-16, 7);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#7fc9df';
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, 60, 43, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = '#263d59';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, 46, 32, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    const core = ctx.createRadialGradient(cx - 8, cy - 9, 2, cx, cy, 31);
+    core.addColorStop(0, '#fffce4');
+    core.addColorStop(0.28, '#ffd35a');
+    core.addColorStop(0.72, '#f15b30');
+    core.addColorStop(1, '#32142c');
+    ctx.fillStyle = core;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 30, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  smoothTexture(scene, 'boss-helios', 184, 154, (ctx, w, h) => {
+    const cx = w / 2;
+    const cy = h / 2;
+    ctx.shadowColor = '#ff8528';
+    ctx.shadowBlur = 25;
+    ctx.fillStyle = 'rgba(255,86,26,0.72)';
+    ctx.beginPath();
+    for (let i = 0; i < 32; i++) {
+      const a = (i / 32) * Math.PI * 2;
+      const r = i % 2 === 0 ? 73 + (i % 6) * 2 : 54;
+      const x = cx + Math.cos(a) * r;
+      const y = cy + Math.sin(a) * r * 0.85;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+    const sun = ctx.createRadialGradient(cx - 13, cy - 15, 4, cx, cy, 52);
+    sun.addColorStop(0, '#fffbd0');
+    sun.addColorStop(0.25, '#ffd857');
+    sun.addColorStop(0.67, '#ff7a2d');
+    sun.addColorStop(1, '#9e1836');
+    ctx.fillStyle = sun;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 52, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = 'rgba(255,247,178,0.75)';
+    ctx.lineWidth = 3;
+    for (let i = 0; i < 4; i++) {
+      ctx.beginPath();
+      ctx.arc(cx, cy, 22 + i * 8, i * 0.7, i * 0.7 + 2.3);
+      ctx.stroke();
+    }
+  });
+
+  smoothTexture(scene, 'boss-crimson', 208, 132, (ctx, w, h) => {
+    const cx = w / 2;
+    const hull = ctx.createLinearGradient(0, 0, w, h);
+    hull.addColorStop(0, '#1b1f33');
+    hull.addColorStop(0.35, '#e6584d');
+    hull.addColorStop(0.56, '#6f1729');
+    hull.addColorStop(1, '#14182c');
+    ctx.shadowColor = '#ff4c4c';
+    ctx.shadowBlur = 18;
+    ctx.fillStyle = hull;
+    ctx.beginPath();
+    ctx.moveTo(cx, 6);
+    ctx.lineTo(w - 27, 34);
+    ctx.lineTo(w - 5, 94);
+    ctx.lineTo(cx + 37, 82);
+    ctx.lineTo(cx + 22, h - 5);
+    ctx.lineTo(cx - 22, h - 5);
+    ctx.lineTo(cx - 37, 82);
+    ctx.lineTo(5, 94);
+    ctx.lineTo(27, 34);
+    ctx.closePath();
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#ff9380';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = '#10172b';
+    ctx.fillRect(cx - 42, 43, 84, 35);
+    const reactor = ctx.createRadialGradient(cx - 5, 56, 1, cx, 61, 21);
+    reactor.addColorStop(0, '#ffffff');
+    reactor.addColorStop(0.3, '#ff9a65');
+    reactor.addColorStop(1, '#8e1737');
+    ctx.fillStyle = reactor;
+    ctx.beginPath();
+    ctx.arc(cx, 61, 20, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#d6e8ff';
+    for (const side of [-1, 1]) {
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(cx + side * 44, 38);
+      ctx.lineTo(cx + side * 78, 87);
+      ctx.stroke();
+    }
+  });
+
+  smoothTexture(scene, 'boss-nova', 196, 164, (ctx, w, h) => {
+    const cx = w / 2;
+    const cy = h / 2;
+    ctx.shadowColor = '#d477ff';
+    ctx.shadowBlur = 24;
+    const crystal = ctx.createRadialGradient(cx - 13, cy - 17, 2, cx, cy, 67);
+    crystal.addColorStop(0, '#ffffff');
+    crystal.addColorStop(0.22, '#94edff');
+    crystal.addColorStop(0.55, '#a25cff');
+    crystal.addColorStop(1, '#261449');
+    ctx.fillStyle = crystal;
+    ctx.beginPath();
+    for (let i = 0; i < 20; i++) {
+      const a = (i / 20) * Math.PI * 2;
+      const r = i % 2 === 0 ? 76 : 49;
+      const x = cx + Math.cos(a) * r;
+      const y = cy + Math.sin(a) * r;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = 'rgba(225,241,255,0.9)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx, 8);
+    ctx.lineTo(cx, h - 8);
+    ctx.moveTo(26, cy);
+    ctx.lineTo(w - 26, cy);
+    ctx.stroke();
+    ctx.fillStyle = '#fffbd0';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  smoothTexture(scene, 'boss-singularity', 192, 150, (ctx, w, h) => {
+    const cx = w / 2;
+    const cy = h / 2;
+    ctx.translate(cx, cy);
+    ctx.rotate(-0.24);
+    ctx.shadowColor = '#9a79ff';
+    ctx.shadowBlur = 22;
+    for (let i = 0; i < 6; i++) {
+      ctx.strokeStyle = `rgba(${110 + i * 18},${70 + i * 14},255,${0.24 + i * 0.1})`;
+      ctx.lineWidth = 11 - i;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 84 - i * 8, 39 - i * 4, 0, 0.25, Math.PI * 1.85);
+      ctx.stroke();
+    }
+    ctx.shadowBlur = 0;
+    const hole = ctx.createRadialGradient(-9, -8, 1, 0, 0, 37);
+    hole.addColorStop(0, '#020106');
+    hole.addColorStop(0.62, '#03030a');
+    hole.addColorStop(0.86, '#5842b4');
+    hole.addColorStop(1, 'rgba(150,115,255,0)');
+    ctx.fillStyle = hole;
+    ctx.beginPath();
+    ctx.arc(0, 0, 39, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  smoothTexture(scene, 'boss-snail', 218, 162, (ctx) => {
+    const shellX = 125;
+    const shellY = 78;
+    ctx.shadowColor = '#ef88ff';
+    ctx.shadowBlur = 18;
+    const shell = ctx.createRadialGradient(shellX - 19, shellY - 18, 4, shellX, shellY, 67);
+    shell.addColorStop(0, '#f8d5ff');
+    shell.addColorStop(0.3, '#ba6bdb');
+    shell.addColorStop(0.68, '#573187');
+    shell.addColorStop(1, '#17162f');
+    ctx.fillStyle = shell;
+    ctx.beginPath();
+    ctx.arc(shellX, shellY, 66, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#efc1ff';
+    ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.arc(shellX, shellY, 45, -0.4, Math.PI * 1.65);
+    ctx.arc(shellX, shellY, 25, -0.4, Math.PI * 1.62);
+    ctx.stroke();
+    const skin = ctx.createLinearGradient(0, 40, 92, 135);
+    skin.addColorStop(0, '#d8ffb0');
+    skin.addColorStop(0.55, '#55c978');
+    skin.addColorStop(1, '#1d654b');
+    ctx.fillStyle = skin;
+    ctx.beginPath();
+    ctx.ellipse(65, 112, 60, 33, -0.08, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#8fe892';
+    ctx.beginPath();
+    ctx.ellipse(35, 77, 29, 35, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+    for (const side of [-1, 1]) {
+      ctx.strokeStyle = '#74d984';
+      ctx.lineWidth = 7;
+      ctx.beginPath();
+      ctx.moveTo(31 + side * 10, 52);
+      ctx.lineTo(28 + side * 17, 17);
+      ctx.stroke();
+      ctx.fillStyle = '#f6fdff';
+      ctx.beginPath();
+      ctx.arc(28 + side * 17, 15, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#1a1533';
+      ctx.beginPath();
+      ctx.arc(28 + side * 17, 15, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
+
+  smoothTexture(scene, 'part-pod', 38, 38, (ctx, w, h) => {
+    const g = ctx.createRadialGradient(14, 12, 2, w / 2, h / 2, 18);
+    g.addColorStop(0, '#ffffff');
+    g.addColorStop(0.3, '#a5ffbe');
+    g.addColorStop(0.72, '#32a871');
+    g.addColorStop(1, '#10283c');
+    ctx.shadowColor = '#7bffb5';
+    ctx.shadowBlur = 11;
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(w / 2, h / 2, 15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#d8ffe6';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  });
+  smoothTexture(scene, 'part-vane', 34, 58, (ctx, w, h) => {
+    const g = ctx.createLinearGradient(0, 0, w, h);
+    g.addColorStop(0, '#eaf9ff');
+    g.addColorStop(0.35, '#5bb7d1');
+    g.addColorStop(1, '#17243c');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(w / 2, 1);
+    ctx.lineTo(w - 3, 17);
+    ctx.lineTo(w - 10, h - 4);
+    ctx.lineTo(w / 2, h - 15);
+    ctx.lineTo(10, h - 4);
+    ctx.lineTo(3, 17);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#9cecff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  });
+  smoothTexture(scene, 'part-corona', 46, 46, (ctx, w, h) => {
+    ctx.shadowColor = '#ff7a2f';
+    ctx.shadowBlur = 13;
+    ctx.fillStyle = '#ff8a32';
+    ctx.beginPath();
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2;
+      const r = i % 2 ? 15 : 22;
+      const x = w / 2 + Math.cos(a) * r;
+      const y = h / 2 + Math.sin(a) * r;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#fff3a4';
+    ctx.beginPath();
+    ctx.arc(w / 2, h / 2, 9, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  smoothTexture(scene, 'part-flarecannon', 36, 62, (ctx, w, h) => {
+    const g = ctx.createLinearGradient(0, 0, w, 0);
+    g.addColorStop(0, '#2a172b');
+    g.addColorStop(0.5, '#f06a52');
+    g.addColorStop(1, '#27152d');
+    ctx.fillStyle = g;
+    ctx.fillRect(7, 10, w - 14, h - 14);
+    ctx.fillStyle = '#ffd39a';
+    ctx.fillRect(12, 1, w - 24, 28);
+    ctx.strokeStyle = '#ff9a74';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(7, 10, w - 14, h - 14);
+  });
+  smoothTexture(scene, 'part-shard', 42, 54, (ctx, w, h) => {
+    const g = ctx.createLinearGradient(5, 4, w - 4, h);
+    g.addColorStop(0, '#f1ffff');
+    g.addColorStop(0.38, '#82dfff');
+    g.addColorStop(1, '#6637b4');
+    ctx.shadowColor = '#a580ff';
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(w / 2, 1);
+    ctx.lineTo(w - 3, h * 0.42);
+    ctx.lineTo(w * 0.62, h - 2);
+    ctx.lineTo(4, h * 0.68);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#e5f5ff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  });
+  smoothTexture(scene, 'part-arc', 58, 34, (ctx, w, h) => {
+    ctx.strokeStyle = '#b994ff';
+    ctx.shadowColor = '#7355ff';
+    ctx.shadowBlur = 10;
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.arc(w / 2, h + 4, 27, Math.PI * 1.12, Math.PI * 1.88);
+    ctx.stroke();
+    ctx.strokeStyle = '#ecddff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  });
+  smoothTexture(scene, 'part-eyestalk', 32, 64, (ctx, w, h) => {
+    ctx.strokeStyle = '#71d883';
+    ctx.lineWidth = 9;
+    ctx.beginPath();
+    ctx.moveTo(w / 2, h);
+    ctx.bezierCurveTo(6, 44, 27, 27, w / 2, 15);
+    ctx.stroke();
+    ctx.fillStyle = '#f6ffff';
+    ctx.beginPath();
+    ctx.arc(w / 2, 12, 11, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#302250';
+    ctx.beginPath();
+    ctx.arc(w / 2, 12, 5, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+function modernPlanetTextures(scene: Phaser.Scene): void {
+  const makePlanet = (
+    key: string,
+    atmosphere: string,
+    stops: [number, string][],
+    decorate: (ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) => void,
+  ) => {
+    smoothTexture(scene, key, 210, 210, (ctx, w, h) => {
+      const cx = w / 2;
+      const cy = h / 2;
+      const r = 78;
+      ctx.shadowColor = atmosphere;
+      ctx.shadowBlur = 28;
+      const surface = ctx.createRadialGradient(cx - 28, cy - 31, 4, cx, cy, r);
+      for (const [at, color] of stops) surface.addColorStop(at, color);
+      ctx.fillStyle = surface;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, r - 1, 0, Math.PI * 2);
+      ctx.clip();
+      decorate(ctx, cx, cy, r);
+      const night = ctx.createLinearGradient(cx - r, cy, cx + r, cy);
+      night.addColorStop(0, 'rgba(2,5,18,0)');
+      night.addColorStop(0.58, 'rgba(2,5,18,0.04)');
+      night.addColorStop(1, 'rgba(2,5,18,0.76)');
+      ctx.fillStyle = night;
+      ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+      ctx.restore();
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = atmosphere;
+      ctx.globalAlpha = 0.78;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r + 1.5, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    });
+  };
+
+  makePlanet(
+    'planet-ocean',
+    '#63e8ff',
+    [
+      [0, '#dcffff'],
+      [0.26, '#2bd9ea'],
+      [0.65, '#126aa8'],
+      [1, '#071c4b'],
+    ],
+    (ctx, cx, cy, r) => {
+      ctx.strokeStyle = 'rgba(235,255,255,0.65)';
+      ctx.lineWidth = 8;
+      for (let i = -2; i <= 2; i++) {
+        ctx.beginPath();
+        ctx.ellipse(cx - 8, cy + i * 25, r * 0.9, 12, -0.12, 0.3, Math.PI * 1.72);
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(78,220,144,0.72)';
+      ctx.beginPath();
+      ctx.ellipse(cx - 25, cy - 9, 24, 13, -0.35, 0, Math.PI * 2);
+      ctx.ellipse(cx + 12, cy + 29, 17, 9, 0.42, 0, Math.PI * 2);
+      ctx.fill();
+    },
+  );
+  makePlanet(
+    'planet-ice',
+    '#b9f8ff',
+    [
+      [0, '#ffffff'],
+      [0.3, '#c6f7ff'],
+      [0.68, '#65bde0'],
+      [1, '#17396d'],
+    ],
+    (ctx, cx, cy, r) => {
+      ctx.strokeStyle = 'rgba(60,142,200,0.74)';
+      ctx.lineWidth = 3;
+      for (let i = 0; i < 14; i++) {
+        const a = i * 1.73;
+        const x = cx + Math.cos(a) * r * 0.55;
+        const y = cy + Math.sin(a) * r * 0.58;
+        ctx.beginPath();
+        ctx.moveTo(x - 17, y - 9);
+        ctx.lineTo(x, y + 4);
+        ctx.lineTo(x + 12, y - 18);
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(244,255,255,0.72)';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy - 61, 54, 23, 0, 0, Math.PI * 2);
+      ctx.fill();
+    },
+  );
+  makePlanet(
+    'planet-volcanic',
+    '#ff6633',
+    [
+      [0, '#ffd36a'],
+      [0.28, '#b83b24'],
+      [0.68, '#3d1820'],
+      [1, '#100b15'],
+    ],
+    (ctx, cx, cy, r) => {
+      ctx.strokeStyle = '#ffb12f';
+      ctx.shadowColor = '#ff4b20';
+      ctx.shadowBlur = 8;
+      ctx.lineWidth = 5;
+      for (let i = 0; i < 10; i++) {
+        const a = i * 1.94;
+        const x = cx + Math.cos(a) * r * 0.58;
+        const y = cy + Math.sin(a) * r * 0.58;
+        ctx.beginPath();
+        ctx.moveTo(x - 18, y - 13);
+        ctx.lineTo(x - 4, y + 2);
+        ctx.lineTo(x + 7, y - 3);
+        ctx.lineTo(x + 16, y + 17);
+        ctx.stroke();
+      }
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = 'rgba(30,10,18,0.75)';
+      ctx.beginPath();
+      ctx.arc(cx - 19, cy - 28, 14, 0, Math.PI * 2);
+      ctx.arc(cx + 29, cy + 19, 10, 0, Math.PI * 2);
+      ctx.fill();
+    },
+  );
+  makePlanet(
+    'planet-desert',
+    '#ffc978',
+    [
+      [0, '#fff1b0'],
+      [0.3, '#dda252'],
+      [0.68, '#9a4e2d'],
+      [1, '#381d29'],
+    ],
+    (ctx, cx, cy, r) => {
+      ctx.strokeStyle = 'rgba(255,226,154,0.6)';
+      ctx.lineWidth = 9;
+      for (let i = -3; i <= 3; i++) {
+        ctx.beginPath();
+        ctx.bezierCurveTo(cx - r, cy + i * 19, cx - 18, cy + i * 19 - 19, cx + r, cy + i * 19 + 6);
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(87,40,35,0.42)';
+      ctx.beginPath();
+      ctx.ellipse(cx + 11, cy - 24, 28, 9, 0.26, 0, Math.PI * 2);
+      ctx.fill();
+    },
+  );
+  makePlanet(
+    'planet-rock',
+    '#aab8c9',
+    [
+      [0, '#e4e9eb'],
+      [0.3, '#8b939d'],
+      [0.68, '#414957'],
+      [1, '#171b28'],
+    ],
+    (ctx, cx, cy, r) => {
+      for (let i = 0; i < 17; i++) {
+        const a = i * 2.23;
+        const rr = r * (0.15 + ((i * 37) % 70) / 100);
+        const x = cx + Math.cos(a) * rr;
+        const y = cy + Math.sin(a) * rr;
+        const cr = 4 + (i % 5) * 2;
+        const crater = ctx.createRadialGradient(x - 2, y - 2, 1, x, y, cr);
+        crater.addColorStop(0, 'rgba(30,35,45,0.82)');
+        crater.addColorStop(0.72, 'rgba(62,69,79,0.48)');
+        crater.addColorStop(1, 'rgba(230,235,238,0.42)');
+        ctx.fillStyle = crater;
+        ctx.beginPath();
+        ctx.arc(x, y, cr, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    },
+  );
+}
+
 export function generateTextures(scene: Phaser.Scene): void {
+  modernEnemySheet(scene, 'az-small', 48, 48, 'light');
+  modernEnemySheet(scene, 'az-medium', 96, 48, 'medium');
+  modernEnemySheet(scene, 'az-big', 96, 96, 'heavy');
   // 함선
   addCanvasTexture(scene, 'ship-player', enhance(pixmap(PLAYER_MAP, PLAYER_PAL, 2)));
   addCanvasTexture(scene, 'ship-e1', enhance(pixmap(E1_MAP, E1_PAL, 2)));
@@ -835,6 +1528,8 @@ export function generateTextures(scene: Phaser.Scene): void {
   addCanvasTexture(scene, 'part-arc', enhance(pixmap(ARC_MAP, ARC_PAL, 3)));
   addCanvasTexture(scene, 'boss-snail', enhance(pixmap(SNAIL_MAP, SNAIL_PAL, 4)));
   addCanvasTexture(scene, 'part-eyestalk', enhance(pixmap(EYESTALK_MAP, EYESTALK_PAL, 3)));
+  modernBossTextures(scene);
+  modernPlanetTextures(scene);
   addCanvasTexture(scene, 'prop-eye', enhance(pixmap(EYE_MAP, EYE_PAL, 4)));
   addCanvasTexture(
     scene,
@@ -952,16 +1647,7 @@ export function generateTextures(scene: Phaser.Scene): void {
   azSheetVariant(scene, 'az-ship-kb', 'az-ship', '#e0b060', 16, 24);
   // 미사일 탄 (박설희 시그니처)
   {
-    const MISSILE_MAP = [
-      '..w..',
-      '.www.',
-      '.ooo.',
-      '.ooo.',
-      'gooog',
-      'gooog',
-      '.fff.',
-      '..f..',
-    ];
+    const MISSILE_MAP = ['..w..', '.www.', '.ooo.', '.ooo.', 'gooog', 'gooog', '.fff.', '..f..'];
     const PAL: Record<string, string> = {
       w: '#f0f4ff',
       o: '#ff9a5a',
@@ -977,11 +1663,7 @@ export function generateTextures(scene: Phaser.Scene): void {
 
   // 뼈다귀 (지우큰애비 후방무기) — 벽에 튕기는 리코셰
   {
-    const BONE_MAP = [
-      'ww.......ww',
-      'wwwwwwwwwww',
-      'ww.......ww',
-    ];
+    const BONE_MAP = ['ww.......ww', 'wwwwwwwwwww', 'ww.......ww'];
     addCanvasTexture(scene, 'b-bone', enhance(pixmap(BONE_MAP, { w: '#f0ead8' }, 2)));
   }
 
@@ -1035,6 +1717,148 @@ export function generateTextures(scene: Phaser.Scene): void {
     ctx.fillStyle = g2;
     ctx.fillRect(0, 0, 26, 26);
     addCanvasTexture(scene, 'heat-flame', c);
+  }
+  {
+    // Faceted ice shard with a bright, readable core.
+    const [c, ctx] = canvas(30, 54);
+    ctx.shadowColor = '#73e9ff';
+    ctx.shadowBlur = 10;
+    const g2 = ctx.createLinearGradient(4, 4, 26, 50);
+    g2.addColorStop(0, '#efffff');
+    g2.addColorStop(0.32, '#80eaff');
+    g2.addColorStop(1, '#2355a8');
+    ctx.fillStyle = g2;
+    ctx.beginPath();
+    ctx.moveTo(15, 1);
+    ctx.lineTo(27, 20);
+    ctx.lineTo(19, 52);
+    ctx.lineTo(4, 31);
+    ctx.closePath();
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = 'rgba(235,255,255,0.9)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(15, 3);
+    ctx.lineTo(14, 39);
+    ctx.lineTo(5, 30);
+    ctx.stroke();
+    addCanvasTexture(scene, 'hazard-ice', c);
+  }
+  {
+    // Molten volcanic ejecta: dark rock shell, emissive cracks and tail.
+    const [c, ctx] = canvas(54, 74);
+    const tail = ctx.createLinearGradient(27, 73, 27, 28);
+    tail.addColorStop(0, 'rgba(255,70,15,0)');
+    tail.addColorStop(0.55, 'rgba(255,94,20,0.5)');
+    tail.addColorStop(1, 'rgba(255,220,95,0.95)');
+    ctx.fillStyle = tail;
+    ctx.beginPath();
+    ctx.moveTo(15, 72);
+    ctx.lineTo(22, 25);
+    ctx.lineTo(34, 25);
+    ctx.lineTo(40, 72);
+    ctx.lineTo(28, 55);
+    ctx.closePath();
+    ctx.fill();
+    ctx.shadowColor = '#ff6b1f';
+    ctx.shadowBlur = 14;
+    const rock = ctx.createRadialGradient(23, 18, 2, 27, 24, 21);
+    rock.addColorStop(0, '#fff09a');
+    rock.addColorStop(0.35, '#ff7a21');
+    rock.addColorStop(0.7, '#762514');
+    rock.addColorStop(1, '#1c1115');
+    ctx.fillStyle = rock;
+    ctx.beginPath();
+    ctx.arc(27, 24, 19, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#ffd067';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(14, 20);
+    ctx.lineTo(25, 27);
+    ctx.lineTo(21, 39);
+    ctx.moveTo(31, 7);
+    ctx.lineTo(29, 20);
+    ctx.lineTo(42, 25);
+    ctx.stroke();
+    addCanvasTexture(scene, 'hazard-fireball', c);
+  }
+  {
+    // Coolant pickup deliberately reads as an item, not another enemy bullet.
+    const [c, ctx] = canvas(42, 54);
+    ctx.shadowColor = '#52f4ff';
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = '#062b48';
+    ctx.fillRect(8, 10, 26, 37);
+    ctx.fillStyle = '#9ff9ff';
+    ctx.fillRect(12, 14, 18, 29);
+    ctx.fillStyle = '#22a9dd';
+    ctx.fillRect(17, 17, 8, 23);
+    ctx.fillStyle = '#eaffff';
+    ctx.fillRect(17, 3, 8, 9);
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#efffff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(8, 10, 26, 37);
+    ctx.beginPath();
+    ctx.moveTo(13, 28);
+    ctx.lineTo(29, 28);
+    ctx.moveTo(21, 20);
+    ctx.lineTo(21, 36);
+    ctx.stroke();
+    addCanvasTexture(scene, 'coolant-item', c);
+  }
+  {
+    // Long solar prominence used as a side-on contact hazard.
+    const [c, ctx] = canvas(190, 86);
+    const g2 = ctx.createLinearGradient(0, 43, 190, 43);
+    g2.addColorStop(0, 'rgba(255,246,165,0.98)');
+    g2.addColorStop(0.35, 'rgba(255,135,35,0.92)');
+    g2.addColorStop(0.75, 'rgba(255,45,55,0.62)');
+    g2.addColorStop(1, 'rgba(255,25,70,0)');
+    ctx.shadowColor = '#ff4a32';
+    ctx.shadowBlur = 18;
+    ctx.fillStyle = g2;
+    ctx.beginPath();
+    ctx.moveTo(0, 16);
+    ctx.bezierCurveTo(48, 1, 71, 32, 104, 13);
+    ctx.bezierCurveTo(135, -5, 151, 31, 190, 39);
+    ctx.bezierCurveTo(145, 51, 133, 85, 95, 67);
+    ctx.bezierCurveTo(52, 46, 31, 83, 0, 68);
+    ctx.closePath();
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = 'rgba(255,245,190,0.75)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(5, 39);
+    ctx.bezierCurveTo(55, 20, 105, 57, 177, 38);
+    ctx.stroke();
+    addCanvasTexture(scene, 'hazard-prominence', c);
+  }
+  {
+    // Electric storm strike, wide enough to remain visible under bloom.
+    const [c, ctx] = canvas(46, 230);
+    ctx.shadowColor = '#91eaff';
+    ctx.shadowBlur = 13;
+    ctx.strokeStyle = '#eaffff';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(20, 0);
+    ctx.lineTo(31, 48);
+    ctx.lineTo(15, 82);
+    ctx.lineTo(29, 125);
+    ctx.lineTo(12, 166);
+    ctx.lineTo(26, 230);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#4ecbff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    addCanvasTexture(scene, 'hazard-lightning', c);
   }
 
   // 플레이어 탄 (글로우 베이크)
@@ -1208,6 +2032,38 @@ export function generateTextures(scene: Phaser.Scene): void {
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, 18, 18);
     addCanvasTexture(scene, 'muzzle', c);
+  }
+  {
+    const [c, ctx] = canvas(48, 48);
+    const g = ctx.createRadialGradient(24, 24, 0, 24, 24, 24);
+    g.addColorStop(0, 'rgba(255,255,255,1)');
+    g.addColorStop(0.18, 'rgba(255,255,255,0.92)');
+    g.addColorStop(0.5, 'rgba(255,255,255,0.34)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 48, 48);
+    addCanvasTexture(scene, 'impact-core', c);
+  }
+  {
+    const [c, ctx] = canvas(64, 64);
+    const g = ctx.createRadialGradient(32, 32, 20, 32, 32, 31);
+    g.addColorStop(0, 'rgba(255,255,255,0)');
+    g.addColorStop(0.55, 'rgba(255,255,255,0.9)');
+    g.addColorStop(0.72, 'rgba(255,255,255,0.22)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 64, 64);
+    addCanvasTexture(scene, 'impact-ring', c);
+  }
+  {
+    const [c, ctx] = canvas(32, 32);
+    const g = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+    g.addColorStop(0, 'rgba(255,255,255,0.72)');
+    g.addColorStop(0.35, 'rgba(255,255,255,0.3)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 32, 32);
+    addCanvasTexture(scene, 'trail-soft', c);
   }
 
   // 블랙홀

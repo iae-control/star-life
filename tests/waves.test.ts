@@ -1,22 +1,22 @@
 import { describe, expect, it } from 'vitest';
 
 import { DATA } from '../src/data';
-import { buildLevelWave } from '../src/game/logic/waves';
+import { buildLevelWave, contentWaveIndex, levelWaveCount } from '../src/game/logic/waves';
 
 const rng = () => 0.5;
 
 describe('buildLevelWave', () => {
-  it('returns a boss event when the level waves are exhausted', () => {
+  it('returns a boss event when the level waveRoute is exhausted', () => {
     DATA.levels.levels.forEach((level, li) => {
-      const q = buildLevelWave(li, level.waves.length, rng);
+      const q = buildLevelWave(li, level.waveRoute.length, rng);
       expect(q).toHaveLength(1);
       expect(q[0]?.kind).toBe('boss');
     });
   });
 
-  it('content waves contain only enemy events with positive finite times', () => {
+  it('routed content waves contain only enemy events with positive finite times', () => {
     DATA.levels.levels.forEach((level, li) => {
-      for (let w = 0; w < level.waves.length; w++) {
+      for (let w = 0; w < level.waveRoute.length; w++) {
         const q = buildLevelWave(li, w, rng);
         expect(q.length).toBeGreaterThan(0);
         for (const e of q) {
@@ -28,8 +28,21 @@ describe('buildLevelWave', () => {
     });
   });
 
+  it('resolves route positions to reusable content indices', () => {
+    DATA.levels.levels.forEach((level, li) => {
+      expect(levelWaveCount(li)).toBe(level.waveRoute.length);
+      level.waveRoute.forEach((contentIdx, routeIdx) => {
+        expect(contentWaveIndex(li, routeIdx)).toBe(contentIdx);
+      });
+      expect(contentWaveIndex(li, level.waveRoute.length)).toBeNull();
+    });
+  });
+
   it('unknown level index yields an empty queue', () => {
     expect(buildLevelWave(99, 0, rng)).toHaveLength(0);
+    expect(levelWaveCount(99)).toBe(0);
+    expect(contentWaveIndex(99, 0)).toBeNull();
+    expect(buildLevelWave(0, -1, rng)).toHaveLength(0);
   });
 });
 
@@ -48,6 +61,77 @@ describe('data integrity (참조 무결성)', () => {
     for (const level of DATA.levels.levels) {
       expect(DATA.bosses.bosses[level.boss], `boss ${level.boss}`).toBeDefined();
     }
+  });
+
+  it('waveRoute entries and ordered sector boundaries are valid', () => {
+    for (const level of DATA.levels.levels) {
+      expect(level.waveRoute.length).toBeGreaterThanOrEqual(9);
+      expect(level.waveRoute.length).toBeLessThanOrEqual(12);
+      expect(new Set(level.waveRoute).size).toBeLessThan(level.waveRoute.length);
+      for (const contentIdx of level.waveRoute) {
+        expect(level.waves[contentIdx], `L${level.id} waveRoute ${contentIdx}`).toBeDefined();
+      }
+
+      expect(level.sectors[0]?.startWave).toBe(0);
+      for (let i = 0; i < level.sectors.length; i++) {
+        const sector = level.sectors[i];
+        expect(sector, `L${level.id} sector ${i}`).toBeDefined();
+        if (!sector) continue;
+        expect(sector.startWave).toBeLessThan(level.waveRoute.length);
+        if (i > 0) expect(sector.startWave).toBeGreaterThan(level.sectors[i - 1]!.startWave);
+      }
+    }
+  });
+
+  it('sector names exist in both languages and referenced meteor enemies exist', () => {
+    for (const level of DATA.levels.levels) {
+      for (const sector of level.sectors) {
+        expect(DATA.i18n.ko[sector.nameKey], sector.nameKey).toBeDefined();
+        expect(DATA.i18n.ko[sector.taglineKey], sector.taglineKey).toBeDefined();
+        expect(DATA.i18n.en[sector.nameKey], sector.nameKey).toBeDefined();
+        expect(DATA.i18n.en[sector.taglineKey], sector.taglineKey).toBeDefined();
+        for (const gimmick of sector.gimmicks) {
+          if (gimmick.type === 'meteorField') {
+            expect(DATA.enemies.types[gimmick.enemy], gimmick.enemy).toBeDefined();
+          }
+        }
+      }
+    }
+  });
+
+  it('ships every long-campaign gimmick and safe bonus sectors', () => {
+    const types = new Set(
+      DATA.levels.levels.flatMap((level) =>
+        level.sectors.flatMap((sector) => sector.gimmicks.map((gimmick) => gimmick.type)),
+      ),
+    );
+    for (const type of [
+      'iceStorm',
+      'volcanic',
+      'desertHeat',
+      'prominence',
+      'electricStorm',
+      'meteorField',
+    ] as const) {
+      expect(types.has(type), type).toBe(true);
+    }
+    for (const level of DATA.levels.levels) {
+      const bonus = level.sectors.find((sector) => sector.kind === 'bonus');
+      expect(bonus, `L${level.id} bonus sector`).toBeDefined();
+      expect(bonus?.gimmicks).toHaveLength(0);
+      expect(bonus?.bonusMultiplier).toBeGreaterThan(1);
+    }
+  });
+
+  it('keeps the six legacy level gimmicks valid as a compatibility fallback', () => {
+    expect(DATA.levels.levels.map((level) => level.gimmick?.type)).toEqual([
+      'fog',
+      'vents',
+      'wind',
+      'heatwave',
+      'debris',
+      'warp',
+    ]);
   });
 
   it('onDeath spawn types and boss spawn phases reference real enemies', () => {

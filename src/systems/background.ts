@@ -66,6 +66,23 @@ export class SpaceBackground {
       .setOrigin(0, 0)
       .setDepth(baseDepth - 0.05);
     this.decors.push({ img: underlay, rot: 0, pulse: 0 });
+    const cinematicTint: Partial<Record<BackgroundConfig['theme'], number>> = {
+      protostar: 0xffb57a,
+      mainseq: 0xffdd91,
+      asteroids: 0xb9c2d0,
+      redgiant: 0xff6b55,
+      supernova: 0xe7a4ff,
+      blackhole: 0x8c7be8,
+      inside: 0x72d6bb,
+    };
+    const cinematic = scene.add
+      .image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg-cinematic-nebula')
+      .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
+      .setDepth(baseDepth - 0.04)
+      .setAlpha(config.theme === 'blackhole' ? 0.38 : 0.66);
+    const backdropTint = cinematicTint[config.theme];
+    if (backdropTint) cinematic.setTint(backdropTint);
+    this.decors.push({ img: cinematic, rot: 0, pulse: 0 });
     const starTint: Record<string, number> = {
       protostar: 0xffd8b0,
       mainseq: 0xfff0c0,

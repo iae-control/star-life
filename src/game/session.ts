@@ -3,16 +3,89 @@
 import { loadSave, updateSave, type Difficulty } from '../systems/Save';
 import { PLAYER } from './logic/balance';
 
-/** 파일럿 시그니처 무기 — 무기 구매 폐지, 캐릭터 고정 (P오브로 강화) */
-export const PILOT_WEAPON: Record<string, string> = {
+export const PILOT_ORDER = ['jungjioo', 'parksulhee', 'youngjioo', 'keunaebi'] as const;
+export type Pilot = (typeof PILOT_ORDER)[number];
+export type WeaponKey = 'pulse' | 'vulcan' | 'proton' | 'light' | 'laser' | 'missile';
+
+/** 기존 세이브와 선택값이 없는 플레이어가 사용하는 파일럿별 시그니처 무기. */
+export const PILOT_WEAPON: Record<Pilot, WeaponKey> = {
   jungjioo: 'pulse',
   parksulhee: 'missile',
   youngjioo: 'proton',
   keunaebi: 'laser',
 };
 
+/** 파일럿별 주무기 A/B 옵션 — 기존 시그니처를 첫 항목으로 유지한다. */
+export const PILOT_WEAPON_OPTIONS: Record<Pilot, readonly [WeaponKey, WeaponKey]> = {
+  jungjioo: ['pulse', 'vulcan'],
+  parksulhee: ['missile', 'light'],
+  youngjioo: ['proton', 'light'],
+  keunaebi: ['laser', 'vulcan'],
+};
+
+const WEAPON_SELECTION_KEY = 'starlife.weapon-selection.v1';
+const weaponSelections: Partial<Record<Pilot, WeaponKey>> = {};
+let weaponSelectionsLoaded = false;
+
+export function resolvePilotWeapon(pilot: Pilot, candidate: unknown): WeaponKey {
+  const options = PILOT_WEAPON_OPTIONS[pilot];
+  return typeof candidate === 'string' && options.includes(candidate as WeaponKey)
+    ? (candidate as WeaponKey)
+    : PILOT_WEAPON[pilot];
+}
+
+function loadWeaponSelections(): void {
+  if (weaponSelectionsLoaded) return;
+  weaponSelectionsLoaded = true;
+  try {
+    const parsed = JSON.parse(localStorage.getItem(WEAPON_SELECTION_KEY) ?? '{}') as Record<
+      string,
+      unknown
+    >;
+    for (const pilot of PILOT_ORDER) {
+      const candidate = parsed[pilot];
+      if (
+        typeof candidate === 'string' &&
+        PILOT_WEAPON_OPTIONS[pilot].includes(candidate as WeaponKey)
+      )
+        weaponSelections[pilot] = candidate as WeaponKey;
+    }
+  } catch {
+    /* 저장 불가·구버전·손상 데이터는 시그니처 무기로 폴백 */
+  }
+}
+
+function persistWeaponSelections(): void {
+  try {
+    localStorage.setItem(WEAPON_SELECTION_KEY, JSON.stringify(weaponSelections));
+  } catch {
+    /* localStorage가 없는 테스트·격리 환경에서는 런타임 선택만 유지 */
+  }
+}
+
+export function selectedPilotWeapon(pilot: Pilot): WeaponKey {
+  loadWeaponSelections();
+  return resolvePilotWeapon(pilot, weaponSelections[pilot]);
+}
+
+export function selectPilotWeapon(pilot: Pilot, weapon: unknown): WeaponKey {
+  loadWeaponSelections();
+  const selected = resolvePilotWeapon(pilot, weapon);
+  weaponSelections[pilot] = selected;
+  persistWeaponSelections();
+  return selected;
+}
+
+export function cyclePilotWeapon(pilot: Pilot, direction: number): WeaponKey {
+  const options = PILOT_WEAPON_OPTIONS[pilot];
+  const current = selectedPilotWeapon(pilot);
+  const index = options.indexOf(current);
+  const step = direction < 0 ? -1 : 1;
+  return selectPilotWeapon(pilot, options[(index + options.length + step) % options.length]);
+}
+
 /** 파일럿 시그니처 후방무기 — R오브 획득 시 장착, 이후 R오브마다 강화 */
-export const PILOT_REAR: Record<string, string> = {
+export const PILOT_REAR: Record<Pilot, string> = {
   jungjioo: 'tailgun',
   parksulhee: 'seeker',
   youngjioo: 'sidecutter',
@@ -21,7 +94,7 @@ export const PILOT_REAR: Record<string, string> = {
 export const REAR_MAX_LEVEL = 5;
 
 /** 파일럿 시그니처 사이드킥 — W오브 획득 시 장착, 이후 강화 */
-export const PILOT_SIDEKICK: Record<string, string> = {
+export const PILOT_SIDEKICK: Record<Pilot, string> = {
   jungjioo: 'pods',
   parksulhee: 'satellite',
   youngjioo: 'pods',
@@ -57,12 +130,20 @@ export interface GameSession {
   sideLv: number;
   difficulty: Difficulty;
   /** 조종사: 정지우(블랙홀 팬텀 러시) / 박슬희(배드민턴 일망타진) */
-  pilot: 'jungjioo' | 'parksulhee' | 'youngjioo' | 'keunaebi';
+  pilot: Pilot;
   /** 엔들리스 모드 여부 (캠페인 완주 후 해금) */
   endless: boolean;
 }
 
-export function newSession(): GameSession {
+export interface NewSessionOptions {
+  pilot?: Pilot;
+  weapon?: unknown;
+}
+
+export function newSession(options: NewSessionOptions = {}): GameSession {
+  const save = loadSave();
+  const pilot = options.pilot ?? save.settings.pilot;
+  const weapon = resolvePilotWeapon(pilot, options.weapon ?? selectedPilotWeapon(pilot));
   return {
     score: 0,
     wave: 0,
@@ -71,8 +152,8 @@ export function newSession(): GameSession {
     campaignDone: false,
     kills: 0,
     orbCount: 0,
-    weapons: { [PILOT_WEAPON[loadSave().settings.pilot] ?? 'pulse']: 1 },
-    cur: PILOT_WEAPON[loadSave().settings.pilot] ?? 'pulse',
+    weapons: { [weapon]: 1 },
+    cur: weapon,
     shield: PLAYER.shieldMax,
     shieldMax: PLAYER.shieldMax,
     armor: PLAYER.armorMax,
@@ -82,8 +163,8 @@ export function newSession(): GameSession {
     rearLv: 1,
     sidekick: null,
     sideLv: 1,
-    difficulty: loadSave().settings.difficulty,
-    pilot: loadSave().settings.pilot,
+    difficulty: save.settings.difficulty,
+    pilot,
     endless: false,
   };
 }

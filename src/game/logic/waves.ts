@@ -71,9 +71,20 @@ function emitGroup(q: SpawnEvent[], g: WaveGroup, t0: number, rng: () => number)
   return t0 + g.duration;
 }
 
+/** 장기 경로에 포함된 전투 구간 수. GameScene의 보스 전환 기준과 같은 단일 출처다. */
+export function levelWaveCount(levelIdx: number): number {
+  return DATA.levels.levels[levelIdx]?.waveRoute.length ?? 0;
+}
+
+/** route 위치를 실제 waves 콘텐츠 인덱스로 해석한다. */
+export function contentWaveIndex(levelIdx: number, routeWaveIdx: number): number | null {
+  if (routeWaveIdx < 0) return null;
+  return DATA.levels.levels[levelIdx]?.waveRoute[routeWaveIdx] ?? null;
+}
+
 /**
- * levelIdx: 0-based 레벨 인덱스, waveIdx: 레벨 내 0-based 웨이브 인덱스.
- * waveIdx가 레벨 웨이브 수를 넘으면 보스 이벤트를 반환한다.
+ * levelIdx: 0-based 레벨 인덱스, waveIdx: waveRoute 내 0-based 진행 인덱스.
+ * waveIdx가 waveRoute를 소진하면 보스 이벤트를 반환한다.
  */
 export function buildLevelWave(
   levelIdx: number,
@@ -82,12 +93,14 @@ export function buildLevelWave(
 ): SpawnEvent[] {
   const level = DATA.levels.levels[levelIdx];
   const q: SpawnEvent[] = [];
-  if (!level) return q;
-  if (waveIdx >= level.waves.length) {
+  if (!level || waveIdx < 0) return q;
+  if (waveIdx >= level.waveRoute.length) {
     q.push({ t: 1.0 + DATA.levels.bossDelay, kind: 'boss' });
     return q;
   }
+  const contentIdx = level.waveRoute[waveIdx];
+  if (contentIdx === undefined) return q;
   let t = 1.0;
-  for (const g of level.waves[waveIdx] ?? []) t = emitGroup(q, g, t, rng);
+  for (const g of level.waves[contentIdx] ?? []) t = emitGroup(q, g, t, rng);
   return q;
 }
