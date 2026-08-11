@@ -2,16 +2,29 @@
   "maxLevel": 10,
   "weapons": {
     "pulse": {
-      "name": "PULSE CANNON",
+      "name": "CAPACITOR PULSE",
       "short": "PULSE",
       "price": 0,
       "descKey": "weapon.pulse.desc",
       "color": "#4db8ff",
-      "cd": {
-        "base": 0.2,
-        "perLevel": -0.009,
-        "min": 0.1
+      "archetype": "pulse",
+      "variant": "capacitor",
+      "mechanic": "capacitor-burst",
+      "roles": {
+        "boss": "reliable-window-burst",
+        "mob": "formation-pick",
+        "screen": "rhythmic-burst"
       },
+      "heat": {
+        "perTrigger": 0.14,
+        "coolPerSecond": 0.32,
+        "softCap": 0.66,
+        "hardCap": 1,
+        "lockout": 0.55,
+        "hotOutputMultiplier": 1.12,
+        "hotSpreadMultiplier": 1
+      },
+      "cd": { "base": 0.46, "perLevel": -0.018, "min": 0.28 },
       "bullet": {
         "w": 5,
         "h": 16,
@@ -23,84 +36,122 @@
         "rotateToVelocity": false
       },
       "pattern": {
-        "type": "table",
-        "shots": [
-          [[0, 0, 0, -573, 2]],
-          [
-            [-7, 0, 0, -573, 2],
-            [7, 0, 0, -573, 2]
-          ],
-          [
-            [-9, 0, 0, -573, 2],
-            [0, -4, 0, -573, 3],
-            [9, 0, 0, -573, 2]
-          ],
-          [
-            [-11, 0, 0, -573, 2],
-            [-4, -4, 0, -573, 3],
-            [4, -4, 0, -573, 3],
-            [11, 0, 0, -573, 2]
-          ],
-          [
-            [-13, 0, -46, -573, 2],
-            [-5, -4, 0, -573, 3],
-            [5, -4, 0, -573, 3],
-            [13, 0, 46, -573, 2],
-            [0, -7, 0, -573, 3]
-          ],
-          [
-            [-14, 0, -69, -573, 3],
-            [-6, -4, 0, -573, 3],
-            [6, -4, 0, -573, 3],
-            [14, 0, 69, -573, 3],
-            [0, -7, 0, -573, 4]
-          ],
-          [
-            [-16, 0, -92, -573, 3],
-            [-8, -4, 0, -573, 4],
-            [0, -8, 0, -573, 4],
-            [8, -4, 0, -573, 4],
-            [16, 0, 92, -573, 3]
-          ],
-          [
-            [-18, 0, -115, -573, 3],
-            [-9, -4, 0, -573, 3],
-            [0, -8, 0, -573, 4],
-            [9, -4, 0, -573, 3],
-            [18, 0, 115, -573, 3],
-            [0, 2, 0, -500, 3]
-          ],
-          [
-            [-20, 0, -138, -573, 3],
-            [-10, -4, 0, -573, 4],
-            [-3, -8, 0, -573, 4],
-            [3, -8, 0, -573, 4],
-            [10, -4, 0, -573, 4],
-            [20, 0, 138, -573, 3]
-          ],
-          [
-            [-22, 0, -160, -573, 3],
-            [-11, -4, 0, -573, 4],
-            [-4, -8, 0, -573, 4],
-            [4, -8, 0, -573, 4],
-            [11, -4, 0, -573, 4],
-            [22, 0, 160, -573, 3],
-            [0, 2, 0, -500, 4]
-          ]
-        ]
+        "type": "line",
+        "counts": [3, 3, 4, 4, 5, 5, 5, 6, 6, 6],
+        "offsetX": 3,
+        "vy": -620,
+        "dmgBase": 3,
+        "dmgPerLevel": 0.32,
+        "yOff": -2
+      }
+    },
+    "pulse_overdrive": {
+      "name": "PULSE OVERDRIVE",
+      "short": "P-OVR",
+      "price": 0,
+      "descKey": "weapon.pulse.desc",
+      "color": "#74e8ff",
+      "archetype": "pulse",
+      "variant": "overdrive",
+      "mechanic": "capacitor-burst",
+      "roles": {
+        "boss": "rapid-exposure-burst",
+        "mob": "rush-punctuation",
+        "screen": "rhythmic-burst"
+      },
+      "heat": {
+        "perTrigger": 0.22,
+        "coolPerSecond": 0.26,
+        "softCap": 0.58,
+        "hardCap": 1,
+        "lockout": 0.82,
+        "hotOutputMultiplier": 1.22,
+        "hotSpreadMultiplier": 1.12
+      },
+      "cd": { "base": 0.29, "perLevel": -0.009, "min": 0.2 },
+      "bullet": {
+        "w": 4,
+        "h": 14,
+        "pierce": 0,
+        "sprite": "b-pulse",
+        "stretch": true,
+        "damageType": "energy",
+        "impactFx": "pulse",
+        "rotateToVelocity": false
+      },
+      "pattern": {
+        "type": "line",
+        "counts": [4, 4, 5, 5, 6, 6, 7, 7, 8, 8],
+        "offsetX": 2.4,
+        "vy": -720,
+        "dmgBase": 1.8,
+        "dmgPerLevel": 0.16,
+        "yOff": -3
+      }
+    },
+    "pulse_lattice": {
+      "name": "PULSE LATTICE",
+      "short": "PLATT",
+      "price": 0,
+      "descKey": "weapon.pulse.desc",
+      "color": "#6aa8ff",
+      "archetype": "pulse",
+      "variant": "lattice",
+      "mechanic": "capacitor-burst",
+      "roles": {
+        "boss": "moving-part-track",
+        "mob": "weave-lane-cover",
+        "screen": "rhythmic-burst"
+      },
+      "heat": {
+        "perTrigger": 0.09,
+        "coolPerSecond": 0.38,
+        "softCap": 0.74,
+        "hardCap": 1,
+        "lockout": 0.38,
+        "hotOutputMultiplier": 1.06,
+        "hotSpreadMultiplier": 0.94
+      },
+      "cd": { "base": 0.62, "perLevel": -0.025, "min": 0.35 },
+      "bullet": {
+        "w": 5,
+        "h": 15,
+        "pierce": 1,
+        "sprite": "b-pulse",
+        "stretch": true,
+        "damageType": "energy",
+        "impactFx": "pulse",
+        "rotateToVelocity": false
+      },
+      "pattern": {
+        "type": "sine",
+        "counts": [2, 2, 2, 3, 3, 3, 4, 4, 4, 5],
+        "offsetX": 18,
+        "vy": -540,
+        "dmgBase": 4,
+        "dmgPerLevel": 0.55
       }
     },
     "vulcan": {
-      "name": "VULCAN",
+      "name": "ROTARY VULCAN",
       "short": "VULCN",
-      "price": 1500,
+      "price": 0,
       "descKey": "weapon.vulcan.desc",
       "color": "#ffe28a",
-      "cd": {
-        "base": 0.062,
-        "perLevel": -0.002,
-        "min": 0.01
+      "archetype": "vulcan",
+      "variant": "rotary",
+      "mechanic": "rotary-spin",
+      "roles": { "boss": "sustained-contact", "mob": "suppression", "screen": "dense-stream" },
+      "heat": {
+        "perTrigger": 0.032,
+        "coolPerSecond": 0.24,
+        "softCap": 0.7,
+        "hardCap": 1,
+        "lockout": 0.62,
+        "hotOutputMultiplier": 1.1,
+        "hotSpreadMultiplier": 1.08
       },
+      "cd": { "base": 0.095, "perLevel": -0.005, "min": 0.05 },
       "bullet": {
         "w": 3,
         "h": 12,
@@ -113,120 +164,117 @@
       },
       "pattern": {
         "type": "stream",
-        "streams": [1, 1, 2, 2, 3, 3, 4, 4, 5, 5],
-        "offsetX": 9,
-        "jitterVx": 32,
-        "vy": -720,
-        "dmgBase": 0.9,
-        "dmgPerLevel": 0.05,
-        "seqOffset": 2.25
-      }
-    },
-    "proton": {
-      "name": "PROTON SPREAD",
-      "short": "PROTN",
-      "price": 3200,
-      "descKey": "weapon.proton.desc",
-      "color": "#59e659",
-      "cd": {
-        "base": 0.25,
-        "perLevel": -0.006,
-        "min": 0.18
-      },
-      "bullet": {
-        "w": 9,
-        "h": 11,
-        "pierce": 0,
-        "sprite": "b-proton",
-        "stretch": false,
-        "damageType": "plasma",
-        "impactFx": "plasma",
-        "rotateToVelocity": false
-      },
-      "pattern": {
-        "type": "fan",
-        "counts": [1, 2, 3, 3, 4, 5, 5, 6, 7, 8],
-        "spreadBase": 0.24,
-        "spreadPerLevel": 0.045,
-        "speedBase": 270,
-        "speedPerLevel": 13,
-        "dmg": 3,
-        "scaleX": 1.125,
-        "scaleY": 1.3333
-      }
-    },
-    "light": {
-      "name": "LIGHTNING GUN",
-      "short": "LIGHT",
-      "price": 6500,
-      "descKey": "weapon.light.desc",
-      "color": "#aef4ff",
-      "cd": {
-        "base": 0.17,
-        "perLevel": -0.005,
-        "min": 0.01
-      },
-      "bullet": {
-        "w": 6,
-        "h": 19,
-        "pierce": 1,
-        "sprite": "b-light",
-        "stretch": false,
-        "damageType": "electric",
-        "impactFx": "arc",
-        "rotateToVelocity": false
-      },
-      "pattern": {
-        "type": "sine",
-        "counts": [1, 1, 2, 2, 3, 3, 3, 4, 4, 5],
-        "offsetX": 13.5,
-        "vy": -747,
-        "dmgBase": 2.2,
-        "dmgPerLevel": 0.1
-      }
-    },
-    "laser": {
-      "name": "MEGA LASER",
-      "short": "LASER",
-      "price": 12000,
-      "descKey": "weapon.laser.desc",
-      "color": "#ff6a6a",
-      "cd": {
-        "base": 0.13,
-        "perLevel": -0.003,
-        "min": 0.08
-      },
-      "bullet": {
-        "w": 5,
-        "h": 29,
-        "pierce": 3,
-        "sprite": "b-laser",
-        "stretch": true,
-        "damageType": "energy",
-        "impactFx": "scorch",
-        "rotateToVelocity": false
-      },
-      "pattern": {
-        "type": "line",
-        "counts": [1, 1, 2, 2, 2, 3, 3, 3, 4, 4],
-        "offsetX": 10,
-        "vy": -1040,
-        "dmgBase": 1.7,
+        "streams": [1, 1, 1, 2, 2, 2, 2, 3, 3, 3],
+        "offsetX": 7,
+        "jitterVx": 42,
+        "vy": -760,
+        "dmgBase": 1.25,
         "dmgPerLevel": 0.08,
-        "yOff": -5
+        "seqOffset": 2.4
+      }
+    },
+    "vulcan_gatling": {
+      "name": "CYCLONE GATLING",
+      "short": "CYCLN",
+      "price": 0,
+      "descKey": "weapon.vulcan.desc",
+      "color": "#ffb74d",
+      "archetype": "vulcan",
+      "variant": "cyclone",
+      "mechanic": "rotary-spin",
+      "roles": { "boss": "heat-ramp-dps", "mob": "dense-curtain", "screen": "dense-stream" },
+      "heat": {
+        "perTrigger": 0.041,
+        "coolPerSecond": 0.21,
+        "softCap": 0.58,
+        "hardCap": 1,
+        "lockout": 0.9,
+        "hotOutputMultiplier": 1.25,
+        "hotSpreadMultiplier": 1.22
+      },
+      "cd": { "base": 0.075, "perLevel": -0.003, "min": 0.044 },
+      "bullet": {
+        "w": 3,
+        "h": 10,
+        "pierce": 0,
+        "sprite": "b-vulcan",
+        "stretch": false,
+        "damageType": "kinetic",
+        "impactFx": "spark",
+        "rotateToVelocity": true
+      },
+      "pattern": {
+        "type": "stream",
+        "streams": [2, 2, 2, 2, 3, 3, 3, 4, 4, 4],
+        "offsetX": 5,
+        "jitterVx": 68,
+        "vy": -820,
+        "dmgBase": 0.7,
+        "dmgPerLevel": 0.06,
+        "seqOffset": 3.2
+      }
+    },
+    "vulcan_needle": {
+      "name": "NEEDLE ROTARY",
+      "short": "NEEDL",
+      "price": 0,
+      "descKey": "weapon.vulcan.desc",
+      "color": "#fff3bd",
+      "archetype": "vulcan",
+      "variant": "needle",
+      "mechanic": "rotary-spin",
+      "roles": { "boss": "weakpoint-drill", "mob": "armored-column", "screen": "dense-stream" },
+      "heat": {
+        "perTrigger": 0.05,
+        "coolPerSecond": 0.3,
+        "softCap": 0.76,
+        "hardCap": 1,
+        "lockout": 0.48,
+        "hotOutputMultiplier": 1.14,
+        "hotSpreadMultiplier": 0.96
+      },
+      "cd": { "base": 0.14, "perLevel": -0.006, "min": 0.08 },
+      "bullet": {
+        "w": 2,
+        "h": 16,
+        "pierce": 1,
+        "sprite": "b-vulcan",
+        "stretch": true,
+        "damageType": "kinetic",
+        "impactFx": "scorch",
+        "rotateToVelocity": true
+      },
+      "pattern": {
+        "type": "stream",
+        "streams": [1, 1, 1, 1, 2, 2, 2, 2, 2, 2],
+        "offsetX": 4,
+        "jitterVx": 15,
+        "vy": -980,
+        "dmgBase": 2.8,
+        "dmgPerLevel": 0.2,
+        "seqOffset": 1.2
       }
     },
     "missile": {
-      "name": "BURST MISSILE",
-      "short": "MISSL",
+      "name": "LOCK CLUSTER",
+      "short": "LOCK",
       "price": 0,
       "descKey": "weapon.missile.desc",
       "color": "#ff9a5a",
-      "cd": {
-        "base": 0.62,
-        "perLevel": -0.028,
-        "min": 0.34
+      "archetype": "missile",
+      "variant": "cluster",
+      "mechanic": "lock-cluster",
+      "roles": { "boss": "mobile-core-lock", "mob": "cluster-clear", "screen": "sparse-homing" },
+      "heat": {
+        "perTrigger": 0.24,
+        "coolPerSecond": 0.28,
+        "softCap": 0.68,
+        "hardCap": 1,
+        "lockout": 0.6,
+        "hotOutputMultiplier": 1.13,
+        "hotSpreadMultiplier": 1
       },
+      "cd": { "base": 0.9, "perLevel": -0.035, "min": 0.56 },
       "bullet": {
         "w": 9,
         "h": 20,
@@ -237,66 +285,747 @@
         "impactFx": "blast",
         "rotateToVelocity": true,
         "guidance": {
-          "speed": 510,
-          "turnRate": 4.2,
-          "acquireRadius": 320,
-          "armingTime": 0.08
+          "speed": 520,
+          "turnRate": 4.6,
+          "acquireRadius": 340,
+          "armingTime": 0.09
         },
-        "trail": {
-          "texture": "engine-flame",
-          "interval": 0.035,
-          "scale": 0.4
-        },
-        "splash": {
-          "radius": 58,
-          "ratio": 0.5
-        }
+        "trail": { "texture": "engine-flame", "interval": 0.035, "scale": 0.4 },
+        "splash": { "radius": 56, "ratio": 0.55 }
       },
       "pattern": {
-        "type": "table",
-        "shots": [
-          [[0, 0, 0, -470, 14]],
-          [[0, 0, 0, -480, 17]],
-          [
-            [-9, 2, -28, -480, 12],
-            [9, 2, 28, -480, 12]
-          ],
-          [
-            [-10, 2, -30, -490, 14],
-            [10, 2, 30, -490, 14]
-          ],
-          [
-            [-11, 2, -34, -500, 16],
-            [11, 2, 34, -500, 16]
-          ],
-          [
-            [-13, 3, -60, -500, 13],
-            [0, -3, 0, -510, 15],
-            [13, 3, 60, -500, 13]
-          ],
-          [
-            [-14, 3, -64, -510, 15],
-            [0, -3, 0, -520, 17],
-            [14, 3, 64, -510, 15]
-          ],
-          [
-            [-15, 3, -68, -520, 17],
-            [0, -3, 0, -530, 19],
-            [15, 3, 68, -520, 17]
-          ],
-          [
-            [-16, 3, -96, -520, 16],
-            [-6, -2, -24, -530, 18],
-            [6, -2, 24, -530, 18],
-            [16, 3, 96, -520, 16]
-          ],
-          [
-            [-17, 3, -100, -530, 18],
-            [-6, -2, -26, -540, 20],
-            [6, -2, 26, -540, 20],
-            [17, 3, 100, -530, 18]
-          ]
-        ]
+        "type": "line",
+        "counts": [1, 1, 1, 2, 2, 2, 2, 3, 3, 3],
+        "offsetX": 14,
+        "vy": -500,
+        "dmgBase": 15,
+        "dmgPerLevel": 1.25,
+        "yOff": 2
+      }
+    },
+    "missile_swarm": {
+      "name": "WASP SWARM",
+      "short": "WASP",
+      "price": 0,
+      "descKey": "weapon.missile.desc",
+      "color": "#ffd166",
+      "archetype": "missile",
+      "variant": "wasp-swarm",
+      "mechanic": "lock-cluster",
+      "roles": { "boss": "multi-part-tag", "mob": "distributed-hunt", "screen": "sparse-homing" },
+      "heat": {
+        "perTrigger": 0.31,
+        "coolPerSecond": 0.24,
+        "softCap": 0.6,
+        "hardCap": 1,
+        "lockout": 0.84,
+        "hotOutputMultiplier": 1.2,
+        "hotSpreadMultiplier": 1
+      },
+      "cd": { "base": 0.72, "perLevel": -0.025, "min": 0.47 },
+      "bullet": {
+        "w": 6,
+        "h": 14,
+        "pierce": 0,
+        "sprite": "b-missile",
+        "stretch": false,
+        "damageType": "explosive",
+        "impactFx": "blast",
+        "rotateToVelocity": true,
+        "guidance": { "speed": 610, "turnRate": 6.8, "acquireRadius": 410, "armingTime": 0.04 },
+        "trail": { "texture": "engine-flame", "interval": 0.028, "scale": 0.28 },
+        "splash": { "radius": 34, "ratio": 0.42 }
+      },
+      "pattern": {
+        "type": "fan",
+        "counts": [2, 2, 2, 3, 3, 3, 4, 4, 5, 5],
+        "spreadBase": 0.22,
+        "spreadPerLevel": 0.018,
+        "speedBase": 430,
+        "speedPerLevel": 10,
+        "dmg": 7,
+        "scaleX": 0.72,
+        "scaleY": 1.1
+      }
+    },
+    "missile_torpedo": {
+      "name": "SIEGE TORPEDO",
+      "short": "TORPED",
+      "price": 0,
+      "descKey": "weapon.missile.desc",
+      "color": "#ff714b",
+      "archetype": "missile",
+      "variant": "siege-torpedo",
+      "mechanic": "lock-cluster",
+      "roles": { "boss": "core-demolition", "mob": "heavy-pack-blast", "screen": "sparse-homing" },
+      "heat": {
+        "perTrigger": 0.38,
+        "coolPerSecond": 0.34,
+        "softCap": 0.72,
+        "hardCap": 1,
+        "lockout": 0.72,
+        "hotOutputMultiplier": 1.28,
+        "hotSpreadMultiplier": 1
+      },
+      "cd": { "base": 1.35, "perLevel": -0.055, "min": 0.78 },
+      "bullet": {
+        "w": 13,
+        "h": 28,
+        "pierce": 0,
+        "sprite": "b-missile",
+        "stretch": true,
+        "damageType": "explosive",
+        "impactFx": "blast",
+        "rotateToVelocity": true,
+        "guidance": { "speed": 390, "turnRate": 2.8, "acquireRadius": 460, "armingTime": 0.18 },
+        "trail": { "texture": "engine-flame", "interval": 0.045, "scale": 0.62 },
+        "splash": { "radius": 92, "ratio": 0.72 }
+      },
+      "pattern": {
+        "type": "line",
+        "counts": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        "offsetX": 0,
+        "vy": -360,
+        "dmgBase": 28,
+        "dmgPerLevel": 4,
+        "yOff": 5
+      }
+    },
+    "proton": {
+      "name": "EXPANDING PROTON",
+      "short": "PROTON",
+      "price": 0,
+      "descKey": "weapon.proton.desc",
+      "color": "#59e659",
+      "archetype": "proton",
+      "variant": "expander",
+      "mechanic": "expanding-plasma",
+      "roles": { "boss": "shield-pressure", "mob": "zone-growth", "screen": "growing-orbs" },
+      "heat": {
+        "perTrigger": 0.16,
+        "coolPerSecond": 0.3,
+        "softCap": 0.68,
+        "hardCap": 1,
+        "lockout": 0.54,
+        "hotOutputMultiplier": 1.14,
+        "hotSpreadMultiplier": 1.04
+      },
+      "cd": { "base": 0.34, "perLevel": -0.012, "min": 0.22 },
+      "bullet": {
+        "w": 8,
+        "h": 10,
+        "pierce": 0,
+        "sprite": "b-proton",
+        "stretch": false,
+        "damageType": "plasma",
+        "impactFx": "plasma",
+        "rotateToVelocity": false
+      },
+      "pattern": {
+        "type": "fan",
+        "counts": [1, 1, 2, 2, 3, 3, 4, 4, 5, 5],
+        "spreadBase": 0.15,
+        "spreadPerLevel": 0.035,
+        "speedBase": 280,
+        "speedPerLevel": 14,
+        "dmg": 5,
+        "scaleX": 1.05,
+        "scaleY": 1.25
+      }
+    },
+    "proton_nova": {
+      "name": "NOVA BLOOM",
+      "short": "N-BLOM",
+      "price": 0,
+      "descKey": "weapon.proton.desc",
+      "color": "#89ff7d",
+      "archetype": "proton",
+      "variant": "nova-bloom",
+      "mechanic": "expanding-plasma",
+      "roles": {
+        "boss": "large-hull-blanket",
+        "mob": "wide-zone-denial",
+        "screen": "growing-orbs"
+      },
+      "heat": {
+        "perTrigger": 0.29,
+        "coolPerSecond": 0.22,
+        "softCap": 0.59,
+        "hardCap": 1,
+        "lockout": 0.88,
+        "hotOutputMultiplier": 1.23,
+        "hotSpreadMultiplier": 1.18
+      },
+      "cd": { "base": 0.5, "perLevel": -0.018, "min": 0.32 },
+      "bullet": {
+        "w": 9,
+        "h": 9,
+        "pierce": 0,
+        "sprite": "b-proton",
+        "stretch": false,
+        "damageType": "plasma",
+        "impactFx": "plasma",
+        "rotateToVelocity": false
+      },
+      "pattern": {
+        "type": "fan",
+        "counts": [3, 3, 4, 4, 5, 5, 6, 7, 8, 9],
+        "spreadBase": 0.42,
+        "spreadPerLevel": 0.03,
+        "speedBase": 230,
+        "speedPerLevel": 9,
+        "dmg": 2.8,
+        "scaleX": 1.18,
+        "scaleY": 1.12
+      }
+    },
+    "proton_comet": {
+      "name": "COMET PLASMA",
+      "short": "COMET",
+      "price": 0,
+      "descKey": "weapon.proton.desc",
+      "color": "#39d98a",
+      "archetype": "proton",
+      "variant": "comet-core",
+      "mechanic": "expanding-plasma",
+      "roles": {
+        "boss": "piercing-plasma-track",
+        "mob": "serpentine-lane",
+        "screen": "growing-orbs"
+      },
+      "heat": {
+        "perTrigger": 0.2,
+        "coolPerSecond": 0.36,
+        "softCap": 0.75,
+        "hardCap": 1,
+        "lockout": 0.46,
+        "hotOutputMultiplier": 1.17,
+        "hotSpreadMultiplier": 0.98
+      },
+      "cd": { "base": 0.58, "perLevel": -0.022, "min": 0.36 },
+      "bullet": {
+        "w": 11,
+        "h": 13,
+        "pierce": 1,
+        "sprite": "b-proton",
+        "stretch": true,
+        "damageType": "plasma",
+        "impactFx": "plasma",
+        "rotateToVelocity": false
+      },
+      "pattern": {
+        "type": "sine",
+        "counts": [1, 1, 1, 2, 2, 2, 2, 3, 3, 3],
+        "offsetX": 22,
+        "vy": -420,
+        "dmgBase": 8,
+        "dmgPerLevel": 0.8
+      }
+    },
+    "laser": {
+      "name": "SUSTAINED LASER",
+      "short": "LASER",
+      "price": 0,
+      "descKey": "weapon.laser.desc",
+      "color": "#ff6a6a",
+      "archetype": "laser",
+      "variant": "sustained",
+      "mechanic": "sustained-beam",
+      "roles": { "boss": "lane-burn", "mob": "line-clear", "screen": "continuous-lane" },
+      "heat": {
+        "perTrigger": 0.026,
+        "coolPerSecond": 0.25,
+        "softCap": 0.67,
+        "hardCap": 1,
+        "lockout": 0.64,
+        "hotOutputMultiplier": 1.12,
+        "hotSpreadMultiplier": 1
+      },
+      "cd": { "base": 0.065, "perLevel": -0.0005, "min": 0.055 },
+      "bullet": {
+        "w": 5,
+        "h": 34,
+        "pierce": 4,
+        "sprite": "b-laser",
+        "stretch": true,
+        "damageType": "energy",
+        "impactFx": "scorch",
+        "rotateToVelocity": false
+      },
+      "pattern": {
+        "type": "line",
+        "counts": [1, 1, 1, 1, 1, 1, 2, 2, 2, 2],
+        "offsetX": 9,
+        "vy": -1180,
+        "dmgBase": 0.95,
+        "dmgPerLevel": 0.24,
+        "yOff": -8
+      }
+    },
+    "laser_prism": {
+      "name": "PRISM LASER",
+      "short": "PRISM",
+      "price": 0,
+      "descKey": "weapon.laser.desc",
+      "color": "#ff8bd8",
+      "archetype": "laser",
+      "variant": "prism",
+      "mechanic": "sustained-beam",
+      "roles": {
+        "boss": "wide-surface-rake",
+        "mob": "three-lane-sweep",
+        "screen": "continuous-lane"
+      },
+      "heat": {
+        "perTrigger": 0.074,
+        "coolPerSecond": 0.27,
+        "softCap": 0.64,
+        "hardCap": 1,
+        "lockout": 0.74,
+        "hotOutputMultiplier": 1.18,
+        "hotSpreadMultiplier": 1.08
+      },
+      "cd": { "base": 0.14, "perLevel": -0.004, "min": 0.1 },
+      "bullet": {
+        "w": 3,
+        "h": 29,
+        "pierce": 3,
+        "sprite": "b-laser",
+        "stretch": true,
+        "damageType": "energy",
+        "impactFx": "scorch",
+        "rotateToVelocity": true
+      },
+      "pattern": {
+        "type": "fan",
+        "counts": [3, 3, 3, 3, 4, 4, 4, 5, 5, 5],
+        "spreadBase": 0.1,
+        "spreadPerLevel": 0.012,
+        "speedBase": 920,
+        "speedPerLevel": 18,
+        "dmg": 1.4,
+        "scaleX": 0.42,
+        "scaleY": 1.22
+      }
+    },
+    "laser_cutter": {
+      "name": "CORE CUTTER",
+      "short": "CUTTER",
+      "price": 0,
+      "descKey": "weapon.laser.desc",
+      "color": "#ff3b5c",
+      "archetype": "laser",
+      "variant": "cutter",
+      "mechanic": "sustained-beam",
+      "roles": {
+        "boss": "deep-core-cut",
+        "mob": "single-lane-erasure",
+        "screen": "continuous-lane"
+      },
+      "heat": {
+        "perTrigger": 0.055,
+        "coolPerSecond": 0.31,
+        "softCap": 0.73,
+        "hardCap": 1,
+        "lockout": 0.52,
+        "hotOutputMultiplier": 1.2,
+        "hotSpreadMultiplier": 0.94
+      },
+      "cd": { "base": 0.11, "perLevel": -0.003, "min": 0.08 },
+      "bullet": {
+        "w": 7,
+        "h": 48,
+        "pierce": 8,
+        "sprite": "b-laser",
+        "stretch": true,
+        "damageType": "energy",
+        "impactFx": "scorch",
+        "rotateToVelocity": false
+      },
+      "pattern": {
+        "type": "line",
+        "counts": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        "offsetX": 0,
+        "vy": -1320,
+        "dmgBase": 1.9,
+        "dmgPerLevel": 0.25,
+        "yOff": -12
+      }
+    },
+    "light": {
+      "name": "CHAIN LIGHTNING",
+      "short": "CHAIN",
+      "price": 0,
+      "descKey": "weapon.light.desc",
+      "color": "#aef4ff",
+      "archetype": "light",
+      "variant": "chain",
+      "mechanic": "chain-lightning",
+      "roles": { "boss": "add-transfer", "mob": "chain-sweep", "screen": "single-flash" },
+      "heat": {
+        "perTrigger": 0.2,
+        "coolPerSecond": 0.34,
+        "softCap": 0.72,
+        "hardCap": 1,
+        "lockout": 0.46,
+        "hotOutputMultiplier": 1.12,
+        "hotSpreadMultiplier": 1
+      },
+      "cd": { "base": 0.52, "perLevel": -0.025, "min": 0.29 },
+      "bullet": {
+        "w": 5,
+        "h": 24,
+        "pierce": 0,
+        "sprite": "b-light",
+        "stretch": false,
+        "damageType": "electric",
+        "impactFx": "arc",
+        "rotateToVelocity": false
+      },
+      "pattern": {
+        "type": "line",
+        "counts": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        "offsetX": 0,
+        "vy": -1800,
+        "dmgBase": 8,
+        "dmgPerLevel": 2.4,
+        "yOff": -10
+      }
+    },
+    "light_storm": {
+      "name": "TESLA STORM",
+      "short": "STORM",
+      "price": 0,
+      "descKey": "weapon.light.desc",
+      "color": "#7de7ff",
+      "archetype": "light",
+      "variant": "storm",
+      "mechanic": "chain-lightning",
+      "roles": {
+        "boss": "part-network-overload",
+        "mob": "dual-seed-storm",
+        "screen": "single-flash"
+      },
+      "heat": {
+        "perTrigger": 0.34,
+        "coolPerSecond": 0.23,
+        "softCap": 0.58,
+        "hardCap": 1,
+        "lockout": 0.9,
+        "hotOutputMultiplier": 1.22,
+        "hotSpreadMultiplier": 1
+      },
+      "cd": { "base": 0.68, "perLevel": -0.03, "min": 0.39 },
+      "bullet": {
+        "w": 4,
+        "h": 20,
+        "pierce": 0,
+        "sprite": "b-light",
+        "stretch": false,
+        "damageType": "electric",
+        "impactFx": "arc",
+        "rotateToVelocity": false
+      },
+      "pattern": {
+        "type": "line",
+        "counts": [2, 2, 2, 2, 2, 2, 3, 3, 3, 3],
+        "offsetX": 32,
+        "vy": -1700,
+        "dmgBase": 5,
+        "dmgPerLevel": 1,
+        "yOff": -8
+      }
+    },
+    "light_judgment": {
+      "name": "JUDGMENT ARC",
+      "short": "JUDGE",
+      "price": 0,
+      "descKey": "weapon.light.desc",
+      "color": "#e9ffff",
+      "archetype": "light",
+      "variant": "judgment",
+      "mechanic": "chain-lightning",
+      "roles": {
+        "boss": "single-target-surge",
+        "mob": "elite-chain-execute",
+        "screen": "single-flash"
+      },
+      "heat": {
+        "perTrigger": 0.42,
+        "coolPerSecond": 0.4,
+        "softCap": 0.78,
+        "hardCap": 1,
+        "lockout": 0.62,
+        "hotOutputMultiplier": 1.3,
+        "hotSpreadMultiplier": 1
+      },
+      "cd": { "base": 0.95, "perLevel": -0.04, "min": 0.57 },
+      "bullet": {
+        "w": 8,
+        "h": 34,
+        "pierce": 0,
+        "sprite": "b-light",
+        "stretch": true,
+        "damageType": "electric",
+        "impactFx": "arc",
+        "rotateToVelocity": false
+      },
+      "pattern": {
+        "type": "line",
+        "counts": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        "offsetX": 0,
+        "vy": -2200,
+        "dmgBase": 18,
+        "dmgPerLevel": 4,
+        "yOff": -14
+      }
+    },
+    "rail": {
+      "name": "CHARGED RAILGUN",
+      "short": "RAIL",
+      "price": 0,
+      "descKey": "weapon.laser.desc",
+      "color": "#d8f2ff",
+      "archetype": "rail",
+      "variant": "charged",
+      "mechanic": "charged-rail",
+      "roles": { "boss": "part-break", "mob": "elite-delete", "screen": "single-lance" },
+      "heat": {
+        "perTrigger": 0.34,
+        "coolPerSecond": 0.32,
+        "softCap": 0.72,
+        "hardCap": 1,
+        "lockout": 0.64,
+        "hotOutputMultiplier": 1.22,
+        "hotSpreadMultiplier": 1
+      },
+      "cd": { "base": 1, "perLevel": -0.047, "min": 0.56 },
+      "bullet": {
+        "w": 4,
+        "h": 36,
+        "pierce": 6,
+        "sprite": "b-laser",
+        "stretch": true,
+        "damageType": "kinetic",
+        "impactFx": "scorch",
+        "rotateToVelocity": true
+      },
+      "pattern": {
+        "type": "line",
+        "counts": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        "offsetX": 0,
+        "vy": -1500,
+        "dmgBase": 24,
+        "dmgPerLevel": 6,
+        "yOff": -12
+      }
+    },
+    "rail_splitter": {
+      "name": "RAIL SPLITTER",
+      "short": "RSPLIT",
+      "price": 0,
+      "descKey": "weapon.laser.desc",
+      "color": "#a7d8ff",
+      "archetype": "rail",
+      "variant": "splitter",
+      "mechanic": "charged-rail",
+      "roles": { "boss": "multi-part-skewer", "mob": "fan-elite-break", "screen": "single-lance" },
+      "heat": {
+        "perTrigger": 0.43,
+        "coolPerSecond": 0.28,
+        "softCap": 0.64,
+        "hardCap": 1,
+        "lockout": 0.86,
+        "hotOutputMultiplier": 1.28,
+        "hotSpreadMultiplier": 1.06
+      },
+      "cd": { "base": 1.2, "perLevel": -0.045, "min": 0.76 },
+      "bullet": {
+        "w": 3,
+        "h": 30,
+        "pierce": 3,
+        "sprite": "b-laser",
+        "stretch": true,
+        "damageType": "kinetic",
+        "impactFx": "scorch",
+        "rotateToVelocity": true
+      },
+      "pattern": {
+        "type": "fan",
+        "counts": [3, 3, 3, 3, 3, 4, 4, 4, 5, 5],
+        "spreadBase": 0.08,
+        "spreadPerLevel": 0.01,
+        "speedBase": 1280,
+        "speedPerLevel": 24,
+        "dmg": 10,
+        "scaleX": 0.5,
+        "scaleY": 1.22
+      }
+    },
+    "rail_siege": {
+      "name": "SIEGE RAIL",
+      "short": "S-RAIL",
+      "price": 0,
+      "descKey": "weapon.laser.desc",
+      "color": "#ffffff",
+      "archetype": "rail",
+      "variant": "siege",
+      "mechanic": "charged-rail",
+      "roles": { "boss": "siege-core-break", "mob": "heavy-unit-delete", "screen": "single-lance" },
+      "heat": {
+        "perTrigger": 0.62,
+        "coolPerSecond": 0.43,
+        "softCap": 0.8,
+        "hardCap": 1,
+        "lockout": 0.78,
+        "hotOutputMultiplier": 1.4,
+        "hotSpreadMultiplier": 1
+      },
+      "cd": { "base": 1.7, "perLevel": -0.075, "min": 0.98 },
+      "bullet": {
+        "w": 8,
+        "h": 58,
+        "pierce": 12,
+        "sprite": "b-laser",
+        "stretch": true,
+        "damageType": "kinetic",
+        "impactFx": "blast",
+        "rotateToVelocity": true
+      },
+      "pattern": {
+        "type": "line",
+        "counts": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        "offsetX": 0,
+        "vy": -1780,
+        "dmgBase": 45,
+        "dmgPerLevel": 9,
+        "yOff": -16
+      }
+    },
+    "scatter": {
+      "name": "NOVA SCATTER",
+      "short": "SCATTR",
+      "price": 0,
+      "descKey": "weapon.proton.desc",
+      "color": "#ff63d8",
+      "archetype": "scatter",
+      "variant": "nova",
+      "mechanic": "close-scatter",
+      "roles": { "boss": "point-blank-risk", "mob": "rush-stop", "screen": "close-cone" },
+      "heat": {
+        "perTrigger": 0.2,
+        "coolPerSecond": 0.34,
+        "softCap": 0.69,
+        "hardCap": 1,
+        "lockout": 0.5,
+        "hotOutputMultiplier": 1.16,
+        "hotSpreadMultiplier": 1.1
+      },
+      "cd": { "base": 0.52, "perLevel": -0.02, "min": 0.32 },
+      "bullet": {
+        "w": 8,
+        "h": 10,
+        "pierce": 0,
+        "sprite": "b-proton",
+        "stretch": false,
+        "damageType": "plasma",
+        "impactFx": "blast",
+        "rotateToVelocity": true
+      },
+      "pattern": {
+        "type": "fan",
+        "counts": [5, 5, 6, 6, 7, 7, 8, 8, 9, 10],
+        "spreadBase": 0.58,
+        "spreadPerLevel": 0.025,
+        "speedBase": 330,
+        "speedPerLevel": 8,
+        "dmg": 4,
+        "scaleX": 1.1,
+        "scaleY": 1.2
+      }
+    },
+    "scatter_shredder": {
+      "name": "SHREDDER CLOUD",
+      "short": "SHRED",
+      "price": 0,
+      "descKey": "weapon.proton.desc",
+      "color": "#ff8ce8",
+      "archetype": "scatter",
+      "variant": "shredder",
+      "mechanic": "close-scatter",
+      "roles": { "boss": "large-hull-pointblank", "mob": "wide-rush-wall", "screen": "close-cone" },
+      "heat": {
+        "perTrigger": 0.36,
+        "coolPerSecond": 0.22,
+        "softCap": 0.57,
+        "hardCap": 1,
+        "lockout": 0.92,
+        "hotOutputMultiplier": 1.24,
+        "hotSpreadMultiplier": 1.28
+      },
+      "cd": { "base": 0.72, "perLevel": -0.028, "min": 0.45 },
+      "bullet": {
+        "w": 6,
+        "h": 8,
+        "pierce": 0,
+        "sprite": "b-proton",
+        "stretch": false,
+        "damageType": "plasma",
+        "impactFx": "blast",
+        "rotateToVelocity": true
+      },
+      "pattern": {
+        "type": "fan",
+        "counts": [9, 9, 10, 10, 11, 11, 12, 13, 14, 15],
+        "spreadBase": 0.78,
+        "spreadPerLevel": 0.024,
+        "speedBase": 270,
+        "speedPerLevel": 6,
+        "dmg": 2,
+        "scaleX": 1.22,
+        "scaleY": 1.05
+      }
+    },
+    "scatter_slug": {
+      "name": "PLASMA SLUG",
+      "short": "P-SLUG",
+      "price": 0,
+      "descKey": "weapon.proton.desc",
+      "color": "#f449c8",
+      "archetype": "scatter",
+      "variant": "slug",
+      "mechanic": "close-scatter",
+      "roles": { "boss": "weakpoint-shotgun", "mob": "midrange-stagger", "screen": "close-cone" },
+      "heat": {
+        "perTrigger": 0.28,
+        "coolPerSecond": 0.39,
+        "softCap": 0.76,
+        "hardCap": 1,
+        "lockout": 0.42,
+        "hotOutputMultiplier": 1.26,
+        "hotSpreadMultiplier": 0.92
+      },
+      "cd": { "base": 0.48, "perLevel": -0.018, "min": 0.3 },
+      "bullet": {
+        "w": 11,
+        "h": 14,
+        "pierce": 1,
+        "sprite": "b-proton",
+        "stretch": true,
+        "damageType": "plasma",
+        "impactFx": "plasma",
+        "rotateToVelocity": true
+      },
+      "pattern": {
+        "type": "fan",
+        "counts": [3, 3, 3, 4, 4, 4, 4, 5, 5, 5],
+        "spreadBase": 0.24,
+        "spreadPerLevel": 0.012,
+        "speedBase": 470,
+        "speedPerLevel": 12,
+        "dmg": 7,
+        "scaleX": 0.88,
+        "scaleY": 1.18
       }
     }
   }

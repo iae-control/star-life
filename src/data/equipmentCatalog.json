@@ -1,0 +1,379 @@
+{
+  "version": 1,
+  "defaults": {
+    "primary": "pulse",
+    "secondary": "secondary-microgun",
+    "engine": "engine-ion-sparrow",
+    "cooler": "cooler-radiator-grid",
+    "armor": "armor-light-plating"
+  },
+  "stageRewards": {
+    "base": 900,
+    "perStage": 350,
+    "repeatMultiplier": 0.55,
+    "firstClearMultiplier": 1.4,
+    "flawlessBonus": 0.2,
+    "difficulty": { "easy": 0.85, "normal": 1, "hard": 1.25 },
+    "roundTo": 25
+  },
+  "engines": [
+    {
+      "id": "engine-ion-sparrow",
+      "slot": "engine",
+      "name": "ION SPARROW",
+      "description": "Reliable starter engine with balanced acceleration.",
+      "unlockStage": 1,
+      "maxTier": 5,
+      "price": { "purchase": 0, "upgradeBase": 450, "growth": 1.55, "roundTo": 25 },
+      "stats": { "speed": 185, "speedPerTier": 8 }
+    },
+    {
+      "id": "engine-vector-twin",
+      "slot": "engine",
+      "name": "VECTOR TWIN",
+      "description": "Twin nozzles sharpen lateral response.",
+      "unlockStage": 1,
+      "maxTier": 5,
+      "price": { "purchase": 1600, "upgradeBase": 750, "growth": 1.58, "roundTo": 25 },
+      "stats": { "speed": 205, "speedPerTier": 9 }
+    },
+    {
+      "id": "engine-solar-ramjet",
+      "slot": "engine",
+      "name": "SOLAR RAMJET",
+      "description": "Feeds stellar plasma into a high-output thrust chamber.",
+      "unlockStage": 2,
+      "maxTier": 5,
+      "price": { "purchase": 3600, "upgradeBase": 1200, "growth": 1.6, "roundTo": 25 },
+      "stats": { "speed": 225, "speedPerTier": 10 }
+    },
+    {
+      "id": "engine-gravitic-drive",
+      "slot": "engine",
+      "name": "GRAVITIC DRIVE",
+      "description": "Bends the local gravity gradient for instant course changes.",
+      "unlockStage": 3,
+      "maxTier": 5,
+      "price": { "purchase": 7200, "upgradeBase": 2100, "growth": 1.62, "roundTo": 25 },
+      "stats": { "speed": 245, "speedPerTier": 11 }
+    },
+    {
+      "id": "engine-antimatter-turbine",
+      "slot": "engine",
+      "name": "ANTIMATTER TURBINE",
+      "description": "Extreme output balanced by precision magnetic containment.",
+      "unlockStage": 5,
+      "maxTier": 5,
+      "price": { "purchase": 13200, "upgradeBase": 3400, "growth": 1.65, "roundTo": 25 },
+      "stats": { "speed": 268, "speedPerTier": 12 }
+    },
+    {
+      "id": "engine-singularity-drive",
+      "slot": "engine",
+      "name": "SINGULARITY DRIVE",
+      "description": "A captive micro-singularity pulls the ship through space.",
+      "unlockStage": 6,
+      "maxTier": 5,
+      "price": { "purchase": 22500, "upgradeBase": 5200, "growth": 1.68, "roundTo": 25 },
+      "stats": { "speed": 295, "speedPerTier": 14 }
+    }
+  ],
+  "coolers": [
+    {
+      "id": "cooler-radiator-grid",
+      "slot": "cooler",
+      "name": "RADIATOR GRID",
+      "description": "Basic heat fins for sustained low-intensity fire.",
+      "unlockStage": 1,
+      "maxTier": 5,
+      "price": { "purchase": 0, "upgradeBase": 400, "growth": 1.52, "roundTo": 25 },
+      "stats": { "cooling": 18, "coolingPerTier": 2, "heatCapacity": 100, "heatCapacityPerTier": 5 }
+    },
+    {
+      "id": "cooler-cryo-loop",
+      "slot": "cooler",
+      "name": "CRYO LOOP",
+      "description": "Closed-loop cryogen improves recovery and thermal headroom.",
+      "unlockStage": 1,
+      "maxTier": 5,
+      "price": { "purchase": 1450, "upgradeBase": 700, "growth": 1.55, "roundTo": 25 },
+      "stats": {
+        "cooling": 23,
+        "coolingPerTier": 2.4,
+        "heatCapacity": 112,
+        "heatCapacityPerTier": 6
+      }
+    },
+    {
+      "id": "cooler-helium-sink",
+      "slot": "cooler",
+      "name": "HELIUM SINK",
+      "description": "Superfluid helium strips heat from weapon buses.",
+      "unlockStage": 2,
+      "maxTier": 5,
+      "price": { "purchase": 3300, "upgradeBase": 1100, "growth": 1.58, "roundTo": 25 },
+      "stats": { "cooling": 29, "coolingPerTier": 3, "heatCapacity": 126, "heatCapacityPerTier": 7 }
+    },
+    {
+      "id": "cooler-phase-exchanger",
+      "slot": "cooler",
+      "name": "PHASE EXCHANGER",
+      "description": "Phase-change cells absorb violent heat spikes.",
+      "unlockStage": 3,
+      "maxTier": 5,
+      "price": { "purchase": 6800, "upgradeBase": 1900, "growth": 1.61, "roundTo": 25 },
+      "stats": {
+        "cooling": 36,
+        "coolingPerTier": 3.6,
+        "heatCapacity": 142,
+        "heatCapacityPerTier": 8
+      }
+    },
+    {
+      "id": "cooler-neutrino-vent",
+      "slot": "cooler",
+      "name": "NEUTRINO VENT",
+      "description": "Bleeds thermal energy through near-massless particle flux.",
+      "unlockStage": 5,
+      "maxTier": 5,
+      "price": { "purchase": 12400, "upgradeBase": 3100, "growth": 1.64, "roundTo": 25 },
+      "stats": {
+        "cooling": 44,
+        "coolingPerTier": 4.2,
+        "heatCapacity": 162,
+        "heatCapacityPerTier": 10
+      }
+    },
+    {
+      "id": "cooler-eventide-core",
+      "slot": "cooler",
+      "name": "EVENTIDE CORE",
+      "description": "Stores waste heat behind a miniature event horizon.",
+      "unlockStage": 6,
+      "maxTier": 5,
+      "price": { "purchase": 20800, "upgradeBase": 4800, "growth": 1.67, "roundTo": 25 },
+      "stats": {
+        "cooling": 54,
+        "coolingPerTier": 5,
+        "heatCapacity": 188,
+        "heatCapacityPerTier": 12
+      }
+    }
+  ],
+  "armors": [
+    {
+      "id": "armor-light-plating",
+      "slot": "armor",
+      "name": "LIGHT PLATING",
+      "description": "Low-mass protection with field-serviceable panels.",
+      "unlockStage": 1,
+      "maxTier": 5,
+      "price": { "purchase": 0, "upgradeBase": 500, "growth": 1.55, "roundTo": 25 },
+      "stats": { "hp": 100, "hpPerTier": 12, "regen": 0, "regenPerTier": 0.05 }
+    },
+    {
+      "id": "armor-titanium-weave",
+      "slot": "armor",
+      "name": "TITANIUM WEAVE",
+      "description": "Layered metal fibers spread impacts across the hull.",
+      "unlockStage": 1,
+      "maxTier": 5,
+      "price": { "purchase": 1800, "upgradeBase": 850, "growth": 1.58, "roundTo": 25 },
+      "stats": { "hp": 130, "hpPerTier": 15, "regen": 0.1, "regenPerTier": 0.08 }
+    },
+    {
+      "id": "armor-ceramic-aegis",
+      "slot": "armor",
+      "name": "CERAMIC AEGIS",
+      "description": "Ablative tiles resist plasma and kinetic shock.",
+      "unlockStage": 2,
+      "maxTier": 5,
+      "price": { "purchase": 4000, "upgradeBase": 1350, "growth": 1.6, "roundTo": 25 },
+      "stats": { "hp": 165, "hpPerTier": 18, "regen": 0.22, "regenPerTier": 0.1 }
+    },
+    {
+      "id": "armor-reactive-shell",
+      "slot": "armor",
+      "name": "REACTIVE SHELL",
+      "description": "Smart plates counterforce incoming penetrators.",
+      "unlockStage": 3,
+      "maxTier": 5,
+      "price": { "purchase": 7900, "upgradeBase": 2250, "growth": 1.62, "roundTo": 25 },
+      "stats": { "hp": 205, "hpPerTier": 22, "regen": 0.42, "regenPerTier": 0.13 }
+    },
+    {
+      "id": "armor-nanite-matrix",
+      "slot": "armor",
+      "name": "NANITE MATRIX",
+      "description": "Repair swarms rebuild armor during combat lulls.",
+      "unlockStage": 5,
+      "maxTier": 5,
+      "price": { "purchase": 14600, "upgradeBase": 3700, "growth": 1.65, "roundTo": 25 },
+      "stats": { "hp": 255, "hpPerTier": 28, "regen": 0.78, "regenPerTier": 0.18 }
+    },
+    {
+      "id": "armor-neutron-bastion",
+      "slot": "armor",
+      "name": "NEUTRON BASTION",
+      "description": "Degenerate-matter laminate for terminal-sector survival.",
+      "unlockStage": 6,
+      "maxTier": 5,
+      "price": { "purchase": 23800, "upgradeBase": 5600, "growth": 1.68, "roundTo": 25 },
+      "stats": { "hp": 325, "hpPerTier": 35, "regen": 1.2, "regenPerTier": 0.25 }
+    }
+  ],
+  "secondaries": [
+    {
+      "id": "secondary-microgun",
+      "slot": "secondary",
+      "name": "MICROGUN",
+      "description": "Compact automatic cannon with low thermal load.",
+      "unlockStage": 1,
+      "maxTier": 5,
+      "price": { "purchase": 0, "upgradeBase": 450, "growth": 1.55, "roundTo": 25 },
+      "stats": {
+        "damage": 8,
+        "damagePerTier": 1.6,
+        "fireRate": 2.4,
+        "fireRatePerTier": 0.12,
+        "heat": 3,
+        "heatPerTier": -0.1,
+        "projectileSpeed": 380,
+        "projectileSpeedPerTier": 10
+      }
+    },
+    {
+      "id": "secondary-tail-cannon",
+      "slot": "secondary",
+      "name": "TAIL CANNON",
+      "description": "Rear-facing cannon protects retreat lanes.",
+      "unlockStage": 1,
+      "maxTier": 5,
+      "price": { "purchase": 1500, "upgradeBase": 725, "growth": 1.57, "roundTo": 25 },
+      "stats": {
+        "damage": 12,
+        "damagePerTier": 2.4,
+        "fireRate": 1.7,
+        "fireRatePerTier": 0.1,
+        "heat": 4,
+        "heatPerTier": -0.12,
+        "projectileSpeed": 350,
+        "projectileSpeedPerTier": 12
+      }
+    },
+    {
+      "id": "secondary-side-cutter",
+      "slot": "secondary",
+      "name": "SIDE CUTTER",
+      "description": "Paired lateral emitters clear flanking threats.",
+      "unlockStage": 2,
+      "maxTier": 5,
+      "price": { "purchase": 3200, "upgradeBase": 1150, "growth": 1.59, "roundTo": 25 },
+      "stats": {
+        "damage": 10,
+        "damagePerTier": 2,
+        "fireRate": 2,
+        "fireRatePerTier": 0.12,
+        "heat": 4.5,
+        "heatPerTier": -0.14,
+        "projectileSpeed": 420,
+        "projectileSpeedPerTier": 14
+      }
+    },
+    {
+      "id": "secondary-seeker-rack",
+      "slot": "secondary",
+      "name": "SEEKER RACK",
+      "description": "Slow-firing guided missiles punish priority targets.",
+      "unlockStage": 2,
+      "maxTier": 5,
+      "price": { "purchase": 4800, "upgradeBase": 1500, "growth": 1.61, "roundTo": 25 },
+      "stats": {
+        "damage": 24,
+        "damagePerTier": 4.8,
+        "fireRate": 0.65,
+        "fireRatePerTier": 0.04,
+        "heat": 8,
+        "heatPerTier": -0.2,
+        "projectileSpeed": 270,
+        "projectileSpeedPerTier": 10
+      }
+    },
+    {
+      "id": "secondary-arc-satellite",
+      "slot": "secondary",
+      "name": "ARC SATELLITE",
+      "description": "Orbiting conductor chains electricity between nearby enemies.",
+      "unlockStage": 3,
+      "maxTier": 5,
+      "price": { "purchase": 7200, "upgradeBase": 2100, "growth": 1.62, "roundTo": 25 },
+      "stats": {
+        "damage": 14,
+        "damagePerTier": 2.8,
+        "fireRate": 1.1,
+        "fireRatePerTier": 0.06,
+        "heat": 6,
+        "heatPerTier": -0.18,
+        "projectileSpeed": 300,
+        "projectileSpeedPerTier": 8
+      }
+    },
+    {
+      "id": "secondary-plasma-pods",
+      "slot": "secondary",
+      "name": "PLASMA PODS",
+      "description": "Twin pods add dense bursts to the forward firing arc.",
+      "unlockStage": 4,
+      "maxTier": 5,
+      "price": { "purchase": 9800, "upgradeBase": 2700, "growth": 1.64, "roundTo": 25 },
+      "stats": {
+        "damage": 18,
+        "damagePerTier": 3.6,
+        "fireRate": 1.25,
+        "fireRatePerTier": 0.08,
+        "heat": 7,
+        "heatPerTier": -0.2,
+        "projectileSpeed": 330,
+        "projectileSpeedPerTier": 10
+      }
+    },
+    {
+      "id": "secondary-mine-layer",
+      "slot": "secondary",
+      "name": "MINE LAYER",
+      "description": "High-yield proximity mines lock down pursuit routes.",
+      "unlockStage": 5,
+      "maxTier": 5,
+      "price": { "purchase": 13700, "upgradeBase": 3600, "growth": 1.66, "roundTo": 25 },
+      "stats": {
+        "damage": 38,
+        "damagePerTier": 7.5,
+        "fireRate": 0.45,
+        "fireRatePerTier": 0.025,
+        "heat": 9,
+        "heatPerTier": -0.25,
+        "projectileSpeed": 180,
+        "projectileSpeedPerTier": 6
+      }
+    },
+    {
+      "id": "secondary-drone-swarm",
+      "slot": "secondary",
+      "name": "DRONE SWARM",
+      "description": "Autonomous drones saturate the screen with tracking fire.",
+      "unlockStage": 6,
+      "maxTier": 5,
+      "price": { "purchase": 21600, "upgradeBase": 5100, "growth": 1.69, "roundTo": 25 },
+      "stats": {
+        "damage": 9,
+        "damagePerTier": 1.8,
+        "fireRate": 3.2,
+        "fireRatePerTier": 0.15,
+        "heat": 10,
+        "heatPerTier": -0.3,
+        "projectileSpeed": 260,
+        "projectileSpeedPerTier": 8
+      }
+    }
+  ]
+}

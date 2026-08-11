@@ -8,7 +8,11 @@
       "taglineKey": "level.nebula.tag",
       "background": {
         "theme": "nebula",
-        "nebulaAlpha": 0.95
+        "nebulaAlpha": 0.95,
+        "artKey": "bg-sector-nebula-water-garden",
+        "overlayTint": "#c9f5ff",
+        "parallaxStrength": 0.78,
+        "landmarkMode": "cover"
       },
       "scroll": {
         "base": 45,
@@ -23,7 +27,14 @@
           "taglineKey": "sector.nebula.water.tag",
           "kind": "resource",
           "startWave": 0,
-          "background": { "theme": "nebula", "nebulaAlpha": 0.95 },
+          "background": {
+            "theme": "nebula",
+            "nebulaAlpha": 0.95,
+            "artKey": "bg-sector-nebula-water-garden",
+            "overlayTint": "#c9f5ff",
+            "parallaxStrength": 0.78,
+            "landmarkMode": "cover"
+          },
           "gimmicks": [{ "type": "fog", "interval": 6.0, "alpha": 0.42 }]
         },
         {
@@ -32,7 +43,14 @@
           "taglineKey": "sector.nebula.ice.tag",
           "kind": "hazard",
           "startWave": 4,
-          "background": { "theme": "nebula", "nebulaAlpha": 0.72 },
+          "background": {
+            "theme": "nebula",
+            "nebulaAlpha": 0.72,
+            "artKey": "bg-sector-nebula-ice-front",
+            "overlayTint": "#b8dcff",
+            "parallaxStrength": 0.5,
+            "landmarkMode": "cover"
+          },
           "gimmicks": [
             {
               "type": "iceStorm",
@@ -50,6 +68,14 @@
           "taglineKey": "sector.nebula.bonus.tag",
           "kind": "bonus",
           "startWave": 9,
+          "background": {
+            "theme": "nebula",
+            "nebulaAlpha": 0.55,
+            "artKey": "bg-sector-nebula-bonus-lane",
+            "overlayTint": "#e6fbff",
+            "parallaxStrength": 0.35,
+            "landmarkMode": "contain"
+          },
           "gimmicks": [],
           "bonusMultiplier": 1.35
         }
@@ -320,7 +346,11 @@
       "taglineKey": "level.protostar.tag",
       "background": {
         "theme": "protostar",
-        "nebulaAlpha": 0.85
+        "nebulaAlpha": 0.85,
+        "artKey": "bg-sector-protostar-volcanic-forge",
+        "overlayTint": "#ffd0a6",
+        "parallaxStrength": 1.1,
+        "landmarkMode": "cover"
       },
       "scroll": {
         "base": 50,
@@ -335,6 +365,14 @@
           "taglineKey": "sector.protostar.volcanic.tag",
           "kind": "hazard",
           "startWave": 0,
+          "background": {
+            "theme": "protostar",
+            "nebulaAlpha": 0.85,
+            "artKey": "bg-sector-protostar-volcanic-forge",
+            "overlayTint": "#ffd0a6",
+            "parallaxStrength": 1.1,
+            "landmarkMode": "cover"
+          },
           "gimmicks": [
             {
               "type": "volcanic",
@@ -353,7 +391,14 @@
           "taglineKey": "sector.protostar.desert.tag",
           "kind": "hazard",
           "startWave": 4,
-          "background": { "theme": "protostar", "nebulaAlpha": 0.68 },
+          "background": {
+            "theme": "protostar",
+            "nebulaAlpha": 0.68,
+            "artKey": "bg-sector-protostar-desert-kiln",
+            "overlayTint": "#ffd7a0",
+            "parallaxStrength": 0.65,
+            "landmarkMode": "cover"
+          },
           "gimmicks": [
             {
               "type": "desertHeat",
@@ -370,7 +415,14 @@
           "taglineKey": "sector.protostar.rock.tag",
           "kind": "resource",
           "startWave": 8,
-          "background": { "theme": "asteroids", "nebulaAlpha": 0.62 },
+          "background": {
+            "theme": "asteroids",
+            "nebulaAlpha": 0.62,
+            "artKey": "bg-sector-protostar-rock-belt",
+            "overlayTint": "#d7c6b0",
+            "parallaxStrength": 1.25,
+            "landmarkMode": "cover"
+          },
           "gimmicks": [{ "type": "meteorField", "interval": 3.8, "enemy": "pr_shard" }]
         },
         {
@@ -379,6 +431,14 @@
           "taglineKey": "sector.protostar.bonus.tag",
           "kind": "bonus",
           "startWave": 10,
+          "background": {
+            "theme": "protostar",
+            "nebulaAlpha": 0.5,
+            "artKey": "bg-sector-protostar-bonus-drift",
+            "overlayTint": "#ffe7c4",
+            "parallaxStrength": 0.4,
+            "landmarkMode": "contain"
+          },
           "gimmicks": [],
           "bonusMultiplier": 1.4
         }
@@ -650,7 +710,11 @@
       "taglineKey": "level.mainseq.tag",
       "background": {
         "theme": "mainseq",
-        "nebulaAlpha": 0.8
+        "nebulaAlpha": 0.8,
+        "artKey": "bg-sector-mainseq-prominence-sea",
+        "overlayTint": "#fff2c2",
+        "parallaxStrength": 1.15,
+        "landmarkMode": "cover"
       },
       "scroll": {
         "base": 55,
@@ -665,6 +729,14 @@
           "taglineKey": "sector.mainseq.prominence.tag",
           "kind": "hazard",
           "startWave": 0,
+          "background": {
+            "theme": "mainseq",
+            "nebulaAlpha": 0.8,
+            "artKey": "bg-sector-mainseq-prominence-sea",
+            "overlayTint": "#fff2c2",
+            "parallaxStrength": 1.15,
+            "landmarkMode": "cover"
+          },
           "gimmicks": [
             {
               "type": "prominence",
@@ -682,7 +754,14 @@
           "taglineKey": "sector.mainseq.electric.tag",
           "kind": "hazard",
           "startWave": 4,
-          "background": { "theme": "mainseq", "nebulaAlpha": 0.66 },
+          "background": {
+            "theme": "mainseq",
+            "nebulaAlpha": 0.66,
+            "artKey": "bg-sector-mainseq-electric-crown",
+            "overlayTint": "#c8dcff",
+            "parallaxStrength": 1.05,
+            "landmarkMode": "cover"
+          },
           "gimmicks": [{ "type": "electricStorm", "interval": 5.8, "warn": 0.9, "damage": 9 }]
         },
         {
@@ -691,6 +770,14 @@
           "taglineKey": "sector.mainseq.bonus.tag",
           "kind": "bonus",
           "startWave": 9,
+          "background": {
+            "theme": "mainseq",
+            "nebulaAlpha": 0.46,
+            "artKey": "bg-sector-mainseq-bonus-orbit",
+            "overlayTint": "#fff7d8",
+            "parallaxStrength": 0.35,
+            "landmarkMode": "contain"
+          },
           "gimmicks": [],
           "bonusMultiplier": 1.45
         }
@@ -949,7 +1036,11 @@
       "taglineKey": "level.redgiant.tag",
       "background": {
         "theme": "redgiant",
-        "nebulaAlpha": 0.9
+        "nebulaAlpha": 0.9,
+        "artKey": "bg-sector-redgiant-betelgeuse",
+        "overlayTint": "#ffc0a8",
+        "parallaxStrength": 0.55,
+        "landmarkMode": "contain"
       },
       "scroll": {
         "base": 55,
@@ -964,6 +1055,14 @@
           "taglineKey": "sector.redgiant.betelgeuse.tag",
           "kind": "story",
           "startWave": 0,
+          "background": {
+            "theme": "redgiant",
+            "nebulaAlpha": 0.9,
+            "artKey": "bg-sector-redgiant-betelgeuse",
+            "overlayTint": "#ffc0a8",
+            "parallaxStrength": 0.55,
+            "landmarkMode": "contain"
+          },
           "gimmicks": [
             {
               "type": "prominence",
@@ -981,7 +1080,14 @@
           "taglineKey": "sector.redgiant.uy.tag",
           "kind": "story",
           "startWave": 4,
-          "background": { "theme": "redgiant", "nebulaAlpha": 1.0 },
+          "background": {
+            "theme": "redgiant",
+            "nebulaAlpha": 1.0,
+            "artKey": "bg-sector-redgiant-uy-scuti",
+            "overlayTint": "#ff9c7e",
+            "parallaxStrength": 0.48,
+            "landmarkMode": "contain"
+          },
           "gimmicks": [
             {
               "type": "desertHeat",
@@ -998,6 +1104,14 @@
           "taglineKey": "sector.redgiant.bonus.tag",
           "kind": "bonus",
           "startWave": 9,
+          "background": {
+            "theme": "redgiant",
+            "nebulaAlpha": 0.55,
+            "artKey": "bg-sector-redgiant-bonus-shear",
+            "overlayTint": "#ffe0c8",
+            "parallaxStrength": 0.3,
+            "landmarkMode": "cover"
+          },
           "gimmicks": [],
           "bonusMultiplier": 1.5
         }
@@ -1246,7 +1360,11 @@
       "taglineKey": "level.supernova.tag",
       "background": {
         "theme": "supernova",
-        "nebulaAlpha": 0.85
+        "nebulaAlpha": 0.85,
+        "artKey": "bg-sector-supernova-meteor-field",
+        "overlayTint": "#ead8ff",
+        "parallaxStrength": 1.3,
+        "landmarkMode": "cover"
       },
       "scroll": {
         "base": 62,
@@ -1261,6 +1379,14 @@
           "taglineKey": "sector.supernova.meteor.tag",
           "kind": "hazard",
           "startWave": 0,
+          "background": {
+            "theme": "supernova",
+            "nebulaAlpha": 0.85,
+            "artKey": "bg-sector-supernova-meteor-field",
+            "overlayTint": "#ead8ff",
+            "parallaxStrength": 1.3,
+            "landmarkMode": "cover"
+          },
           "gimmicks": [{ "type": "meteorField", "interval": 3.0, "enemy": "sn_boulder" }]
         },
         {
@@ -1269,6 +1395,14 @@
           "taglineKey": "sector.supernova.electric.tag",
           "kind": "hazard",
           "startWave": 4,
+          "background": {
+            "theme": "supernova",
+            "nebulaAlpha": 0.72,
+            "artKey": "bg-sector-supernova-electric-storm",
+            "overlayTint": "#cbd2ff",
+            "parallaxStrength": 1.2,
+            "landmarkMode": "cover"
+          },
           "gimmicks": [{ "type": "electricStorm", "interval": 4.8, "warn": 0.72, "damage": 11 }]
         },
         {
@@ -1277,6 +1411,14 @@
           "taglineKey": "sector.supernova.bonus.tag",
           "kind": "bonus",
           "startWave": 8,
+          "background": {
+            "theme": "supernova",
+            "nebulaAlpha": 0.5,
+            "artKey": "bg-sector-supernova-bonus-eye",
+            "overlayTint": "#fff0ff",
+            "parallaxStrength": 0.35,
+            "landmarkMode": "contain"
+          },
           "gimmicks": [],
           "bonusMultiplier": 1.55
         }
@@ -1509,7 +1651,11 @@
       "taglineKey": "level.blackhole.tag",
       "background": {
         "theme": "inside",
-        "nebulaAlpha": 0.9
+        "nebulaAlpha": 0.9,
+        "artKey": "bg-sector-blackhole-rock-graveyard",
+        "overlayTint": "#a8b7d8",
+        "parallaxStrength": 1.1,
+        "landmarkMode": "cover"
       },
       "scroll": {
         "base": 58,
@@ -1524,6 +1670,14 @@
           "taglineKey": "sector.blackhole.rock.tag",
           "kind": "hazard",
           "startWave": 0,
+          "background": {
+            "theme": "inside",
+            "nebulaAlpha": 0.9,
+            "artKey": "bg-sector-blackhole-rock-graveyard",
+            "overlayTint": "#a8b7d8",
+            "parallaxStrength": 1.1,
+            "landmarkMode": "cover"
+          },
           "gimmicks": [{ "type": "meteorField", "interval": 3.4, "enemy": "sn_boulder" }]
         },
         {
@@ -1532,6 +1686,14 @@
           "taglineKey": "sector.blackhole.horizon.tag",
           "kind": "story",
           "startWave": 3,
+          "background": {
+            "theme": "inside",
+            "nebulaAlpha": 0.78,
+            "artKey": "bg-sector-blackhole-event-horizon",
+            "overlayTint": "#9387d8",
+            "parallaxStrength": 0.2,
+            "landmarkMode": "contain"
+          },
           "gimmicks": [{ "type": "warp", "pulseEvery": 9.0 }]
         },
         {
@@ -1540,7 +1702,14 @@
           "taglineKey": "sector.blackhole.ice.tag",
           "kind": "hazard",
           "startWave": 6,
-          "background": { "theme": "inside", "nebulaAlpha": 0.72 },
+          "background": {
+            "theme": "inside",
+            "nebulaAlpha": 0.72,
+            "artKey": "bg-sector-blackhole-frozen-core",
+            "overlayTint": "#a8e8ff",
+            "parallaxStrength": 0.6,
+            "landmarkMode": "cover"
+          },
           "gimmicks": [
             {
               "type": "iceStorm",
@@ -1558,6 +1727,14 @@
           "taglineKey": "sector.blackhole.bonus.tag",
           "kind": "bonus",
           "startWave": 8,
+          "background": {
+            "theme": "inside",
+            "nebulaAlpha": 0.46,
+            "artKey": "bg-sector-blackhole-final-bonus",
+            "overlayTint": "#c8ffe8",
+            "parallaxStrength": 0.25,
+            "landmarkMode": "contain"
+          },
           "gimmicks": [],
           "bonusMultiplier": 1.6
         }

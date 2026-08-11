@@ -2,10 +2,11 @@
 // 영속 저장(진행도)은 M4에서 SaveSystem으로 정식 도입. 지금은 BEST만 localStorage.
 import { loadSave, updateSave, type Difficulty } from '../systems/Save';
 import { PLAYER } from './logic/balance';
+import { isWeaponKind, type WeaponKind } from './logic/weapons';
 
 export const PILOT_ORDER = ['jungjioo', 'parksulhee', 'youngjioo', 'keunaebi'] as const;
 export type Pilot = (typeof PILOT_ORDER)[number];
-export type WeaponKey = 'pulse' | 'vulcan' | 'proton' | 'light' | 'laser' | 'missile';
+export type WeaponKey = WeaponKind;
 
 /** 기존 세이브와 선택값이 없는 플레이어가 사용하는 파일럿별 시그니처 무기. */
 export const PILOT_WEAPON: Record<Pilot, WeaponKey> = {
@@ -16,11 +17,11 @@ export const PILOT_WEAPON: Record<Pilot, WeaponKey> = {
 };
 
 /** 파일럿별 주무기 A/B 옵션 — 기존 시그니처를 첫 항목으로 유지한다. */
-export const PILOT_WEAPON_OPTIONS: Record<Pilot, readonly [WeaponKey, WeaponKey]> = {
-  jungjioo: ['pulse', 'vulcan'],
-  parksulhee: ['missile', 'light'],
-  youngjioo: ['proton', 'light'],
-  keunaebi: ['laser', 'vulcan'],
+export const PILOT_WEAPON_OPTIONS: Record<Pilot, readonly [WeaponKey, WeaponKey, WeaponKey]> = {
+  jungjioo: ['pulse', 'vulcan', 'rail'],
+  parksulhee: ['missile', 'scatter', 'light'],
+  youngjioo: ['proton', 'light', 'scatter'],
+  keunaebi: ['laser', 'rail', 'vulcan'],
 };
 
 const WEAPON_SELECTION_KEY = 'starlife.weapon-selection.v1';
@@ -32,6 +33,11 @@ export function resolvePilotWeapon(pilot: Pilot, candidate: unknown): WeaponKey 
   return typeof candidate === 'string' && options.includes(candidate as WeaponKey)
     ? (candidate as WeaponKey)
     : PILOT_WEAPON[pilot];
+}
+
+/** Validate a shop/loadout key against the entire weapon catalogue. */
+export function resolveCatalogWeapon(candidate: unknown, fallback: WeaponKey): WeaponKey {
+  return typeof candidate === 'string' && isWeaponKind(candidate) ? candidate : fallback;
 }
 
 function loadWeaponSelections(): void {
@@ -143,7 +149,11 @@ export interface NewSessionOptions {
 export function newSession(options: NewSessionOptions = {}): GameSession {
   const save = loadSave();
   const pilot = options.pilot ?? save.settings.pilot;
-  const weapon = resolvePilotWeapon(pilot, options.weapon ?? selectedPilotWeapon(pilot));
+  const pilotWeapon = selectedPilotWeapon(pilot);
+  const weapon =
+    options.weapon === undefined
+      ? pilotWeapon
+      : resolveCatalogWeapon(options.weapon, PILOT_WEAPON[pilot]);
   return {
     score: 0,
     wave: 0,
@@ -167,6 +177,17 @@ export function newSession(options: NewSessionOptions = {}): GameSession {
     pilot,
     endless: false,
   };
+}
+
+/**
+ * Equip any catalogue weapon acquired by a future shop/loadout screen.
+ * Invalid or stale save keys return null without mutating the session.
+ */
+export function setSessionWeapon(session: GameSession, candidate: unknown): WeaponKey | null {
+  if (typeof candidate !== 'string' || !isWeaponKind(candidate)) return null;
+  session.cur = candidate;
+  session.weapons[candidate] ??= 1;
+  return candidate;
 }
 
 export function loadBest(): number {

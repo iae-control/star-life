@@ -99,6 +99,33 @@ describe('data integrity (참조 무결성)', () => {
     }
   });
 
+  it('assigns one stable authored-art key to each of the 20 sectors', () => {
+    const sectors = DATA.levels.levels.flatMap((level) => level.sectors);
+    expect(sectors).toHaveLength(20);
+
+    const artKeys = sectors.map((sector) => {
+      expect(sector.background, `${sector.id} background`).toBeDefined();
+      expect(sector.background?.artKey, `${sector.id} artKey`).toBe(`bg-sector-${sector.id}`);
+      expect(sector.background?.parallaxStrength, `${sector.id} parallax`).toBeGreaterThanOrEqual(
+        0,
+      );
+      expect(sector.background?.landmarkMode, `${sector.id} landmark mode`).toMatch(
+        /^(cover|contain|stretch)$/,
+      );
+      return sector.background?.artKey;
+    });
+
+    expect(new Set(artKeys).size).toBe(sectors.length);
+  });
+
+  it('uses each chapter opening sector art as its level background reference', () => {
+    for (const level of DATA.levels.levels) {
+      const opening = level.sectors[0];
+      expect(opening, `L${level.id} opening sector`).toBeDefined();
+      expect(level.background.artKey, `L${level.id} chapter art`).toBe(opening?.background?.artKey);
+    }
+  });
+
   it('ships every long-campaign gimmick and safe bonus sectors', () => {
     const types = new Set(
       DATA.levels.levels.flatMap((level) =>

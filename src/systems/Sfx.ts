@@ -122,6 +122,16 @@ const shootTable: Record<string, () => void> = {
 };
 
 export const SFX = {
+  /** OS 음성을 보조 레이어로 사용한다. 음성이 없는 브라우저에서는 말풍선만 남는다. */
+  voice(text: string, lang = 'ko-KR', pitch = 1, rate = 1): void {
+    if (muted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = lang;
+    utterance.pitch = pitch;
+    utterance.rate = rate;
+    utterance.volume = Math.max(0, Math.min(1, sfxVol));
+    window.speechSynthesis.speak(utterance);
+  },
   /** 무기 키로 발사음 조회 — 신규 데이터 무기는 pulse 음으로 폴백 */
   shoot(kind: string): void {
     (shootTable[kind] ?? shootTable.pulse)?.();

@@ -4,15 +4,13 @@ import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH, SceneKeys } from '../config';
 import { DATA, t } from '../data';
 import {
-  cyclePilotWeapon,
-  loadBest,
-  newSession,
-  PILOT_ORDER,
-  selectedPilotWeapon,
-  type GameSession,
-  type Pilot,
-  type WeaponKey,
-} from '../game/session';
+  definePrimaryWeapon,
+  equipItem,
+  isOwned,
+  loadProgression,
+  saveProgression,
+} from '../game/progression';
+import { loadBest, newSession, PILOT_ORDER, type GameSession } from '../game/session';
 import { SpaceBackground } from '../systems/background';
 import { playMusic } from '../systems/Music';
 import { loadSave, updateSave, type Difficulty } from '../systems/Save';
@@ -69,7 +67,7 @@ export class TitleScene extends Phaser.Scene {
       .image(GAME_WIDTH / 2, 246, 'hero-fighter-v2')
       .setScale(0.2)
       .setAngle(-2);
-    this.orb = this.add.image(GAME_WIDTH / 2 + 92, 246, 'orb-P').setScale(1.4);
+    this.orb = this.add.image(GAME_WIDTH / 2 + 92, 246, 'icon-primary').setScale(0.72);
 
     uiText(this, GAME_WIDTH / 2, 132, '별의 일생', 40, '#dfe8ff', 'center');
     uiText(this, GAME_WIDTH / 2, 172, t('title.subtitle'), 10, '#8a93b0', 'center');
@@ -141,7 +139,7 @@ export class TitleScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', () => this.cyclePilot());
 
-    // 주무기 선택 — 파일럿마다 시그니처/대체 무기 2개, 좌우 터치 지원
+    // 보유한 상점 주무기 사이의 빠른 로드아웃 전환
     this.weaponText = uiText(this, GAME_WIDTH / 2, selectorY + 44, '', 10, '#8fd3ff', 'center');
     this.add
       .zone(90, selectorY + 31, (GAME_WIDTH - 180) / 2, 26)
@@ -161,16 +159,22 @@ export class TitleScene extends Phaser.Scene {
     const best = loadBest();
     if (best) uiText(this, GAME_WIDTH / 2, 570, t('title.best', best), 11, '#ffd76a', 'center');
 
-    // 설정 · 크레딧 진입
-    uiText(this, GAME_WIDTH / 2 - 60, 600, `⚙ ${t('settings.title')}`, 10, '#8fa0c8', 'center');
+    // 격납고 · 설정 · 크레딧 진입
+    uiText(this, 60, 600, 'HANGAR', 10, '#63f0c8', 'center');
     this.add
-      .zone(GAME_WIDTH / 2 - 120, 588, 120, 26)
+      .zone(8, 588, 104, 26)
+      .setOrigin(0, 0)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => this.openHangar());
+    uiText(this, GAME_WIDTH / 2, 600, `⚙ ${t('settings.title')}`, 10, '#8fa0c8', 'center');
+    this.add
+      .zone(128, 588, 104, 26)
       .setOrigin(0, 0)
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', () => this.openSettings());
-    uiText(this, GAME_WIDTH / 2 + 60, 600, 'CREDITS', 10, '#8fa0c8', 'center');
+    uiText(this, GAME_WIDTH - 60, 600, 'CREDITS', 10, '#8fa0c8', 'center');
     this.add
-      .zone(GAME_WIDTH / 2 + 10, 588, 120, 26)
+      .zone(248, 588, 104, 26)
       .setOrigin(0, 0)
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', () => {
@@ -197,6 +201,7 @@ export class TitleScene extends Phaser.Scene {
     kb?.on('keydown-ENTER', onKey);
     kb?.on('keydown-SPACE', onKey);
     kb?.on('keydown-S', () => this.openSettings());
+    kb?.on('keydown-H', () => this.openHangar());
 
     playMusic('title');
   }
@@ -211,16 +216,29 @@ export class TitleScene extends Phaser.Scene {
   }
 
   private cycleWeapon(direction: number): void {
-    cyclePilotWeapon(loadSave().settings.pilot, direction);
+    const progression = loadProgression();
+    const weapons = Object.keys(DATA.weapons.weapons).filter((id) => isOwned(progression, id));
+    if (weapons.length === 0) return;
+    const current = Math.max(0, weapons.indexOf(progression.loadout.primary));
+    const next = weapons[(current + weapons.length + (direction < 0 ? -1 : 1)) % weapons.length];
+    if (!next) return;
+    const catalogIndex = Object.keys(DATA.weapons.weapons).indexOf(next);
+    const result = equipItem(
+      progression,
+      'primary',
+      next,
+      definePrimaryWeapon(next, 600 + Math.max(0, catalogIndex) * 180, { maxTier: 10 }),
+    );
+    if (result.ok) saveProgression(result.state);
     this.refreshMenu();
   }
 
-  private weaponName(pilot: Pilot, weapon: WeaponKey): string {
+  private weaponName(weapon: string): string {
     const definition = DATA.weapons.weapons[weapon];
     // nameKey가 추가된 콘텐츠는 즉시 현지화하고, 구 데이터는 기존 영문 이름을 유지한다.
     const nameKey = (definition as { nameKey?: string } | undefined)?.nameKey;
     if (nameKey) return t(nameKey);
-    return definition?.name ?? `${pilot}:${weapon}`;
+    return definition?.name ?? weapon;
   }
 
   private cycleDiff(d: number): void {
@@ -242,10 +260,10 @@ export class TitleScene extends Phaser.Scene {
     const save = loadSave();
     this.diffText.setText(`${t('title.diff')}  ◀ ${t(`diff.${save.settings.difficulty}`)} ▶`);
     this.pilotText.setText(`${t('title.pilot')}  ◀ ${t(`pilot.${save.settings.pilot}`)} ▶`);
-    const weapon = selectedPilotWeapon(save.settings.pilot);
+    const weapon = loadProgression().loadout.primary;
     const weaponDef = DATA.weapons.weapons[weapon];
     this.weaponText
-      .setText(`WPN  ◀ ${this.weaponName(save.settings.pilot, weapon)} ▶`)
+      .setText(`LOADOUT  ◀ ${this.weaponName(weapon)} ▶`)
       .setColor(weaponDef?.color ?? '#8fd3ff');
   }
 
@@ -271,6 +289,12 @@ export class TitleScene extends Phaser.Scene {
     this.scene.launch(SceneKeys.Settings, { from: SceneKeys.Title });
   }
 
+  private openHangar(): void {
+    if (this.starting) return;
+    audioResume();
+    this.scene.start(SceneKeys.Shop, { session: newSession(), returnToTitle: true });
+  }
+
   private startGame(idx: number): void {
     if (this.starting) return;
     const entry = this.menu[idx];
@@ -278,7 +302,7 @@ export class TitleScene extends Phaser.Scene {
     this.starting = true;
     audioResume();
     const session = entry.action();
-    // 상점 폐지 — 엔들리스는 인트로 없이 바로 전장으로
+    // 엔들리스는 인트로 없이 바로 전장으로
     this.scene.start(session.endless ? SceneKeys.Game : SceneKeys.StageIntro, { session });
   }
 }

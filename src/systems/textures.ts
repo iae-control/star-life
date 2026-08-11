@@ -636,75 +636,168 @@ export function azSheetVariant(
 
 /* ---------- 어린지우 필살기: 앵무새 + 초록 산 ---------- */
 // 아래로 급강하하는 앵무새 (날개 활짝) — 팔레트 스왑으로 색 변형
-const PARROT_MAP = [
-  '......t......',
-  '......tt.....',
-  '.wb.......bw.',
-  'wbbb.....bbbw',
-  '.bbbbbbbbbbb.',
-  '..bbbbbbbbb..',
-  '...bbbbbbb...',
-  '....bbbbb....',
-  '....hhhhh....',
-  '....hehge....',
-  '.....yyy.....',
-  '......y......',
-];
-const PARROT_PAL_G: Record<string, string> = {
-  t: '#2f9c46',
-  w: '#bfefff',
-  b: '#3fd45a',
-  h: '#ff5340',
-  e: '#1a2030',
-  g: '#ff5340',
-  y: '#ffd23a',
-};
-const PARROT_PAL_R: Record<string, string> = {
-  t: '#c03a2a',
-  w: '#ffe9b0',
-  b: '#ff6a4a',
-  h: '#3f9cff',
-  e: '#1a2030',
-  g: '#3f9cff',
-  y: '#ffd23a',
-};
+function parrotTexture(
+  scene: Phaser.Scene,
+  key: string,
+  plumage: string,
+  shadow: string,
+  face: string,
+): void {
+  const [c, ctx] = canvas(44, 40);
+  const wing = ctx.createLinearGradient(0, 4, 0, 31);
+  wing.addColorStop(0, '#f4ffff');
+  wing.addColorStop(0.24, plumage);
+  wing.addColorStop(1, shadow);
+
+  ctx.save();
+  ctx.shadowColor = plumage;
+  ctx.shadowBlur = 7;
+  ctx.fillStyle = wing;
+  ctx.beginPath();
+  ctx.moveTo(21, 14);
+  ctx.bezierCurveTo(15, 6, 6, 2, 1, 6);
+  ctx.bezierCurveTo(5, 17, 12, 23, 21, 26);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(23, 14);
+  ctx.bezierCurveTo(29, 6, 38, 2, 43, 6);
+  ctx.bezierCurveTo(39, 17, 32, 23, 23, 26);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  const body = ctx.createLinearGradient(16, 10, 29, 34);
+  body.addColorStop(0, '#ffffff');
+  body.addColorStop(0.18, face);
+  body.addColorStop(0.48, plumage);
+  body.addColorStop(1, shadow);
+  ctx.fillStyle = body;
+  ctx.beginPath();
+  ctx.ellipse(22, 22, 9, 14, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = plumage;
+  ctx.beginPath();
+  ctx.moveTo(18, 31);
+  ctx.lineTo(20, 40);
+  ctx.lineTo(23, 32);
+  ctx.lineTo(27, 39);
+  ctx.lineTo(26, 30);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = '#fff6d8';
+  ctx.beginPath();
+  ctx.arc(22, 13, 6.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#13263a';
+  ctx.beginPath();
+  ctx.arc(24.1, 12.2, 1.35, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#ffbd35';
+  ctx.beginPath();
+  ctx.moveTo(27.2, 14);
+  ctx.lineTo(35, 16.5);
+  ctx.lineTo(27, 18.2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.65)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(6, 8);
+  ctx.quadraticCurveTo(13, 15, 19, 17);
+  ctx.moveTo(38, 8);
+  ctx.quadraticCurveTo(31, 15, 25, 17);
+  ctx.stroke();
+  addCanvasTexture(scene, key, c);
+}
 
 /** 초록 산 배경 — 필살기 중 정지 화면(사용자 지시: 스크롤 없음), 화면 크기 640px 한 장 */
 function jwMountains(): HTMLCanvasElement {
   const W = 360;
   const H = 640;
   const [c, ctx] = canvas(W, H);
-  // 하늘 → 능선 기저색 (그라디언트는 시각 검증된 톤 유지)
-  const sky = ctx.createLinearGradient(0, 0, 0, 1280);
-  sky.addColorStop(0, '#aee8ff');
-  sky.addColorStop(0.28, '#cef0c8');
-  sky.addColorStop(0.5, '#8fd48a');
-  sky.addColorStop(1, '#1b4a2c');
+  const sky = ctx.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0, '#79cfea');
+  sky.addColorStop(0.35, '#bfe9d2');
+  sky.addColorStop(0.68, '#659f7b');
+  sky.addColorStop(1, '#102a26');
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, W, H);
-  // 산등성이 3겹 (멀수록 밝게) — 픽셀 계단으로 도트 느낌
-  const ridges: [number, string, number, number][] = [
-    [300, '#7cc47a', 70, 0],
-    [400, '#4da45c', 95, 40],
-    [520, '#2e7c46', 120, 90],
-  ];
-  for (const [baseY, col, amp, ph] of ridges) {
-    ctx.fillStyle = col;
-    for (let x = 0; x < W; x += 4) {
-      const y =
-        baseY -
-        Math.abs(Math.sin((x + ph) * 0.021)) * amp -
-        Math.abs(Math.sin((x + ph) * 0.053)) * amp * 0.35;
-      ctx.fillRect(x, Math.round(y / 4) * 4, 4, H);
+
+  const sun = ctx.createRadialGradient(282, 118, 4, 282, 118, 122);
+  sun.addColorStop(0, 'rgba(255,252,213,0.98)');
+  sun.addColorStop(0.12, 'rgba(223,255,232,0.5)');
+  sun.addColorStop(1, 'rgba(180,245,225,0)');
+  ctx.fillStyle = sun;
+  ctx.fillRect(150, 0, 210, 260);
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  for (let i = 0; i < 6; i++) {
+    const x = 190 + i * 34;
+    const ray = ctx.createLinearGradient(x, 60, x - 120, 520);
+    ray.addColorStop(0, 'rgba(226,255,241,0.17)');
+    ray.addColorStop(1, 'rgba(226,255,241,0)');
+    ctx.fillStyle = ray;
+    ctx.beginPath();
+    ctx.moveTo(x, 50);
+    ctx.lineTo(x + 18, 50);
+    ctx.lineTo(x - 66, H);
+    ctx.lineTo(x - 124, H);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+
+  const ridge = (baseY: number, amp: number, color: string, phase: number): void => {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(0, H);
+    ctx.lineTo(0, baseY);
+    for (let x = 0; x <= W; x += 4) {
+      const broad = Math.sin((x + phase) * 0.022) * amp;
+      const detail = Math.sin((x + phase * 0.7) * 0.061) * amp * 0.24;
+      const crown = Math.abs(Math.sin((x + phase) * 0.012)) * amp * 0.32;
+      ctx.lineTo(x, baseY - broad - detail - crown);
     }
+    ctx.lineTo(W, H);
+    ctx.closePath();
+    ctx.fill();
+  };
+
+  ridge(280, 42, '#79b99a', 12);
+  ridge(372, 64, '#3e8065', 96);
+
+  const mist = ctx.createLinearGradient(0, 330, 0, 470);
+  mist.addColorStop(0, 'rgba(221,255,241,0)');
+  mist.addColorStop(0.45, 'rgba(221,255,241,0.28)');
+  mist.addColorStop(1, 'rgba(221,255,241,0)');
+  ctx.fillStyle = mist;
+  ctx.fillRect(0, 300, W, 190);
+
+  ridge(485, 90, '#1f5949', 184);
+  ridge(575, 74, '#113b35', 35);
+
+  for (let i = 0; i < 34; i++) {
+    const x = (i * 73 + 19) % W;
+    const y = 500 + ((i * 47) % 126);
+    const h = 13 + ((i * 11) % 22);
+    ctx.fillStyle = i % 3 === 0 ? '#0d302c' : '#123c34';
+    ctx.beginPath();
+    ctx.moveTo(x, y - h);
+    ctx.lineTo(x - h * 0.32, y);
+    ctx.lineTo(x + h * 0.32, y);
+    ctx.closePath();
+    ctx.fill();
   }
-  // 능선 나무 점
-  ctx.fillStyle = '#153c24';
-  for (let i = 0; i < 90; i++) {
-    const x = Math.floor(Math.random() * W);
-    const y = 430 + Math.floor(Math.random() * 206);
-    ctx.fillRect(x, y, 3, 4);
-  }
+
+  const foregroundMist = ctx.createLinearGradient(0, H - 130, 0, H);
+  foregroundMist.addColorStop(0, 'rgba(128,218,189,0)');
+  foregroundMist.addColorStop(1, 'rgba(18,61,52,0.68)');
+  ctx.fillStyle = foregroundMist;
+  ctx.fillRect(0, H - 130, W, 130);
   return c;
 }
 
@@ -810,6 +903,457 @@ function smoothTexture(
   const [c, ctx] = canvas(w, h);
   draw(ctx, w, h);
   addCanvasTexture(scene, key, c);
+}
+
+type ModernIconFrame = 'token' | 'panel' | 'none';
+
+function roundedPanelPath(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+): void {
+  const r = Math.min(radius, width / 2, height / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + width - r, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+  ctx.lineTo(x + width, y + height - r);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+  ctx.lineTo(x + r, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function hexPanelPath(ctx: CanvasRenderingContext2D, cx: number, cy: number, radius: number): void {
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const angle = -Math.PI / 2 + (i / 6) * Math.PI * 2;
+    const x = cx + Math.cos(angle) * radius;
+    const y = cy + Math.sin(angle) * radius;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+}
+
+function modernNeonIcon(
+  scene: Phaser.Scene,
+  key: string,
+  size: number,
+  primary: string,
+  accent: string,
+  frame: ModernIconFrame,
+  drawGlyph: (ctx: CanvasRenderingContext2D, cx: number, cy: number) => void,
+): void {
+  smoothTexture(scene, key, size, size, (ctx, w, h) => {
+    const cx = w / 2;
+    const cy = h / 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    const aura = ctx.createRadialGradient(cx, cy, 2, cx, cy, size * 0.49);
+    aura.addColorStop(0, `${primary}52`);
+    aura.addColorStop(0.58, `${primary}1c`);
+    aura.addColorStop(1, `${primary}00`);
+    ctx.fillStyle = aura;
+    ctx.fillRect(0, 0, w, h);
+
+    if (frame !== 'none') {
+      ctx.save();
+      ctx.shadowColor = primary;
+      ctx.shadowBlur = size * 0.12;
+      const shell = ctx.createLinearGradient(size * 0.18, size * 0.12, size * 0.82, size * 0.88);
+      shell.addColorStop(0, '#172641');
+      shell.addColorStop(0.5, '#081321');
+      shell.addColorStop(1, '#030812');
+      ctx.fillStyle = shell;
+      if (frame === 'token') hexPanelPath(ctx, cx, cy, size * 0.39);
+      else roundedPanelPath(ctx, size * 0.1, size * 0.1, size * 0.8, size * 0.8, size * 0.16);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = primary;
+      ctx.lineWidth = size * 0.045;
+      ctx.stroke();
+      ctx.globalAlpha = 0.55;
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = size * 0.018;
+      if (frame === 'token') hexPanelPath(ctx, cx, cy, size * 0.32);
+      else roundedPanelPath(ctx, size * 0.15, size * 0.15, size * 0.7, size * 0.7, size * 0.12);
+      ctx.stroke();
+      ctx.restore();
+
+      if (frame === 'panel') {
+        ctx.save();
+        ctx.globalAlpha = 0.5;
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 1.4;
+        for (const sx of [-1, 1] as const) {
+          for (const sy of [-1, 1] as const) {
+            ctx.beginPath();
+            ctx.moveTo(cx + sx * size * 0.26, cy + sy * size * 0.34);
+            ctx.lineTo(cx + sx * size * 0.34, cy + sy * size * 0.34);
+            ctx.lineTo(cx + sx * size * 0.34, cy + sy * size * 0.26);
+            ctx.stroke();
+          }
+        }
+        ctx.restore();
+      }
+    }
+
+    ctx.save();
+    ctx.shadowColor = primary;
+    ctx.shadowBlur = size * 0.09;
+    drawGlyph(ctx, cx, cy);
+    ctx.restore();
+  });
+}
+
+/** Smooth, high-contrast shop/pickup glyphs and weapon-state effects for mobile HUD use. */
+function modernInterfaceTextures(scene: Phaser.Scene): void {
+  modernNeonIcon(scene, 'pickup-credit', 56, '#ffc857', '#fff1a6', 'token', (ctx, cx, cy) => {
+    ctx.strokeStyle = '#fff3bd';
+    ctx.lineWidth = 4.2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 12.5, Math.PI * 0.28, Math.PI * 1.72);
+    ctx.stroke();
+    ctx.strokeStyle = '#ffc857';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(cx + 10, cy - 8);
+    ctx.lineTo(cx + 16, cy - 8);
+    ctx.moveTo(cx + 10, cy + 8);
+    ctx.lineTo(cx + 16, cy + 8);
+    ctx.stroke();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(cx - 5, cy - 6, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  modernNeonIcon(scene, 'pickup-repair', 56, '#55f29a', '#d8ffe6', 'token', (ctx, cx, cy) => {
+    ctx.fillStyle = 'rgba(29,107,78,0.82)';
+    ctx.strokeStyle = '#baffd5';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 16);
+    ctx.quadraticCurveTo(cx + 15, cy - 10, cx + 14, cy + 2);
+    ctx.quadraticCurveTo(cx + 10, cy + 14, cx, cy + 18);
+    ctx.quadraticCurveTo(cx - 10, cy + 14, cx - 14, cy + 2);
+    ctx.quadraticCurveTo(cx - 15, cy - 10, cx, cy - 16);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 4.4;
+    ctx.beginPath();
+    ctx.moveTo(cx - 7, cy);
+    ctx.lineTo(cx + 7, cy);
+    ctx.moveTo(cx, cy - 7);
+    ctx.lineTo(cx, cy + 7);
+    ctx.stroke();
+  });
+
+  modernNeonIcon(scene, 'pickup-coolant', 56, '#54dfff', '#dcfaff', 'token', (ctx, cx, cy) => {
+    ctx.fillStyle = 'rgba(35,128,174,0.72)';
+    ctx.strokeStyle = '#d8faff';
+    ctx.lineWidth = 2.8;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 17);
+    ctx.bezierCurveTo(cx + 5, cy - 8, cx + 13, cy - 1, cx + 13, cy + 7);
+    ctx.bezierCurveTo(cx + 13, cy + 17, cx - 13, cy + 17, cx - 13, cy + 7);
+    ctx.bezierCurveTo(cx - 13, cy - 1, cx - 5, cy - 8, cx, cy - 17);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2.6;
+    for (let i = 0; i < 3; i++) {
+      const angle = (i / 3) * Math.PI;
+      ctx.beginPath();
+      ctx.moveTo(cx - Math.cos(angle) * 7, cy - Math.sin(angle) * 7 + 4);
+      ctx.lineTo(cx + Math.cos(angle) * 7, cy + Math.sin(angle) * 7 + 4);
+      ctx.stroke();
+    }
+  });
+
+  modernNeonIcon(scene, 'pickup-super', 56, '#b78cff', '#ffe8ff', 'token', (ctx, cx, cy) => {
+    ctx.strokeStyle = '#e8d6ff';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, 17, 8, -0.45, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    for (let i = 0; i < 12; i++) {
+      const angle = -Math.PI / 2 + (i / 12) * Math.PI * 2;
+      const radius = i % 2 === 0 ? 13 : 6;
+      const x = cx + Math.cos(angle) * radius;
+      const y = cy + Math.sin(angle) * radius;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#9f66ff';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  modernNeonIcon(scene, 'icon-primary', 64, '#50cfff', '#e5fbff', 'panel', (ctx, cx, cy) => {
+    const body = ctx.createLinearGradient(cx, cy - 18, cx, cy + 17);
+    body.addColorStop(0, '#f0fdff');
+    body.addColorStop(0.45, '#53d9ff');
+    body.addColorStop(1, '#1768a8');
+    ctx.fillStyle = body;
+    ctx.beginPath();
+    ctx.moveTo(cx - 5, cy - 19);
+    ctx.lineTo(cx + 5, cy - 19);
+    ctx.lineTo(cx + 8, cy + 11);
+    ctx.lineTo(cx + 14, cy + 18);
+    ctx.lineTo(cx - 14, cy + 18);
+    ctx.lineTo(cx - 8, cy + 11);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#eaffff';
+    ctx.lineWidth = 2.2;
+    ctx.stroke();
+    ctx.fillStyle = '#071a34';
+    ctx.beginPath();
+    ctx.arc(cx, cy + 6, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  modernNeonIcon(scene, 'icon-secondary', 64, '#f08cff', '#ffeaff', 'panel', (ctx, cx, cy) => {
+    ctx.strokeStyle = '#ffe8ff';
+    ctx.lineWidth = 3.2;
+    ctx.beginPath();
+    ctx.moveTo(cx - 13, cy - 8);
+    ctx.quadraticCurveTo(cx, cy - 18, cx + 13, cy - 8);
+    ctx.stroke();
+    for (const side of [-1, 1] as const) {
+      const x = cx + side * 13;
+      const pod = ctx.createLinearGradient(x - 6, cy - 12, x + 6, cy + 15);
+      pod.addColorStop(0, '#fff1ff');
+      pod.addColorStop(0.4, '#dd71f2');
+      pod.addColorStop(1, '#642487');
+      ctx.fillStyle = pod;
+      roundedPanelPath(ctx, x - 6, cy - 10, 12, 25, 5);
+      ctx.fill();
+      ctx.strokeStyle = '#ffcaff';
+      ctx.lineWidth = 1.8;
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(x, cy - 4, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
+
+  modernNeonIcon(scene, 'icon-engine', 64, '#ff9b54', '#fff0c7', 'panel', (ctx, cx, cy) => {
+    ctx.strokeStyle = '#ffe9c4';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(cx, cy - 2, 15, 0, Math.PI * 2);
+    ctx.stroke();
+    for (let i = 0; i < 3; i++) {
+      const angle = -Math.PI / 2 + (i / 3) * Math.PI * 2;
+      ctx.save();
+      ctx.translate(cx, cy - 2);
+      ctx.rotate(angle);
+      const blade = ctx.createLinearGradient(0, 0, 14, 0);
+      blade.addColorStop(0, '#fff4d8');
+      blade.addColorStop(1, '#ff7b32');
+      ctx.fillStyle = blade;
+      ctx.beginPath();
+      ctx.moveTo(2, -2);
+      ctx.quadraticCurveTo(9, -8, 14, -4);
+      ctx.quadraticCurveTo(9, 2, 2, 3);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.fillStyle = '#fff9eb';
+    ctx.beginPath();
+    ctx.arc(cx, cy - 2, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#ffad5c';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(cx - 8, cy + 18);
+    ctx.lineTo(cx, cy + 24);
+    ctx.lineTo(cx + 8, cy + 18);
+    ctx.stroke();
+  });
+
+  modernNeonIcon(scene, 'icon-cooler', 64, '#58e8ff', '#efffff', 'panel', (ctx, cx, cy) => {
+    ctx.strokeStyle = '#eaffff';
+    ctx.lineWidth = 3;
+    roundedPanelPath(ctx, cx - 16, cy - 17, 32, 34, 7);
+    ctx.stroke();
+    ctx.strokeStyle = '#54dfff';
+    ctx.lineWidth = 2.5;
+    for (let x = -9; x <= 9; x += 6) {
+      ctx.beginPath();
+      ctx.moveTo(cx + x, cy - 12);
+      ctx.lineTo(cx + x, cy + 12);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#baf8ff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - 20, cy - 8);
+    ctx.lineTo(cx - 16, cy - 8);
+    ctx.moveTo(cx + 16, cy + 8);
+    ctx.lineTo(cx + 20, cy + 8);
+    ctx.stroke();
+  });
+
+  modernNeonIcon(scene, 'icon-armor', 64, '#6ff0a5', '#e9fff1', 'panel', (ctx, cx, cy) => {
+    const shield = ctx.createLinearGradient(cx - 12, cy - 18, cx + 13, cy + 18);
+    shield.addColorStop(0, '#effff5');
+    shield.addColorStop(0.42, '#5ee69a');
+    shield.addColorStop(1, '#176b55');
+    ctx.fillStyle = shield;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 20);
+    ctx.quadraticCurveTo(cx + 17, cy - 14, cx + 16, cy + 1);
+    ctx.quadraticCurveTo(cx + 12, cy + 16, cx, cy + 22);
+    ctx.quadraticCurveTo(cx - 12, cy + 16, cx - 16, cy + 1);
+    ctx.quadraticCurveTo(cx - 17, cy - 14, cx, cy - 20);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#eafff2';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    ctx.strokeStyle = '#165a4a';
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 12);
+    ctx.lineTo(cx, cy + 14);
+    ctx.moveTo(cx - 9, cy - 4);
+    ctx.lineTo(cx + 9, cy - 4);
+    ctx.stroke();
+  });
+
+  modernNeonIcon(scene, 'fx-rail-charge', 64, '#88eaff', '#ffffff', 'none', (ctx, cx, cy) => {
+    const beam = ctx.createLinearGradient(cx, cy - 30, cx, cy + 30);
+    beam.addColorStop(0, 'rgba(125,225,255,0)');
+    beam.addColorStop(0.35, 'rgba(125,225,255,0.72)');
+    beam.addColorStop(0.5, '#ffffff');
+    beam.addColorStop(0.65, 'rgba(125,225,255,0.72)');
+    beam.addColorStop(1, 'rgba(125,225,255,0)');
+    ctx.strokeStyle = beam;
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 29);
+    ctx.lineTo(cx, cy + 29);
+    ctx.stroke();
+    ctx.strokeStyle = '#a8efff';
+    ctx.lineWidth = 2.2;
+    for (const y of [-13, 0, 13]) {
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + y, 19 - Math.abs(y) * 0.3, 5, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  });
+
+  modernNeonIcon(scene, 'fx-lock-reticle', 64, '#ff715f', '#ffe2cc', 'none', (ctx, cx, cy) => {
+    ctx.strokeStyle = '#ff8c70';
+    ctx.lineWidth = 2.6;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.arc(cx, cy, 19, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.strokeStyle = '#fff0df';
+    ctx.lineWidth = 3;
+    for (const angle of [0, Math.PI / 2, Math.PI, (Math.PI * 3) / 2]) {
+      ctx.beginPath();
+      ctx.arc(cx, cy, 27, angle - 0.25, angle + 0.25);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#ff715f';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - 10, cy);
+    ctx.lineTo(cx + 10, cy);
+    ctx.moveTo(cx, cy - 10);
+    ctx.lineTo(cx, cy + 10);
+    ctx.stroke();
+  });
+
+  modernNeonIcon(scene, 'fx-plasma-bloom', 64, '#d27cff', '#80eaff', 'none', (ctx, cx, cy) => {
+    const bloom = ctx.createRadialGradient(cx, cy, 0, cx, cy, 28);
+    bloom.addColorStop(0, '#ffffff');
+    bloom.addColorStop(0.18, 'rgba(116,234,255,0.95)');
+    bloom.addColorStop(0.48, 'rgba(202,93,255,0.6)');
+    bloom.addColorStop(1, 'rgba(105,37,190,0)');
+    ctx.fillStyle = bloom;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 28, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#ebc2ff';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 6; i++) {
+      const angle = (i / 6) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.ellipse(
+        cx + Math.cos(angle) * 12,
+        cy + Math.sin(angle) * 12,
+        13,
+        5,
+        angle,
+        0,
+        Math.PI * 2,
+      );
+      ctx.stroke();
+    }
+  });
+
+  modernNeonIcon(scene, 'fx-chain-node', 48, '#68f2ff', '#ffffff', 'none', (ctx, cx, cy) => {
+    const node = ctx.createRadialGradient(cx - 3, cy - 4, 0, cx, cy, 13);
+    node.addColorStop(0, '#ffffff');
+    node.addColorStop(0.35, '#74efff');
+    node.addColorStop(1, 'rgba(27,121,210,0)');
+    ctx.fillStyle = node;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#d9ffff';
+    ctx.lineWidth = 2.4;
+    for (let i = 0; i < 5; i++) {
+      const angle = (i / 5) * Math.PI * 2 - 0.4;
+      const innerX = cx + Math.cos(angle) * 7;
+      const innerY = cy + Math.sin(angle) * 7;
+      const bendX = cx + Math.cos(angle + 0.22) * 15;
+      const bendY = cy + Math.sin(angle + 0.22) * 15;
+      const outerX = cx + Math.cos(angle) * 22;
+      const outerY = cy + Math.sin(angle) * 22;
+      ctx.beginPath();
+      ctx.moveTo(innerX, innerY);
+      ctx.lineTo(bendX, bendY);
+      ctx.lineTo(outerX, outerY);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+    ctx.fill();
+  });
 }
 
 /** High-resolution modular boss bodies and reusable hardpoints. */
@@ -1402,6 +1946,7 @@ export function generateTextures(scene: Phaser.Scene): void {
   modernEnemySheet(scene, 'az-small', 48, 48, 'light');
   modernEnemySheet(scene, 'az-medium', 96, 48, 'medium');
   modernEnemySheet(scene, 'az-big', 96, 96, 'heavy');
+  modernInterfaceTextures(scene);
   // 함선
   addCanvasTexture(scene, 'ship-player', enhance(pixmap(PLAYER_MAP, PLAYER_PAL, 2)));
   addCanvasTexture(scene, 'ship-e1', enhance(pixmap(E1_MAP, E1_PAL, 2)));
@@ -1657,8 +2202,8 @@ export function generateTextures(scene: Phaser.Scene): void {
     addCanvasTexture(scene, 'b-missile', enhance(pixmap(MISSILE_MAP, PAL, 2)));
   }
   // 앵무새떼 + 초록 산 (어린지우 필살기)
-  addCanvasTexture(scene, 'parrot-g', enhance(pixmap(PARROT_MAP, PARROT_PAL_G, 2)));
-  addCanvasTexture(scene, 'parrot-r', enhance(pixmap(PARROT_MAP, PARROT_PAL_R, 2)));
+  parrotTexture(scene, 'parrot-g', '#32d678', '#08704e', '#f05748');
+  parrotTexture(scene, 'parrot-r', '#ff654b', '#a42638', '#4dc9ef');
   addCanvasTexture(scene, 'jw-mountains', jwMountains());
 
   // 뼈다귀 (지우큰애비 후방무기) — 벽에 튕기는 리코셰

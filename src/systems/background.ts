@@ -15,6 +15,10 @@ export interface BackgroundConfig {
     | 'blackhole'
     | 'inside';
   nebulaAlpha: number;
+  artKey?: string;
+  overlayTint?: string;
+  parallaxStrength?: number;
+  landmarkMode?: 'cover' | 'contain' | 'stretch';
 }
 
 export class SpaceBackground {
@@ -28,6 +32,7 @@ export class SpaceBackground {
     baseDepth = 0,
     config: BackgroundConfig = { theme: 'nebula', nebulaAlpha: 0.85 },
   ) {
+    const parallaxStrength = config.parallaxStrength ?? 1;
     const add = (
       key: string,
       depth: number,
@@ -42,7 +47,7 @@ export class SpaceBackground {
         .setDepth(depth)
         .setAlpha(alpha);
       if (blend) sprite.setBlendMode(Phaser.BlendModes.ADD);
-      this.layers.push({ sprite, speed, hueCycle });
+      this.layers.push({ sprite, speed: speed * parallaxStrength, hueCycle });
     };
     const decor = (
       key: string,
@@ -66,23 +71,34 @@ export class SpaceBackground {
       .setOrigin(0, 0)
       .setDepth(baseDepth - 0.05);
     this.decors.push({ img: underlay, rot: 0, pulse: 0 });
-    const cinematicTint: Partial<Record<BackgroundConfig['theme'], number>> = {
-      protostar: 0xffb57a,
-      mainseq: 0xffdd91,
-      asteroids: 0xb9c2d0,
-      redgiant: 0xff6b55,
-      supernova: 0xe7a4ff,
-      blackhole: 0x8c7be8,
-      inside: 0x72d6bb,
-    };
-    const cinematic = scene.add
-      .image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg-cinematic-nebula')
-      .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
-      .setDepth(baseDepth - 0.04)
-      .setAlpha(config.theme === 'blackhole' ? 0.38 : 0.66);
-    const backdropTint = cinematicTint[config.theme];
-    if (backdropTint) cinematic.setTint(backdropTint);
-    this.decors.push({ img: cinematic, rot: 0, pulse: 0 });
+    const overlayTint = config.overlayTint
+      ? Number.parseInt(config.overlayTint.replace('#', ''), 16)
+      : undefined;
+
+    // Sector paintings are authored as a vertically mirrored two-screen strip. TileSprite lets the
+    // flight path move continuously without the hard seam a single stretched image would create.
+    const hasAuthoredArt = Boolean(config.artKey && scene.textures.exists(config.artKey));
+    if (config.artKey && hasAuthoredArt) {
+      const art = scene.add
+        .tileSprite(0, 0, GAME_WIDTH, GAME_HEIGHT, config.artKey)
+        .setOrigin(0, 0)
+        .setDepth(baseDepth - 0.04);
+      const source = art.texture.getSourceImage() as { width?: number; height?: number };
+      const sourceWidth = Math.max(1, source.width ?? art.texture.get().width);
+      const sourceHeight = Math.max(1, source.height ?? art.texture.get().height);
+      const authoredFrameHeight =
+        sourceHeight >= sourceWidth * 2.5 ? sourceHeight / 2 : sourceHeight;
+      const scaleX = GAME_WIDTH / sourceWidth;
+      const scaleY = GAME_HEIGHT / authoredFrameHeight;
+      const mode = config.landmarkMode ?? 'cover';
+      if (mode === 'stretch') art.setTileScale(scaleX, scaleY);
+      else
+        art.setTileScale(mode === 'contain' ? Math.min(scaleX, scaleY) : Math.max(scaleX, scaleY));
+      if (overlayTint !== undefined && Number.isFinite(overlayTint)) art.setTint(overlayTint);
+      this.layers.push({ sprite: art, speed: 0.2 * parallaxStrength });
+    } else if (overlayTint !== undefined && Number.isFinite(overlayTint)) {
+      underlay.setTint(overlayTint);
+    }
     const starTint: Record<string, number> = {
       protostar: 0xffd8b0,
       mainseq: 0xfff0c0,
@@ -93,6 +109,19 @@ export class SpaceBackground {
     const tint = starTint[config.theme];
 
     const a = config.nebulaAlpha;
+    if (hasAuthoredArt) {
+      // Keep the commissioned painting dominant. A restrained moving dust/star veil supplies depth
+      // without turning every location back into the same procedural nebula.
+      if (config.theme === 'supernova' || config.theme === 'blackhole') {
+        add('bg-stars-near', baseDepth + 0.02, 0.72, 0.16);
+      } else if (config.theme === 'redgiant' || config.theme === 'mainseq') {
+        add('bg-sunstreaks', baseDepth + 0.02, 0.3, 0.12, true);
+      } else {
+        add('bg-debris', baseDepth + 0.02, 0.38, 0.1);
+      }
+      this.applyStarTint(tint);
+      return;
+    }
     switch (config.theme) {
       case 'protostar':
         add('bg-nebula-warm', baseDepth, 0.12, a, true);

@@ -9,6 +9,49 @@ const levels10 = <T extends z.ZodTypeAny>(item: T) => z.array(item).length(10);
 
 const damageTypeSchema = z.enum(['kinetic', 'energy', 'plasma', 'electric', 'explosive']);
 const impactFxSchema = z.enum(['spark', 'pulse', 'plasma', 'arc', 'scorch', 'blast']);
+const weaponArchetypeSchema = z.enum([
+  'pulse',
+  'vulcan',
+  'missile',
+  'proton',
+  'laser',
+  'light',
+  'rail',
+  'scatter',
+]);
+const weaponMechanicSchema = z.enum([
+  'capacitor-burst',
+  'rotary-spin',
+  'lock-cluster',
+  'expanding-plasma',
+  'sustained-beam',
+  'chain-lightning',
+  'charged-rail',
+  'close-scatter',
+]);
+const weaponRolesSchema = z.object({
+  boss: z.string().min(1),
+  mob: z.string().min(1),
+  screen: z.enum([
+    'rhythmic-burst',
+    'dense-stream',
+    'sparse-homing',
+    'growing-orbs',
+    'continuous-lane',
+    'single-flash',
+    'single-lance',
+    'close-cone',
+  ]),
+});
+const weaponHeatSchema = z.object({
+  perTrigger: z.number().nonnegative(),
+  coolPerSecond: z.number().positive(),
+  softCap: z.number().min(0).max(1),
+  hardCap: z.literal(1),
+  lockout: z.number().nonnegative(),
+  hotOutputMultiplier: z.number().positive(),
+  hotSpreadMultiplier: z.number().positive(),
+});
 const guidanceSchema = z.object({
   /** Cruise speed in logical pixels per second. */
   speed: z.number().positive(),
@@ -74,6 +117,11 @@ export const weaponsSchema = z.object({
     z.string(),
     z.object({
       name: z.string(),
+      archetype: weaponArchetypeSchema,
+      variant: z.string().min(1),
+      mechanic: weaponMechanicSchema,
+      roles: weaponRolesSchema,
+      heat: weaponHeatSchema,
       short: z.string().max(6),
       price: z.number().int().min(0),
       descKey: z.string(),
@@ -430,6 +478,14 @@ const backgroundSchema = z.object({
     'inside',
   ]),
   nebulaAlpha: z.number().min(0).max(1),
+  /** Optional authored full-screen art. Runtime texture availability is checked by SpaceBackground. */
+  artKey: z.string().min(1).optional(),
+  /** Hex colour grade applied to authored art (or the procedural underlay when art is unavailable). */
+  overlayTint: hex.optional(),
+  /** Multiplier for the procedural foreground/far-field parallax layers. */
+  parallaxStrength: z.number().min(0).max(3).optional(),
+  /** How authored art is scaled into the logical game viewport. */
+  landmarkMode: z.enum(['cover', 'contain', 'stretch']).optional(),
 });
 
 /** 스테이지·섹터 기믹 — 기존 단일 gimmick과 복합 sector 모두가 공유한다. */
@@ -601,6 +657,123 @@ export const equipmentSchema = z.object({
   sidekick: z.record(z.string(), z.object({ ...equipBase, kind: z.enum(['pods', 'satellite']) })),
 });
 
+const progressionPriceSchema = z.object({
+  purchase: z.number().int().nonnegative(),
+  upgradeBase: z.number().int().nonnegative(),
+  growth: z.number().min(1).max(4),
+  roundTo: z.number().int().positive().max(1000),
+});
+
+const progressionCatalogBase = {
+  id: z.string().min(1),
+  name: z.string().min(1),
+  description: z.string().min(1),
+  unlockStage: z.number().int().min(1),
+  maxTier: z.number().int().min(1).max(10),
+  price: progressionPriceSchema,
+};
+
+const engineCatalogItemSchema = z.object({
+  ...progressionCatalogBase,
+  slot: z.literal('engine'),
+  stats: z.object({
+    speed: z.number().positive(),
+    speedPerTier: z.number().nonnegative(),
+  }),
+});
+
+const coolerCatalogItemSchema = z.object({
+  ...progressionCatalogBase,
+  slot: z.literal('cooler'),
+  stats: z.object({
+    cooling: z.number().positive(),
+    coolingPerTier: z.number().nonnegative(),
+    heatCapacity: z.number().positive(),
+    heatCapacityPerTier: z.number().nonnegative(),
+  }),
+});
+
+const armorCatalogItemSchema = z.object({
+  ...progressionCatalogBase,
+  slot: z.literal('armor'),
+  stats: z.object({
+    hp: z.number().positive(),
+    hpPerTier: z.number().nonnegative(),
+    regen: z.number().nonnegative(),
+    regenPerTier: z.number().nonnegative(),
+  }),
+});
+
+const secondaryCatalogItemSchema = z.object({
+  ...progressionCatalogBase,
+  slot: z.literal('secondary'),
+  stats: z.object({
+    damage: z.number().positive(),
+    damagePerTier: z.number().nonnegative(),
+    fireRate: z.number().positive(),
+    fireRatePerTier: z.number().nonnegative(),
+    heat: z.number().nonnegative(),
+    heatPerTier: z.number(),
+    projectileSpeed: z.number().positive(),
+    projectileSpeedPerTier: z.number().nonnegative(),
+  }),
+});
+
+export const equipmentCatalogSchema = z
+  .object({
+    version: z.literal(1),
+    defaults: z.object({
+      primary: z.string().min(1),
+      secondary: z.string().min(1),
+      engine: z.string().min(1),
+      cooler: z.string().min(1),
+      armor: z.string().min(1),
+    }),
+    stageRewards: z.object({
+      base: z.number().int().nonnegative(),
+      perStage: z.number().int().nonnegative(),
+      repeatMultiplier: z.number().min(0).max(1),
+      firstClearMultiplier: z.number().min(1),
+      flawlessBonus: z.number().min(0).max(1),
+      difficulty: z.object({
+        easy: z.number().positive(),
+        normal: z.number().positive(),
+        hard: z.number().positive(),
+      }),
+      roundTo: z.number().int().positive().max(1000),
+    }),
+    engines: z.array(engineCatalogItemSchema).length(6),
+    coolers: z.array(coolerCatalogItemSchema).length(6),
+    armors: z.array(armorCatalogItemSchema).length(6),
+    secondaries: z.array(secondaryCatalogItemSchema).min(8).max(12),
+  })
+  .superRefine((catalog, ctx) => {
+    const allItems = [
+      ...catalog.engines,
+      ...catalog.coolers,
+      ...catalog.armors,
+      ...catalog.secondaries,
+    ];
+    const ids = new Set<string>();
+    for (const item of allItems) {
+      if (ids.has(item.id)) {
+        ctx.addIssue({ code: 'custom', path: [item.slot, item.id], message: 'duplicate item id' });
+      }
+      ids.add(item.id);
+    }
+
+    for (const slot of ['secondary', 'engine', 'cooler', 'armor'] as const) {
+      const item = allItems.find((candidate) => candidate.id === catalog.defaults[slot]);
+      if (!item || item.slot !== slot) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['defaults', slot],
+          message: `default ${slot} must reference a ${slot} catalog item`,
+        });
+      }
+    }
+  });
+
 export const i18nSchema = z.record(z.string(), z.string());
 
 export type WeaponsData = z.infer<typeof weaponsSchema>;
@@ -619,4 +792,11 @@ export type LevelsData = z.infer<typeof levelsSchema>;
 export type LevelData = LevelsData['levels'][number];
 export type EquipmentData = z.infer<typeof equipmentSchema>;
 export type EquipItem = EquipmentData['rear'][string];
+export type EquipmentCatalogData = z.infer<typeof equipmentCatalogSchema>;
+export type EquipmentCatalogItem =
+  | EquipmentCatalogData['engines'][number]
+  | EquipmentCatalogData['coolers'][number]
+  | EquipmentCatalogData['armors'][number]
+  | EquipmentCatalogData['secondaries'][number];
+export type ProgressionPrice = z.infer<typeof progressionPriceSchema>;
 export type I18nData = z.infer<typeof i18nSchema>;

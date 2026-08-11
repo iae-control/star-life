@@ -11,7 +11,31 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   preload(): void {
-    this.load.image('bg-cinematic-nebula', 'assets/art/backgrounds/stellar-nursery-v2.webp');
+    const sectorBackgrounds = [
+      'bg-sector-nebula-water-garden',
+      'bg-sector-nebula-ice-front',
+      'bg-sector-nebula-bonus-lane',
+      'bg-sector-protostar-volcanic-forge',
+      'bg-sector-protostar-desert-kiln',
+      'bg-sector-protostar-rock-belt',
+      'bg-sector-protostar-bonus-drift',
+      'bg-sector-mainseq-prominence-sea',
+      'bg-sector-mainseq-electric-crown',
+      'bg-sector-mainseq-bonus-orbit',
+      'bg-sector-redgiant-betelgeuse',
+      'bg-sector-redgiant-uy-scuti',
+      'bg-sector-redgiant-bonus-shear',
+      'bg-sector-supernova-meteor-field',
+      'bg-sector-supernova-electric-storm',
+      'bg-sector-supernova-bonus-eye',
+      'bg-sector-blackhole-rock-graveyard',
+      'bg-sector-blackhole-event-horizon',
+      'bg-sector-blackhole-frozen-core',
+      'bg-sector-blackhole-final-bonus',
+    ] as const;
+    for (const key of sectorBackgrounds) {
+      this.load.image(key, `assets/art/backgrounds/sectors/${key}.webp`);
+    }
     this.load.image('hero-fighter-v2', 'assets/art/ships/hero-fighter-v2.webp');
 
     // ansimuz Spaceship Shooter / Starfighter (자유 라이선스, 크레딧 감사 표기)

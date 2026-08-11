@@ -79,8 +79,8 @@ export const SUPER = {
   enemyHitCooldown: 0.06,
   endAt: 3.4,
   endInvuln: 0.9,
-  bubble1: 'hey! I am Jungjioo!!', // 정본 표기 — 변경 금지
-  bubble2: 'Spid!!', // 정본 표기 — 변경 금지
+  bubble1: 'Hey I am Jungjioo!', // 주인님 지정 정본 — 대소문자와 철자까지 변경 금지
+  bubble2: '우린 엄청 빨라! Spid!!', // 주인님 지정 정본 — Spid는 오타가 아님
   bubble1Until: 1.0,
   bubble2Until: 2.1,
 } as const;
