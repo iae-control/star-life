@@ -197,9 +197,16 @@ describe('data integrity (참조 무결성)', () => {
   });
 
   it('level/boss i18n keys exist in ko table', () => {
+    const chapterCode = /^SL-(NB|PS|MS|RG|SN|BH)-\d{3}$/;
     for (const level of DATA.levels.levels) {
       expect(DATA.i18n.ko[level.nameKey], level.nameKey).toBeDefined();
       expect(DATA.i18n.ko[level.taglineKey], level.taglineKey).toBeDefined();
+      expect(DATA.i18n.ko[level.nameKey], `${level.nameKey} ko catalogue code`).toMatch(
+        chapterCode,
+      );
+      expect(DATA.i18n.en[level.nameKey], `${level.nameKey} en catalogue code`).toMatch(
+        chapterCode,
+      );
     }
     for (const boss of Object.values(DATA.bosses.bosses)) {
       expect(DATA.i18n.ko[boss.nameKey], boss.nameKey).toBeDefined();
