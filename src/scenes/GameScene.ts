@@ -144,9 +144,71 @@ interface BossState {
   wanderTx: number;
   wanderTy: number;
   cx: number;
+  rotation: number;
   parts: BossPart[];
   img: Phaser.GameObjects.Image;
   glow: Phaser.GameObjects.Image;
+}
+
+/** Optional presentation metadata is intentionally read defensively so older saves/data remain valid. */
+interface BossPresentation {
+  kind: 'warship' | 'scrolling-warship' | 'snail';
+  displayWidth: number;
+  displayHeight: number;
+  movementScript: string;
+}
+
+interface SnailSpecialConfig {
+  rageChargeMs: number;
+  rageForcedDamage: number;
+  barrageCount: number;
+  huntIntervalMs: number;
+  huntForcedDamage: number;
+  huntDashCount: number;
+  speech: string;
+}
+
+type ExtendedBossData = BossData & {
+  presentation?: BossPresentation;
+  snailSpecials?: SnailSpecialConfig;
+};
+
+type SnailSpecialPhase =
+  | 'rage-angry'
+  | 'rage-retract'
+  | 'rage-charge'
+  | 'rage-burst'
+  | 'rage-recover'
+  | 'hunt-speech'
+  | 'hunt-dash'
+  | 'hunt-recover';
+
+interface SnailSpecialState {
+  kind: 'rage' | 'hunt';
+  phase: SnailSpecialPhase;
+  phaseT: number;
+  totalT: number;
+  damageApplied: boolean;
+  dashIndex: number;
+  dashCount: number;
+  startX: number;
+  startY: number;
+  targetX: number;
+  targetY: number;
+  pulseIndex: number;
+  eyes: Phaser.GameObjects.Graphics;
+  shell: Phaser.GameObjects.Image | Phaser.GameObjects.Graphics;
+}
+
+interface SnailBarrageVisual {
+  img: Phaser.GameObjects.Image;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+  maxLife: number;
+  spin: number;
 }
 interface WeaponTarget {
   entity: object;
@@ -403,6 +465,10 @@ export class GameScene extends Phaser.Scene {
   private textPool: Phaser.GameObjects.Text[] = [];
   private boss: BossState | null = null;
   private bossLinks!: Phaser.GameObjects.Graphics;
+  private snailSpecial: SnailSpecialState | null = null;
+  private snailBarrage: SnailBarrageVisual[] = [];
+  private snailHuntCooldown = 0;
+  private snailRageQueued = false;
   private sp: SuperState | null = null;
   private ps: RacketState | null = null;
   private jw: JiwooState | null = null;
@@ -581,6 +647,10 @@ export class GameScene extends Phaser.Scene {
     this.texts = [];
     this.textPool = [];
     this.boss = null;
+    this.snailSpecial = null;
+    this.snailBarrage = [];
+    this.snailHuntCooldown = 0;
+    this.snailRageQueued = false;
     this.sp = null;
     this.ps = null;
     this.jw = null;
@@ -677,6 +747,19 @@ export class GameScene extends Phaser.Scene {
       this.auto = q.get('auto') === '1';
       this.god = this.auto || q.get('god') === '1';
       this.debug = q.get('debug') !== null;
+      const previewBoss = q.get('boss');
+      if (previewBoss && previewBoss in DATA.bosses.bosses) {
+        const levelIndex = DATA.levels.levels.findIndex(
+          (candidate) => candidate.boss === previewBoss,
+        );
+        if (levelIndex >= 0) {
+          this.session.level = levelIndex + 1;
+          this.session.levelWave = levelWaveCount(levelIndex);
+          this.session.wave = Math.max(this.session.wave, this.session.levelWave);
+          this.auto = true;
+          this.god = true;
+        }
+      }
     }
 
     const li = Math.min(this.session.level - 1, DATA.levels.levels.length - 1);
@@ -817,7 +900,14 @@ export class GameScene extends Phaser.Scene {
       this.session.wave = Math.max(0, this.session.wave - 1);
     }
     if (!this.auto && !document.hasFocus()) this.time.delayedCall(0, () => this.togglePause(true));
-    this.nextWave();
+    if (
+      import.meta.env.DEV &&
+      new URLSearchParams(window.location.search).get('boss') === this.level.boss
+    ) {
+      this.spawnBoss();
+    } else {
+      this.nextWave();
+    }
   }
 
   /* ---------- HUD ---------- */
@@ -1047,6 +1137,7 @@ export class GameScene extends Phaser.Scene {
     for (const b of this.ebullets) this.pool.release(b.img);
     this.ebullets = [];
     if (this.boss) {
+      this.clearSnailRuntime(false);
       for (const part of this.boss.parts) if (part.alive) this.pool.release(part.img);
       this.pool.release(this.boss.img);
       this.pool.release(this.boss.glow);
@@ -1616,10 +1707,18 @@ export class GameScene extends Phaser.Scene {
     }
     const w = this.session.wave;
     const hp = (def.hp.base + w * def.hp.perWave) * this.diff.hp;
+    const presentation = (def as ExtendedBossData).presentation;
     const glow = this.pool.get('boss-glow', GAME_WIDTH / 2, -80);
     glow.setDepth(DEPTH.enemy - 0.2).setBlendMode(Phaser.BlendModes.ADD);
     const img = this.pool.get(def.sprite, GAME_WIDTH / 2, -80);
     img.setDepth(DEPTH.enemy).setScale(def.layoutVersion === 2 ? 1.24 : 1);
+    if (presentation?.displayWidth && presentation.displayHeight) {
+      img.setDisplaySize(presentation.displayWidth, presentation.displayHeight);
+      glow.setDisplaySize(
+        Math.min(GAME_WIDTH * 1.25, presentation.displayWidth * 1.22),
+        Math.max(120, presentation.displayHeight * 0.72),
+      );
+    }
     const parts: BossPart[] = (def.parts ?? []).map((pd) => {
       const img = this.pool.get(pd.sprite, GAME_WIDTH / 2 + pd.dx, -80 + pd.dy);
       const roleDepth =
@@ -1666,10 +1765,12 @@ export class GameScene extends Phaser.Scene {
       wanderTx: GAME_WIDTH / 2,
       wanderTy: def.entryY,
       cx: GAME_WIDTH / 2,
+      rotation: 0,
       parts,
       img,
       glow,
     };
+    this.snailHuntCooldown = this.snailHuntInterval(def) * rnd(0.72, 0.9);
     this.banner(t('banner.warning'), 2.2, '#ff6a6a');
     playMusic('boss');
     SFX.warn();
@@ -2288,6 +2389,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateBossAssembly(B: BossState): void {
+    const capitalShip = ['warship', 'scrolling-warship'].includes(
+      this.bossPresentation(B.def)?.kind ?? '',
+    );
+    const illustratedSnail = this.bossPresentation(B.def)?.kind === 'snail';
     const resolved = new Set<string>();
     for (let pass = 0; pass < B.parts.length + 1; pass++) {
       let progressed = false;
@@ -2311,11 +2416,13 @@ export class GameScene extends Phaser.Scene {
           localY += Math.sin(angle) * motion.radiusY;
         }
 
-        // A destroyed structural parent remains a spatial anchor. Falling back to the core here
-        // made surviving children teleport and collapse the authored assembly hierarchy.
-        const parentX = parent ? parent.x : B.x;
-        const parentY = parent ? parent.y : B.y;
-        const parentRot = parent ? parent.rotation : 0;
+        // Dependency parents remain combat gates; spatial offsets are authored against the hull.
+        // Boss data stores authored world-space offsets even when parentId expresses the
+        // dependency hierarchy. Re-adding every ancestor offset made deep assemblies drift far
+        // outside their hull artwork, most visibly on the giant snail and scrolling dreadnought.
+        const parentX = B.x;
+        const parentY = B.y;
+        const parentRot = B.rotation;
         part.x = parentX + Math.cos(parentRot) * localX - Math.sin(parentRot) * localY;
         part.y = parentY + Math.sin(parentRot) * localX + Math.cos(parentRot) * localY;
         part.rotation = parentRot + (part.def.rotation ?? 0);
@@ -2323,7 +2430,23 @@ export class GameScene extends Phaser.Scene {
           .setPosition(part.x, part.y)
           .setRotation(part.rotation)
           .setVisible(part.alive && this.partActive(part, B))
-          .setAlpha(this.partExposed(part, B) ? 1 : 0.42);
+          .setAlpha(
+            this.partExposed(part, B)
+              ? illustratedSnail
+                ? part.def.role === 'weakpoint'
+                  ? 0.9
+                  : 0.34
+                : capitalShip
+                  ? part.def.role === 'weakpoint'
+                    ? 0.94
+                    : 0.78
+                  : 1
+              : illustratedSnail
+                ? 0.12
+                : capitalShip
+                  ? 0.22
+                  : 0.42,
+          );
         resolved.add(part.def.id);
         progressed = true;
       }
@@ -2333,11 +2456,19 @@ export class GameScene extends Phaser.Scene {
     this.bossLinks.clear();
     for (const part of B.parts) {
       if (!part.alive || !this.partActive(part, B) || !this.partProtectsCore(part)) continue;
-      this.bossLinks.lineStyle(2, 0x6cc9ff, 0.32 + Math.sin(B.t * 5 + part.x) * 0.12);
+      this.bossLinks.lineStyle(
+        capitalShip ? 1 : 2,
+        0x6cc9ff,
+        (capitalShip ? 0.1 : 0.32) + Math.sin(B.t * 5 + part.x) * (capitalShip ? 0.035 : 0.12),
+      );
       this.bossLinks.lineBetween(part.x, part.y, B.x, B.y);
     }
     if (this.coreShielded(B)) {
-      this.bossLinks.lineStyle(2, 0x78d8ff, 0.3 + Math.sin(B.t * 4) * 0.12);
+      this.bossLinks.lineStyle(
+        capitalShip ? 1 : 2,
+        0x78d8ff,
+        (capitalShip ? 0.12 : 0.3) + Math.sin(B.t * 4) * (capitalShip ? 0.04 : 0.12),
+      );
       this.bossLinks.strokeCircle(B.x, B.y, Math.max(B.def.hitbox.w, B.def.hitbox.h) * 0.62);
     }
   }
@@ -2356,6 +2487,31 @@ export class GameScene extends Phaser.Scene {
     this.banner(next?.nameKey ? t(next.nameKey) : `PHASE ${B.stage + 1}`, 1.7, '#8fe8ff');
     this.shake = Math.max(this.shake, 4);
     SFX.warn();
+    if (this.bossPresentation(B.def)?.kind === 'scrolling-warship') {
+      this.scrollSpd = Math.max(this.level.scroll.boss, 58 + B.stage * 15);
+      this.shake = Math.max(this.shake, 8);
+      for (let i = 0; i < 4; i++) {
+        this.time.delayedCall(i * 85, () => {
+          if (this.boss === B)
+            this.addBoom(B.x + rnd(-72, 72), B.y + rnd(-105, 105), 0.9 + i * 0.13, i === 3);
+        });
+      }
+      const sectionWave = this.add
+        .image(B.x, B.y, 'hazard-disaster-shockwave')
+        .setDepth(DEPTH.enemy + 0.6)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setTint(0xff9c53)
+        .setScale(0.12)
+        .setAlpha(0.88);
+      this.tweens.add({
+        targets: sectionWave,
+        scale: 1.5,
+        alpha: 0,
+        duration: 620,
+        ease: 'Quart.easeOut',
+        onComplete: () => sectionWave.destroy(),
+      });
+    }
   }
 
   private coreShielded(B: BossState): boolean {
@@ -2407,16 +2563,57 @@ export class GameScene extends Phaser.Scene {
 
   private damagePlayer(raw: number): void {
     if (!this.alive || this.inv > 0 || this.god) return;
+    this.commitPlayerDamage(raw, false);
+  }
+
+  /**
+   * Scripted set-piece damage deliberately bypasses temporary super/invulnerability frames.
+   * It is kept non-lethal: an unavoidable cinematic should cost resources, never end a run
+   * solely because the player had no legal dodge.
+   */
+  private damagePlayerForced(raw: number, label: string): void {
+    if (!this.alive || this.god) return;
+    const effectiveHp = Math.max(0, this.session.shield) + Math.max(0, this.session.armor);
+    const requested = Math.max(1, Math.round(raw * this.diff.dmg));
+    const forced = Math.min(requested, Math.max(0, effectiveHp - 1));
+    if (forced <= 0) return;
+    this.commitPlayerDamage(forced, true, label, true);
+  }
+
+  private commitPlayerDamage(
+    raw: number,
+    forced: boolean,
+    label = '',
+    alreadyDifficultyScaled = false,
+  ): void {
     this.regenT = 0;
-    const d = Math.round(raw * this.diff.dmg);
+    const d = alreadyDifficultyScaled ? Math.round(raw) : Math.round(raw * this.diff.dmg);
     const r = applyDamage(this.session, d);
     this.session.shield = r.shield;
     this.session.armor = r.armor;
-    this.inv = PLAYER.invulnAfterHit;
+    if (!forced) this.inv = PLAYER.invulnAfterHit;
     SFX.hit();
-    vibrate(40);
-    this.slomo(0, 0.05);
-    this.shake = Math.min(7, this.shake + 3);
+    vibrate(forced ? [60, 28, 90] : 40);
+    this.slomo(forced ? 0.4 : 0, forced ? 0.09 : 0.05);
+    this.shake = Math.min(forced ? 9 : 7, this.shake + (forced ? 5 : 3));
+    if (forced) {
+      this.addFloatText(this.px, this.py - 28, `${label || 'UNAVOIDABLE'}  -${d}`, '#ff7c72');
+      const strike = this.add
+        .image(this.px, this.py, 'super-shockwave')
+        .setDepth(DEPTH.phantom + 0.8)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setTint(0xff3535)
+        .setAlpha(0.92)
+        .setScale(0.12);
+      this.tweens.add({
+        targets: strike,
+        scale: 0.92,
+        alpha: 0,
+        duration: 420,
+        ease: 'Quart.easeOut',
+        onComplete: () => strike.destroy(),
+      });
+    }
     if (r.dead) {
       this.alive = false;
       this.addBoom(this.px, this.py, 1.9, true);
@@ -2647,6 +2844,7 @@ export class GameScene extends Phaser.Scene {
     if (B.hp <= 0) {
       const bx = B.x;
       const by = B.y;
+      this.clearSnailRuntime(false);
       this.inv = Math.max(this.inv, B.def.shopDelay + 2);
       for (const hostile of this.ebullets) this.pool.release(hostile.img);
       this.ebullets = [];
@@ -2936,6 +3134,8 @@ export class GameScene extends Phaser.Scene {
       keunaebi: 0xff9f43,
     };
     this.playSuperCinematic(superColor[this.session.pilot]);
+    // The final killer snail always retaliates to a player super, regardless of pilot.
+    this.beginSnailRageRetaliation();
     if (this.session.pilot === 'keunaebi') {
       // 지우큰애비: "하무야 물어! 쉭쉭!" — 푸들 하무 전방 돌진
       const glow = this.add
@@ -3580,6 +3780,7 @@ export class GameScene extends Phaser.Scene {
     this.updateBullets(dt);
     this.updateEBullets(dt);
     this.updateEnemies(dt);
+    this.updateSnailBarrage(dt);
     this.updateBoss(dt);
     this.updateOrbs(dt);
     this.updateFx(dt);
@@ -4160,6 +4361,483 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private bossPresentation(def: BossData): BossPresentation | undefined {
+    return (def as ExtendedBossData).presentation;
+  }
+
+  private snailConfig(def: BossData): Required<SnailSpecialConfig> {
+    const configured = (def as ExtendedBossData).snailSpecials;
+    return {
+      rageChargeMs: clamp(configured?.rageChargeMs ?? 1450, 1000, 2000),
+      rageForcedDamage: clamp(configured?.rageForcedDamage ?? 22, 8, 42),
+      barrageCount: clamp(configured?.barrageCount ?? 176, 96, 220),
+      huntIntervalMs: clamp(configured?.huntIntervalMs ?? 14500, 8000, 26000),
+      huntForcedDamage: clamp(configured?.huntForcedDamage ?? 18, 6, 36),
+      huntDashCount: clamp(configured?.huntDashCount ?? 7, 4, 10),
+      speech: configured?.speech ?? "I'll......... kill..............you!!!",
+    };
+  }
+
+  private snailHuntInterval(def: BossData): number {
+    return this.snailConfig(def).huntIntervalMs / 1000;
+  }
+
+  private isSnailBoss(B: BossState | null): B is BossState {
+    if (!B) return false;
+    const presentation = this.bossPresentation(B.def);
+    return presentation?.kind === 'snail' || B.def.sprite.toLowerCase().includes('snail');
+  }
+
+  private clearSnailSpecial(resetBoss = true): void {
+    const state = this.snailSpecial;
+    if (state) {
+      state.eyes.destroy();
+      state.shell.destroy();
+      this.snailSpecial = null;
+    }
+    if (resetBoss && this.boss) {
+      this.boss.img.clearTint().setAlpha(1).setRotation(this.boss.rotation);
+      for (const part of this.boss.parts) {
+        if (part.alive) part.img.clearTint().setAlpha(1);
+      }
+    }
+    this.bubble.setVisible(false);
+  }
+
+  private clearSnailRuntime(resetBoss = true): void {
+    this.clearSnailSpecial(resetBoss);
+    for (const bullet of this.snailBarrage) bullet.img.destroy();
+    this.snailBarrage = [];
+    this.snailRageQueued = false;
+  }
+
+  private createSnailSpecialState(B: BossState, kind: 'rage' | 'hunt'): SnailSpecialState {
+    const presentation = this.bossPresentation(B.def);
+    const displayW = presentation?.displayWidth ?? 176;
+    const displayH = presentation?.displayHeight ?? 158;
+    const eyes = this.add
+      .graphics()
+      .setDepth(DEPTH.enemy + 0.58)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setVisible(false);
+    // Inward-rising, reverse-eight eyes: deliberately exaggerated for the rage read.
+    eyes.lineStyle(Math.max(5, displayW * 0.034), 0xfff2dc, 1);
+    eyes.lineBetween(-displayW * 0.19, -displayH * 0.17, -displayW * 0.045, -displayH * 0.27);
+    eyes.lineBetween(displayW * 0.19, -displayH * 0.17, displayW * 0.045, -displayH * 0.27);
+    eyes.lineStyle(Math.max(2, displayW * 0.013), 0xff2525, 0.95);
+    eyes.lineBetween(-displayW * 0.19, -displayH * 0.145, -displayW * 0.05, -displayH * 0.245);
+    eyes.lineBetween(displayW * 0.19, -displayH * 0.145, displayW * 0.05, -displayH * 0.245);
+
+    let shell: Phaser.GameObjects.Image | Phaser.GameObjects.Graphics;
+    if (this.textures.exists('boss-snail-shell-v2')) {
+      shell = this.add
+        .image(B.x, B.y, 'boss-snail-shell-v2')
+        .setDepth(DEPTH.enemy + 0.42)
+        .setDisplaySize(displayW * 0.82, displayH * 0.78)
+        .setVisible(false);
+    } else {
+      const fallback = this.add
+        .graphics()
+        .setDepth(DEPTH.enemy + 0.42)
+        .setVisible(false);
+      fallback.fillStyle(0x5e211c, 1);
+      fallback.fillEllipse(0, 0, displayW * 0.76, displayH * 0.68);
+      fallback.lineStyle(8, 0xff6b45, 0.9);
+      fallback.strokeEllipse(0, 0, displayW * 0.64, displayH * 0.56);
+      fallback.lineStyle(5, 0xffb04a, 0.72);
+      fallback.strokeCircle(0, 0, Math.min(displayW, displayH) * 0.2);
+      fallback.setPosition(B.x, B.y);
+      shell = fallback;
+    }
+    return {
+      kind,
+      phase: kind === 'rage' ? 'rage-angry' : 'hunt-speech',
+      phaseT: 0,
+      totalT: 0,
+      damageApplied: false,
+      dashIndex: 0,
+      dashCount: this.snailConfig(B.def).huntDashCount,
+      startX: B.x,
+      startY: B.y,
+      targetX: B.x,
+      targetY: B.y,
+      pulseIndex: -1,
+      eyes,
+      shell,
+    };
+  }
+
+  private beginSnailRageRetaliation(): void {
+    const B = this.boss;
+    if (!this.isSnailBoss(B)) return;
+    if (!B.entered) {
+      this.snailRageQueued = true;
+      return;
+    }
+    this.clearSnailSpecial(false);
+    this.snailSpecial = this.createSnailSpecialState(B, 'rage');
+    this.snailRageQueued = false;
+    this.banner('SUPER REACTION // SHELL OVERLOAD', 1.35, '#ff554d');
+    this.shake = Math.max(this.shake, 5);
+    SFX.warn();
+  }
+
+  private beginSnailHunt(B: BossState): void {
+    if (this.snailSpecial || !this.alive) return;
+    const state = this.createSnailSpecialState(B, 'hunt');
+    this.snailSpecial = state;
+    const speech = this.snailConfig(B.def).speech;
+    this.banner('PREDATION DRIVE // IMPACT CANNOT BE EVADED', 1.65, '#ff5a58');
+    this.showBubble(speech, B.x, B.y - 46);
+    SFX.voice(speech, 'en-US', 0.68, 0.58);
+    SFX.warn();
+    this.shake = Math.max(this.shake, 4);
+  }
+
+  private setSnailPhase(state: SnailSpecialState, phase: SnailSpecialPhase): void {
+    state.phase = phase;
+    state.phaseT = 0;
+    state.pulseIndex = -1;
+  }
+
+  private emitSnailChargePulse(B: BossState, strength: number): void {
+    const ring = this.add
+      .image(B.x, B.y, 'super-shockwave')
+      .setDepth(DEPTH.enemy + 0.36)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setTint(0xff392f)
+      .setScale(0.12 + strength * 0.12)
+      .setAlpha(0.88);
+    this.tweens.add({
+      targets: ring,
+      scale: 1.05 + strength * 0.7,
+      alpha: 0,
+      duration: 380,
+      ease: 'Quart.easeOut',
+      onComplete: () => ring.destroy(),
+    });
+  }
+
+  private launchSnailBarrage(B: BossState): void {
+    const count = this.snailConfig(B.def).barrageCount;
+    const rings = 4;
+    for (let i = 0; i < count; i++) {
+      const ring = i % rings;
+      const lane = Math.floor(i / rings);
+      const lanes = Math.ceil(count / rings);
+      const angle = (lane / lanes) * Math.PI * 2 + ring * 0.055 + Math.sin(i * 9.73) * 0.018;
+      const radius = 22 + ring * 7;
+      const speed = 150 + ring * 58 + (i % 5) * 8;
+      const key = ring === rings - 1 && this.textures.exists('eb-big') ? 'eb-big' : 'eb-small';
+      const img = this.add
+        .image(B.x + Math.cos(angle) * radius, B.y + Math.sin(angle) * radius, key)
+        .setDepth(DEPTH.ebullet + 0.42)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setTint(ring % 2 === 0 ? 0xff3636 : 0xffb04a)
+        .setScale(ring === rings - 1 ? 1.08 : 0.78)
+        .setRotation(angle + Math.PI / 2);
+      this.snailBarrage.push({
+        img,
+        x: img.x,
+        y: img.y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 2.25,
+        maxLife: 2.25,
+        spin: ring % 2 === 0 ? 3.6 : -3.6,
+      });
+    }
+
+    for (let i = 0; i < 3; i++) {
+      const wave = this.add
+        .image(B.x, B.y, 'hazard-disaster-shockwave')
+        .setDepth(DEPTH.ebullet + 0.2 + i * 0.01)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setTint(i === 1 ? 0xffc15a : 0xff302c)
+        .setScale(0.1)
+        .setAlpha(0.92 - i * 0.16);
+      this.tweens.add({
+        targets: wave,
+        scale: 1.75 + i * 0.62,
+        alpha: 0,
+        duration: 620 + i * 120,
+        delay: i * 55,
+        ease: 'Quart.easeOut',
+        onComplete: () => wave.destroy(),
+      });
+    }
+    this.whiteFlash.setFillStyle(0xff2a24, 1).setVisible(true).setAlpha(0.72);
+    this.tweens.add({
+      targets: this.whiteFlash,
+      alpha: 0,
+      duration: 420,
+      onComplete: () => this.whiteFlash.setVisible(false),
+    });
+    this.shake = 10;
+    this.slomo(0.24, 0.2);
+    vibrate([100, 35, 150]);
+    SFX.pow();
+  }
+
+  private updateSnailBarrage(dt: number): void {
+    for (let i = this.snailBarrage.length - 1; i >= 0; i--) {
+      const bullet = this.snailBarrage[i];
+      if (!bullet) continue;
+      bullet.life -= dt;
+      bullet.x += bullet.vx * dt;
+      bullet.y += bullet.vy * dt;
+      bullet.img
+        .setPosition(bullet.x, bullet.y)
+        .setRotation(bullet.img.rotation + bullet.spin * dt)
+        .setAlpha(clamp(bullet.life / Math.min(0.42, bullet.maxLife), 0, 1));
+      if (
+        bullet.life <= 0 ||
+        bullet.x < -55 ||
+        bullet.x > GAME_WIDTH + 55 ||
+        bullet.y < -55 ||
+        bullet.y > GAME_HEIGHT + 55
+      ) {
+        bullet.img.destroy();
+        this.snailBarrage.splice(i, 1);
+      }
+    }
+  }
+
+  private nextSnailDashTarget(state: SnailSpecialState, B: BossState): void {
+    state.startX = B.x;
+    state.startY = B.y;
+    const i = state.dashIndex;
+    if (i === Math.floor(state.dashCount / 2)) {
+      state.targetX = clamp(this.px, 42, GAME_WIDTH - 42);
+      state.targetY = clamp(this.py, 86, GAME_HEIGHT - 74);
+    } else {
+      state.targetX = i % 2 === 0 ? GAME_WIDTH - rnd(38, 72) : rnd(38, 72);
+      const rows = [92, 210, 338, 490];
+      state.targetY = rows[(i * 3 + 1) % rows.length] ?? rnd(90, GAME_HEIGHT - 80);
+    }
+    const ghost = this.add
+      .image(B.x, B.y, B.def.sprite)
+      .setDepth(DEPTH.enemy - 0.02)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setTint(0xff4538)
+      .setAlpha(0.46)
+      .setRotation(B.rotation);
+    const presentation = this.bossPresentation(B.def);
+    if (presentation?.displayWidth && presentation.displayHeight)
+      ghost.setDisplaySize(presentation.displayWidth, presentation.displayHeight);
+    else ghost.setScale(B.img.scaleX, B.img.scaleY);
+    this.tweens.add({
+      targets: ghost,
+      alpha: 0,
+      scaleX: ghost.scaleX * 1.08,
+      scaleY: ghost.scaleY * 1.08,
+      duration: 260,
+      onComplete: () => ghost.destroy(),
+    });
+  }
+
+  /** Returns true while the snail owns movement and firing for a cinematic special. */
+  private updateSnailSpecial(B: BossState, dt: number): boolean {
+    const state = this.snailSpecial;
+    if (!state) return false;
+    const config = this.snailConfig(B.def);
+    state.phaseT += dt;
+    state.totalT += dt;
+    state.eyes.setPosition(B.x, B.y).setRotation(B.rotation);
+    state.shell.setPosition(B.x, B.y).setRotation(B.rotation);
+
+    if (state.kind === 'rage') {
+      if (state.phase === 'rage-angry') {
+        if (state.phaseT >= 0.52) this.setSnailPhase(state, 'rage-retract');
+      } else if (state.phase === 'rage-retract') {
+        if (state.phaseT >= 0.38) {
+          state.shell.setVisible(true).setAlpha(1);
+          this.setSnailPhase(state, 'rage-charge');
+        }
+      } else if (state.phase === 'rage-charge') {
+        const chargeSeconds = config.rageChargeMs / 1000;
+        const pulseIndex = Math.floor(state.phaseT / 0.23);
+        if (pulseIndex !== state.pulseIndex) {
+          state.pulseIndex = pulseIndex;
+          this.emitSnailChargePulse(B, clamp(state.phaseT / chargeSeconds, 0, 1));
+        }
+        state.shell.setRotation(B.rotation + Math.sin(state.totalT * 22) * 0.055);
+        if (state.phaseT >= chargeSeconds) {
+          this.launchSnailBarrage(B);
+          this.damagePlayerForced(config.rageForcedDamage, 'SHELL BARRAGE');
+          state.damageApplied = true;
+          this.setSnailPhase(state, 'rage-burst');
+        }
+      } else if (state.phase === 'rage-burst') {
+        if (state.phaseT >= 0.7) this.setSnailPhase(state, 'rage-recover');
+      } else if (state.phase === 'rage-recover' && state.phaseT >= 0.66) {
+        this.clearSnailSpecial(true);
+        this.snailHuntCooldown = this.snailHuntInterval(B.def) * rnd(0.82, 1.12);
+        return false;
+      }
+      return true;
+    }
+
+    if (state.phase === 'hunt-speech') {
+      this.showBubble(config.speech, B.x, B.y - 48);
+      B.x += (GAME_WIDTH / 2 - B.x) * Math.min(1, dt * 2.4);
+      B.y += (B.def.entryY - B.y) * Math.min(1, dt * 2.4);
+      if (state.phaseT >= 2.15) {
+        this.bubble.setVisible(false);
+        this.setSnailPhase(state, 'hunt-dash');
+        this.nextSnailDashTarget(state, B);
+      }
+    } else if (state.phase === 'hunt-dash') {
+      const dashDuration = 0.245;
+      const progress = clamp(state.phaseT / dashDuration, 0, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      B.x = Phaser.Math.Linear(state.startX, state.targetX, eased);
+      B.y = Phaser.Math.Linear(state.startY, state.targetY, eased);
+      B.rotation = Math.atan2(state.targetY - state.startY, state.targetX - state.startX) * 0.08;
+      this.shake = Math.max(this.shake, 3 + progress * 3);
+      if (!state.damageApplied && progress >= 0.56) {
+        this.damagePlayerForced(config.huntForcedDamage, 'KILL DRIVE');
+        state.damageApplied = true;
+      }
+      if (progress >= 1) {
+        state.dashIndex++;
+        if (state.dashIndex >= state.dashCount) {
+          state.targetX = GAME_WIDTH / 2;
+          state.targetY = B.def.entryY;
+          state.startX = B.x;
+          state.startY = B.y;
+          this.setSnailPhase(state, 'hunt-recover');
+        } else {
+          state.phaseT = 0;
+          this.nextSnailDashTarget(state, B);
+        }
+      }
+    } else if (state.phase === 'hunt-recover') {
+      const recover = clamp(state.phaseT / 0.72, 0, 1);
+      const eased = recover * recover * (3 - 2 * recover);
+      B.x = Phaser.Math.Linear(state.startX, state.targetX, eased);
+      B.y = Phaser.Math.Linear(state.startY, state.targetY, eased);
+      B.rotation *= Math.max(0, 1 - dt * 8);
+      if (recover >= 1) {
+        B.rotation = 0;
+        this.clearSnailSpecial(true);
+        this.snailHuntCooldown = this.snailHuntInterval(B.def) * rnd(0.82, 1.16);
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private applySnailSpecialPose(B: BossState): void {
+    const state = this.snailSpecial;
+    if (!state) return;
+    state.eyes.setPosition(B.x, B.y).setRotation(B.rotation);
+    state.shell.setPosition(B.x, B.y);
+    const phase = state.phase;
+    const angry = phase === 'rage-angry' || phase === 'rage-retract';
+    const hiddenInShell =
+      phase === 'rage-charge' || phase === 'rage-burst' || phase === 'rage-recover';
+    const hunting = state.kind === 'hunt';
+    state.eyes.setVisible(angry || hunting).setAlpha(hunting ? 0.78 : 1);
+    state.shell
+      .setVisible(hiddenInShell)
+      .setAlpha(phase === 'rage-recover' ? Math.max(0, 1 - state.phaseT / 0.66) : 1);
+    if (angry || hunting) B.img.setTint(0xff4a3f);
+    if (hiddenInShell) {
+      const emerge = phase === 'rage-recover' ? clamp(state.phaseT / 0.66, 0, 1) : 0;
+      B.img.setAlpha(0.06 + emerge * 0.94).setTint(0xff3c32);
+      for (const part of B.parts) {
+        if (part.alive) part.img.setAlpha(0.04 + emerge * 0.96);
+      }
+    } else if (phase === 'rage-retract') {
+      const retract = clamp(state.phaseT / 0.38, 0, 1);
+      B.img.setAlpha(1 - retract * 0.88);
+      for (const part of B.parts) if (part.alive) part.img.setAlpha(1 - retract * 0.88);
+    }
+    if (angry) {
+      for (const part of B.parts) {
+        if (!part.alive) continue;
+        if (part.def.id === 'eyeL') part.img.setRotation(part.rotation + 0.5);
+        if (part.def.id === 'eyeR') part.img.setRotation(part.rotation - 0.5);
+        if (part.def.id === 'eyeL' || part.def.id === 'eyeR') part.img.setTint(0xffdfc8);
+        else part.img.setTint(0xff5a46);
+      }
+    }
+  }
+
+  /** Capital ships have authored attack runs instead of the old single-axis patrol. */
+  private updateWarshipMovement(B: BossState, dt: number, mobility: number): boolean {
+    const presentation = this.bossPresentation(B.def);
+    if (presentation?.kind !== 'warship' && presentation?.kind !== 'scrolling-warship')
+      return false;
+    const script = (presentation.movementScript ?? 'broadside').toLowerCase();
+    let targetX = GAME_WIDTH / 2;
+    let targetY = B.def.entryY;
+    let rotation = 0;
+    let follow = 2.5;
+
+    if (presentation.kind === 'scrolling-warship' || script.includes('scroll')) {
+      const sectionTravel = Math.min(155, (presentation.displayHeight ?? 460) * 0.285);
+      targetX = GAME_WIDTH / 2 + Math.sin(B.t * 0.42) * 18 * mobility;
+      targetY = Math.min(GAME_HEIGHT * 0.58, B.def.entryY + B.stage * sectionTravel);
+      rotation = Math.sin(B.t * 0.5) * 0.012;
+      follow = B.stage === 0 ? 1.4 : 0.82;
+      this.scrollSpd = Math.max(this.level.scroll.boss, 58 + B.stage * 15);
+    } else if (script.includes('dive') || script === 'solar-lance') {
+      const cycle = B.t % 9.2;
+      if (cycle < 2.6) {
+        targetX = GAME_WIDTH / 2 + Math.sin(B.t * 1.1) * 108;
+        targetY = B.def.entryY + 10;
+      } else if (cycle < 4.4) {
+        const p = (cycle - 2.6) / 1.8;
+        targetX = p < 0.5 ? 62 : GAME_WIDTH - 62;
+        targetY = B.def.entryY + Math.sin(p * Math.PI) * 205;
+        rotation = (targetX < GAME_WIDTH / 2 ? -1 : 1) * 0.16;
+        follow = 5.2;
+      } else {
+        targetX = GAME_WIDTH / 2 + Math.sin(B.t * 0.72) * 72;
+        targetY = B.def.entryY;
+      }
+    } else if (script.includes('encircle') || script.includes('orbit') || script === 'wing-sweep') {
+      const angle = B.t * 0.62;
+      targetX = GAME_WIDTH / 2 + Math.cos(angle) * 132 * mobility;
+      targetY = B.def.entryY + 48 + Math.sin(angle * 1.35) * 58 * mobility;
+      rotation = -Math.sin(angle) * 0.075;
+      follow = 3.4;
+    } else if (script.includes('siege') || script === 'fortress-assault') {
+      const hold = Math.floor(B.t / 3.8) % 3;
+      targetX = [72, GAME_WIDTH / 2, GAME_WIDTH - 72][hold] ?? GAME_WIDTH / 2;
+      targetY = B.def.entryY + Math.sin(B.t * 0.9) * 34;
+      rotation = (targetX - GAME_WIDTH / 2) * -0.00055;
+      follow = 1.8;
+    } else {
+      // Broadside: long lateral passes, short recoil lurches, and a subtle roll.
+      const sweep = Math.sin(B.t * 0.58);
+      targetX = GAME_WIDTH / 2 + sweep * 136 * mobility;
+      targetY = B.def.entryY + Math.sin(B.t * 1.16 + 0.7) * 32;
+      rotation = -Math.cos(B.t * 0.58) * 0.065;
+      follow = 2.8;
+    }
+
+    const k = Math.min(1, dt * follow * mobility);
+    B.x += (targetX - B.x) * k;
+    B.y += (targetY - B.y) * k;
+    B.rotation += (rotation - B.rotation) * Math.min(1, dt * 4.5);
+    return true;
+  }
+
+  private applyBossBodyPresentation(B: BossState): void {
+    const presentation = this.bossPresentation(B.def);
+    const pulse = 1 + Math.sin(B.t * 2.4) * (presentation?.kind === 'snail' ? 0.012 : 0.006);
+    if (presentation?.displayWidth && presentation.displayHeight) {
+      B.img.setDisplaySize(presentation.displayWidth * pulse, presentation.displayHeight * pulse);
+    } else {
+      const bodyScale = B.def.layoutVersion === 2 ? 1.24 : 1;
+      B.img.setScale(bodyScale + Math.sin(B.t * 2.4) * 0.018);
+    }
+    B.img.setRotation(B.rotation);
+  }
+
   private updateBoss(dt: number): void {
     const B = this.boss;
     if (!B) return;
@@ -4172,6 +4850,7 @@ export class GameScene extends Phaser.Scene {
         B.entered = true;
         B.cx = B.x;
         this.banner(t(def.nameKey), 2.0, '#ff9a9a');
+        if (this.snailRageQueued && this.isSnailBoss(B)) this.beginSnailRageRetaliation();
       }
     } else {
       const mv = def.movement;
@@ -4179,48 +4858,66 @@ export class GameScene extends Phaser.Scene {
       const mobility = engines.length
         ? 0.55 + (engines.filter((part) => part.alive).length / engines.length) * 0.45
         : 1;
-      if (mv.type === 'patrol') {
-        B.x += B.dir * (mv.base + this.session.wave * mv.perWave) * mobility * dt;
-        if (B.x < mv.minX) {
-          B.x = mv.minX;
-          B.dir = 1;
-        }
-        if (B.x > mv.maxX) {
-          B.x = mv.maxX;
-          B.dir = -1;
-        }
-      } else if (mv.type === 'wander') {
-        const dx = B.wanderTx - B.x;
-        const dy = B.wanderTy - B.y;
-        const L = Math.hypot(dx, dy);
-        if (L < 8) {
-          B.wanderTx = rnd(mv.minX, mv.maxX);
-          B.wanderTy = rnd(mv.minY, mv.maxY);
+      let specialOwnsMovement = false;
+      if (this.isSnailBoss(B)) {
+        if (this.snailSpecial) {
+          specialOwnsMovement = this.updateSnailSpecial(B, dt);
         } else {
-          B.x += (dx / L) * mv.speed * mobility * dt;
-          B.y += (dy / L) * mv.speed * mobility * dt;
+          this.snailHuntCooldown -= dt;
+          if (this.snailHuntCooldown <= 0) {
+            this.beginSnailHunt(B);
+            specialOwnsMovement = true;
+          }
         }
-      } else {
-        B.x = B.cx + Math.sin(B.t * mv.freq * mobility * Math.PI * 2) * mv.amp * mobility;
-        B.y = def.entryY + Math.sin(B.t * mv.bobFreq * mobility * Math.PI * 2) * mv.bobAmp;
       }
-      B.cool -= dt;
-      if (B.cool <= 0 && this.alive) {
-        B.phase = (B.phase + 1) % def.phases.length;
-        const ph = def.phases[B.phase];
-        if (ph) {
-          if (this.ebullets.length < 210) this.executeBossPhase(ph);
-          const stageScale = def.stages?.[B.stage]?.coolScale ?? 1;
-          B.cool =
-            (ph.cool ??
-              Math.max(def.cool.min, def.cool.base + this.session.wave * def.cool.perWave)) *
-            stageScale;
+
+      if (!specialOwnsMovement) {
+        const scripted = this.updateWarshipMovement(B, dt, mobility);
+        if (!scripted) {
+          B.rotation += (0 - B.rotation) * Math.min(1, dt * 4);
+          if (mv.type === 'patrol') {
+            B.x += B.dir * (mv.base + this.session.wave * mv.perWave) * mobility * dt;
+            if (B.x < mv.minX) {
+              B.x = mv.minX;
+              B.dir = 1;
+            }
+            if (B.x > mv.maxX) {
+              B.x = mv.maxX;
+              B.dir = -1;
+            }
+          } else if (mv.type === 'wander') {
+            const dx = B.wanderTx - B.x;
+            const dy = B.wanderTy - B.y;
+            const L = Math.hypot(dx, dy);
+            if (L < 8) {
+              B.wanderTx = rnd(mv.minX, mv.maxX);
+              B.wanderTy = rnd(mv.minY, mv.maxY);
+            } else {
+              B.x += (dx / L) * mv.speed * mobility * dt;
+              B.y += (dy / L) * mv.speed * mobility * dt;
+            }
+          } else {
+            B.x = B.cx + Math.sin(B.t * mv.freq * mobility * Math.PI * 2) * mv.amp * mobility;
+            B.y = def.entryY + Math.sin(B.t * mv.bobFreq * mobility * Math.PI * 2) * mv.bobAmp;
+          }
+        }
+        B.cool -= dt;
+        if (B.cool <= 0 && this.alive) {
+          B.phase = (B.phase + 1) % def.phases.length;
+          const ph = def.phases[B.phase];
+          if (ph) {
+            if (this.ebullets.length < 210) this.executeBossPhase(ph);
+            const stageScale = def.stages?.[B.stage]?.coolScale ?? 1;
+            B.cool =
+              (ph.cool ??
+                Math.max(def.cool.min, def.cool.base + this.session.wave * def.cool.perWave)) *
+              stageScale;
+          }
         }
       }
     }
     B.img.setPosition(B.x, B.y);
-    const bodyScale = def.layoutVersion === 2 ? 1.24 : 1;
-    B.img.setScale(bodyScale + Math.sin(B.t * 2.4) * 0.018);
+    this.applyBossBodyPresentation(B);
     this.updateBossAssembly(B);
     // 파츠: 앵커 추적 + 자체 사격
     for (const part of B.parts) {
@@ -4230,7 +4927,13 @@ export class GameScene extends Phaser.Scene {
         part.img.setTintFill(0xffffff);
         if (part.flashT <= 0) part.img.clearTint();
       }
-      if (part.def.phase && B.entered && this.alive && this.partActive(part, B)) {
+      if (
+        part.def.phase &&
+        B.entered &&
+        this.alive &&
+        !this.snailSpecial &&
+        this.partActive(part, B)
+      ) {
         part.fireT -= dt;
         if (part.fireT <= 0) {
           part.fireT = part.def.fireEvery ?? 2;
@@ -4246,13 +4949,34 @@ export class GameScene extends Phaser.Scene {
       B.img.setTintFill(0xffffff);
       if (B.flashT <= 0) B.img.clearTint();
     }
+    this.applySnailSpecialPose(B);
 
     // The entrance silhouette and telegraph are guaranteed before the boss can be damaged.
     if (!B.entered) return;
 
+    const shellClosed =
+      this.isSnailBoss(B) &&
+      (this.snailSpecial?.phase === 'rage-charge' || this.snailSpecial?.phase === 'rage-burst');
+    const snailPresentation = this.bossPresentation(B.def);
+    const shellHitW = Math.min(190, (snailPresentation?.displayWidth ?? def.hitbox.w) * 0.62);
+    const shellHitH = Math.min(160, (snailPresentation?.displayHeight ?? def.hitbox.h) * 0.62);
+
     for (let j = this.bullets.length - 1; j >= 0; j--) {
       const b = this.bullets[j];
       if (!b || b.t < 0) continue;
+      if (
+        shellClosed &&
+        sweptAabb(b.prevX, b.prevY, b.x, b.y, b.w, b.h, B.x, B.y, shellHitW, shellHitH)
+      ) {
+        this.addImpact(b.x, b.y, b, true);
+        this.pool.release(b.img);
+        this.bullets.splice(j, 1);
+        if (this.immuneMsgT <= 0) {
+          this.immuneMsgT = 0.35;
+          this.addFloatText(B.x, B.y + shellHitH * 0.42, 'SHELL LOCK', '#ff9b76');
+        }
+        continue;
+      }
       // 파츠 히트 우선
       let hitPart: BossPart | null = null;
       for (const part of B.parts) {
@@ -4321,7 +5045,8 @@ export class GameScene extends Phaser.Scene {
         if (!this.boss) return;
       }
     }
-    if (this.boss && this.alive) {
+    const snailCinematicCollision = this.isSnailBoss(B) && this.snailSpecial !== null;
+    if (this.boss && this.alive && !snailCinematicCollision) {
       for (const part of B.parts) {
         if (!part.alive || !this.partActive(part, B)) continue;
         if (
@@ -4344,6 +5069,7 @@ export class GameScene extends Phaser.Scene {
     if (
       this.boss &&
       this.alive &&
+      !snailCinematicCollision &&
       aabb(B.x, B.y, def.hitbox.w - 7, def.hitbox.h - 7, this.px, this.py, PLAYER.hitW, PLAYER.hitH)
     )
       this.damagePlayer(def.touchDamage);

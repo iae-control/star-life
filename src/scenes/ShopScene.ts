@@ -148,9 +148,7 @@ export class ShopScene extends Phaser.Scene {
   private statusText!: Phaser.GameObjects.Text;
   private creditsText!: Phaser.GameObjects.Text;
   private rewardText!: Phaser.GameObjects.Text;
-  private iconCore!: Phaser.GameObjects.Arc;
-  private iconRing!: Phaser.GameObjects.Arc;
-  private iconGlyph!: Phaser.GameObjects.Text;
+  private equipmentArt!: Phaser.GameObjects.Image;
   private statLabels: Phaser.GameObjects.Text[] = [];
   private statValues: Phaser.GameObjects.Text[] = [];
   private tierPips: Phaser.GameObjects.Rectangle[] = [];
@@ -220,8 +218,12 @@ export class ShopScene extends Phaser.Scene {
   update(_time: number, deltaMs: number): void {
     const delta = Math.min(0.05, Math.max(0, deltaMs / 1000));
     this.elapsed += delta;
-    const pulse = 1 + Math.sin(this.elapsed * 2.8) * 0.025;
-    this.iconRing.setScale(pulse);
+    const artPulse = 1 + Math.sin(this.elapsed * 2.8) * 0.018;
+    if (this.equipmentArt.visible) {
+      const entry = this.currentEntry();
+      const size = entry.weapon ? 118 : 126;
+      this.equipmentArt.setDisplaySize(size * artPulse, size * artPulse);
+    }
     this.continueRect.setAlpha(0.88 + Math.sin(this.elapsed * 3.4) * 0.08);
     this.updateWeaponPreview(delta);
   }
@@ -405,21 +407,17 @@ export class ShopScene extends Phaser.Scene {
 
     this.itemCounter = uiText(this, GAME_WIDTH / 2, 139, '', 8, '#6686a8', 'center');
     this.previewPanel = this.add.rectangle(
-      GAME_WIDTH / 2,
+      222,
       (PREVIEW_TOP + PREVIEW_BOTTOM) / 2,
-      PREVIEW_RIGHT - PREVIEW_LEFT,
+      206,
       PREVIEW_BOTTOM - PREVIEW_TOP,
       0x030a14,
       0.9,
     );
     this.previewPanel.setStrokeStyle(1, 0x57d8ff, 0.45);
     this.previewGraphics = this.add.graphics();
-    this.previewLabel = uiText(this, PREVIEW_LEFT + 7, PREVIEW_TOP + 6, 'LIVE FIRE', 6, '#6686a8');
-    this.iconRing = this.add.circle(GAME_WIDTH / 2, 196, 43, 0x081421, 0.55);
-    this.iconRing.setStrokeStyle(2, 0x57d8ff, 0.86);
-    this.iconCore = this.add.circle(GAME_WIDTH / 2, 196, 29, 0x57d8ff, 0.88);
-    this.iconCore.setStrokeStyle(1, 0xffffff, 0.75);
-    this.iconGlyph = uiText(this, GAME_WIDTH / 2, 196, '', 14, '#06101c', 'center');
+    this.previewLabel = uiText(this, 125, PREVIEW_TOP + 6, 'LIVE FIRE', 6, '#6686a8');
+    this.equipmentArt = this.add.image(69, 196, 'equipment-primary-pulse').setDisplaySize(92, 92);
     this.lockText = uiText(this, GAME_WIDTH / 2, 236, '', 8, '#ff8b92', 'center');
     this.itemName = uiText(this, GAME_WIDTH / 2, 263, '', 16, '#f2f7ff', 'center');
     this.gradeText = uiText(this, GAME_WIDTH / 2, 282, '', 8, '#90b2d2', 'center');
@@ -489,15 +487,7 @@ export class ShopScene extends Phaser.Scene {
         this.continueRun();
       });
 
-    uiText(
-      this,
-      GAME_WIDTH / 2,
-      596,
-      '↑↓ FOCUS   ←→ SELECT   ENTER CONFIRM',
-      8,
-      '#68829d',
-      'center',
-    );
+    uiText(this, 222, 596, '↑↓ FOCUS   ←→ SELECT   ENTER CONFIRM', 8, '#68829d', 'center');
     uiText(this, GAME_WIDTH / 2, 614, 'ESC CONTINUE', 7, '#4f6983', 'center');
   }
 
@@ -685,6 +675,20 @@ export class ShopScene extends Phaser.Scene {
     this.previewGraphics.clear();
   }
 
+  private equipmentTexture(entry: ShopEntry): string {
+    if (entry.weapon) return `equipment-primary-${entry.weapon.archetype}`;
+    const exact = `equipment-${entry.id}`;
+    if (this.textures.exists(exact)) return exact;
+    const fallback: Record<Exclude<LoadoutSlot, 'primary' | 'secondary'>, string> = {
+      engine: 'equipment-primary-missile',
+      cooler: 'equipment-primary-light',
+      armor: 'equipment-primary-proton',
+    };
+    return entry.slot === 'secondary'
+      ? 'equipment-secondary-microgun'
+      : fallback[entry.slot as Exclude<LoadoutSlot, 'primary' | 'secondary'>];
+  }
+
   private emitPreviewVolley(entry: ShopEntry, tier: number): void {
     if (!entry.weapon) return;
     let randomState = ((this.previewSequence + 1) * 2_654_435_761) >>> 0;
@@ -769,16 +773,17 @@ export class ShopScene extends Phaser.Scene {
     }
 
     graphics.fillStyle(color, 0.18);
-    graphics.fillCircle(GAME_WIDTH / 2, PREVIEW_EMITTER_Y, 10);
+    const previewX = 222;
+    graphics.fillCircle(previewX, PREVIEW_EMITTER_Y, 10);
     graphics.lineStyle(1, color, 0.9);
-    graphics.strokeCircle(GAME_WIDTH / 2, PREVIEW_EMITTER_Y, 8);
+    graphics.strokeCircle(previewX, PREVIEW_EMITTER_Y, 8);
     graphics.fillStyle(0xe8fbff, 0.94);
     graphics.fillTriangle(
-      GAME_WIDTH / 2,
+      previewX,
       PREVIEW_EMITTER_Y - 7,
-      GAME_WIDTH / 2 - 5,
+      previewX - 5,
       PREVIEW_EMITTER_Y + 5,
-      GAME_WIDTH / 2 + 5,
+      previewX + 5,
       PREVIEW_EMITTER_Y + 5,
     );
 
@@ -788,7 +793,7 @@ export class ShopScene extends Phaser.Scene {
         if (shot.charge && projectile.initialDelay > 0) {
           const progress = 1 - projectile.delay / projectile.initialDelay;
           graphics.lineStyle(1.5, color, 0.35 + progress * 0.6);
-          graphics.strokeCircle(GAME_WIDTH / 2, PREVIEW_EMITTER_Y, 11 - progress * 6);
+          graphics.strokeCircle(222, PREVIEW_EMITTER_Y, 11 - progress * 6);
         }
         continue;
       }
@@ -936,15 +941,17 @@ export class ShopScene extends Phaser.Scene {
       .setVisible(livePreview)
       .setText(`LIVE FIRE // GRADE ${Math.max(1, tier)}`)
       .setColor(unlocked ? '#6686a8' : '#4f5a68');
-    this.iconCore.setVisible(!livePreview);
-    this.iconRing.setVisible(!livePreview);
-    this.iconGlyph.setVisible(!livePreview);
-    this.iconCore.setFillStyle(entry.color, unlocked ? 0.88 : 0.22);
-    this.iconCore.setStrokeStyle(1, unlocked ? 0xffffff : 0x6a7480, unlocked ? 0.7 : 0.35);
-    this.iconRing.setStrokeStyle(2, unlocked ? entry.color : 0x526070, unlocked ? 0.9 : 0.4);
-    this.iconGlyph
-      .setText(entry.weapon?.short ?? entry.name.slice(0, 2).toUpperCase())
-      .setColor(unlocked ? '#06101c' : '#87919b');
+    const texture = this.equipmentTexture(entry);
+    this.equipmentArt
+      .setTexture(texture)
+      .setVisible(true)
+      .setAlpha(unlocked ? 1 : 0.34)
+      .clearTint()
+      .setAngle(
+        entry.weapon?.variant === 'overdrive' ? -4 : entry.weapon?.variant === 'lattice' ? 4 : 0,
+      )
+      .setDisplaySize(livePreview ? 118 : 126, livePreview ? 118 : 126);
+    if (entry.weapon?.variant === 'overdrive') this.equipmentArt.setTint(entry.color);
     this.ensureWeaponPreview(entry, Math.max(1, tier));
 
     const stats = this.statsFor(entry, Math.max(1, tier));

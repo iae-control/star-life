@@ -40,6 +40,28 @@ function findCycle(nodes: Iterable<string>, edges: EdgeMap): string[] | null {
   return null;
 }
 
+type ParsedBoss = NonNullable<(typeof BOSSES)[string]>;
+
+function partWorldAnchor(boss: ParsedBoss, partId: string): { x: number; y: number } {
+  const parts = boss.parts ?? [];
+  const partById = new Map(parts.map((part) => [part.id, part]));
+  const memo = new Map<string, { x: number; y: number }>();
+
+  const resolve = (id: string): { x: number; y: number } => {
+    const cached = memo.get(id);
+    if (cached) return cached;
+    const part = partById.get(id);
+    if (!part) throw new Error(`Unknown boss part: ${id}`);
+    const parent =
+      !part.parentId || part.parentId === 'core' ? { x: 0, y: 0 } : resolve(part.parentId);
+    const anchor = { x: parent.x + part.dx, y: parent.y + part.dy };
+    memo.set(id, anchor);
+    return anchor;
+  };
+
+  return resolve(partId);
+}
+
 describe('boss v2 data integrity', () => {
   it('uses unique part and stage ids within every boss', () => {
     for (const [bossId, boss] of Object.entries(BOSSES)) {
@@ -166,6 +188,273 @@ describe('boss v2 data integrity', () => {
         parts.filter((part) => part.parentId !== 'core').length,
         `${bossId} nested child parts`,
       ).toBeGreaterThanOrEqual(6);
+    }
+  });
+
+  it('presents every pre-finale campaign boss as a distinct capital warship', () => {
+    const campaignBossIds = LEVELS.map((level) => level.boss);
+    const finalBossId = campaignBossIds[campaignBossIds.length - 1];
+    const warshipIds = campaignBossIds.slice(0, -1);
+    const sprites = new Set<string>();
+    const scripts = new Set<string>();
+    const obsoleteOrganicNames =
+      /amoeba|membrane|nucleus|spore|flagellum|protocore|coolant|corona|prominence|novaHeart|compressionNode/i;
+
+    expect(finalBossId, 'campaign finale remains the killer snail').toBe('snail');
+    for (const bossId of warshipIds) {
+      const boss = BOSSES[bossId];
+      expect(boss?.presentation, `${bossId} presentation`).toBeDefined();
+      if (!boss?.presentation) continue;
+
+      expect(['warship', 'scrolling-warship'], `${bossId} capital-ship presentation`).toContain(
+        boss.presentation.kind,
+      );
+      expect(boss.presentation.displayWidth, `${bossId} imposing beam`).toBeGreaterThanOrEqual(288);
+      expect(boss.presentation.displayHeight, `${bossId} imposing length`).toBeGreaterThanOrEqual(
+        240,
+      );
+      expect(boss.sprite, `${bossId} authored warship sprite key`).toMatch(/^boss-warship-/);
+      expect(sprites.has(boss.sprite), `${bossId} unique hull silhouette`).toBe(false);
+      expect(
+        scripts.has(boss.presentation.movementScript),
+        `${bossId} unique movement script`,
+      ).toBe(false);
+      sprites.add(boss.sprite);
+      scripts.add(boss.presentation.movementScript);
+
+      const assemblyNames = [
+        ...(boss.parts ?? []).map((part) => part.id),
+        ...(boss.stages ?? []).map((stage) => stage.id),
+      ].join(' ');
+      expect(assemblyNames, `${bossId} mechanical assembly naming`).not.toMatch(
+        obsoleteOrganicNames,
+      );
+    }
+  });
+
+  it('matches the production art aspect ratios and keeps tall hulls parked above the player lane', () => {
+    const expectedDimensions: Record<string, [number, number]> = {
+      amoeba: [288, 430],
+      protocore: [326, 470],
+      helios: [318, 460],
+      crimson: [342, 760],
+      nova: [350, 510],
+      snail: [270, 405],
+    };
+
+    for (const [bossId, [width, height]] of Object.entries(expectedDimensions)) {
+      const boss = BOSSES[bossId];
+      expect(boss?.presentation?.displayWidth, `${bossId} art width`).toBe(width);
+      expect(boss?.presentation?.displayHeight, `${bossId} art height`).toBe(height);
+      if (!boss?.presentation) continue;
+
+      // The resting body must not cover the lower combat lane where the player normally flies.
+      expect(
+        boss.entryY + boss.presentation.displayHeight / 2,
+        `${bossId} resting hull bottom`,
+      ).toBeLessThanOrEqual(340);
+    }
+  });
+
+  it('includes a screen-spanning hull-crawl set piece with sequential destruction gates', () => {
+    const campaignBosses = LEVELS.slice(0, -1)
+      .map((level) => BOSSES[level.boss])
+      .filter((boss): boss is NonNullable<typeof boss> => boss !== undefined);
+    const setPieces = campaignBosses.filter(
+      (boss) => boss.presentation?.kind === 'scrolling-warship',
+    );
+
+    expect(setPieces.length, 'at least one scrolling capital ship').toBeGreaterThanOrEqual(1);
+    for (const boss of setPieces) {
+      expect(boss.presentation?.movementScript).toBe('hull-crawl');
+      expect(
+        boss.presentation?.displayHeight ?? 0,
+        'hull extends beyond one screen',
+      ).toBeGreaterThanOrEqual(640);
+      expect(boss.stages?.length ?? 0, 'sequential hull sections').toBeGreaterThanOrEqual(3);
+      expect(
+        boss.stages?.slice(0, -1).every((stage) => (stage.advanceWhenDestroyed?.length ?? 0) > 0),
+        'every pre-reactor section has a destruction gate',
+      ).toBe(true);
+    }
+  });
+
+  it('spreads capital-ship hardpoints across the authored hull instead of stacking at center', () => {
+    const warshipIds = LEVELS.slice(0, -1).map((level) => level.boss);
+
+    for (const bossId of warshipIds) {
+      const boss = BOSSES[bossId];
+      expect(boss, `${bossId} campaign boss`).toBeDefined();
+      if (!boss?.presentation) continue;
+      const parts = boss.parts ?? [];
+      const anchors = parts.map((part) => ({ part, ...partWorldAnchor(boss, part.id) }));
+      const ys = anchors.map(({ y }) => y);
+      const hullSpan = Math.max(...ys) - Math.min(...ys);
+      const spanRatio = hullSpan / boss.presentation.displayHeight;
+
+      if (boss.presentation.kind === 'scrolling-warship') {
+        expect(spanRatio, `${bossId} scrolling hull coverage`).toBeGreaterThanOrEqual(0.6);
+        expect(spanRatio, `${bossId} scrolling hull coverage`).toBeLessThanOrEqual(0.72);
+      } else {
+        expect(spanRatio, `${bossId} hull coverage`).toBeGreaterThanOrEqual(0.45);
+        expect(spanRatio, `${bossId} hull coverage`).toBeLessThanOrEqual(0.6);
+      }
+
+      for (const { part, x, y } of anchors) {
+        const motionX =
+          part.motion?.type === 'orbit'
+            ? part.motion.radiusX
+            : part.motion?.axis === 'x'
+              ? part.motion.amplitude
+              : 0;
+        const motionY =
+          part.motion?.type === 'orbit'
+            ? part.motion.radiusY
+            : part.motion?.axis === 'y'
+              ? part.motion.amplitude
+              : 0;
+        expect(
+          Math.abs(x) + part.hitbox.w / 2 + motionX,
+          `${bossId}.${part.id} remains on the visible hull horizontally`,
+        ).toBeLessThanOrEqual(boss.presentation.displayWidth / 2);
+        expect(
+          Math.abs(y) + part.hitbox.h / 2 + motionY,
+          `${bossId}.${part.id} remains on the visible hull vertically`,
+        ).toBeLessThanOrEqual(boss.presentation.displayHeight / 2);
+      }
+    }
+  });
+
+  it('aligns the scrolling dreadnought gates with front, midship, and aft hull sections', () => {
+    const boss = BOSSES.crimson;
+    expect(boss?.presentation?.kind).toBe('scrolling-warship');
+    if (!boss) return;
+    const stages = boss.stages ?? [];
+    const firstStage = stages[0];
+    const secondStage = stages[1];
+    const finalStage = stages[2];
+
+    for (const id of firstStage?.advanceWhenDestroyed ?? []) {
+      const part = boss.parts?.find((candidate) => candidate.id === id);
+      const { y } = partWorldAnchor(boss, id);
+      expect(y, `${id} sits in the forward battery zone`).toBeGreaterThanOrEqual(-240);
+      expect(y, `${id} sits in the forward battery zone`).toBeLessThanOrEqual(-150);
+      expect(part?.activeStages, `${id} belongs to the forward stage`).toContain(firstStage?.id);
+    }
+    for (const id of secondStage?.advanceWhenDestroyed ?? []) {
+      const { y } = partWorldAnchor(boss, id);
+      expect(y, `${id} sits in the midship zone`).toBeGreaterThanOrEqual(-70);
+      expect(y, `${id} sits in the midship zone`).toBeLessThanOrEqual(80);
+    }
+
+    const aftParts = (boss.parts ?? []).filter(
+      (part) => part.role === 'engine' || part.role === 'weakpoint',
+    );
+    expect(aftParts.length, 'aft engine/reactor targets').toBeGreaterThanOrEqual(3);
+    for (const part of aftParts) {
+      const { y } = partWorldAnchor(boss, part.id);
+      expect(y, `${part.id} sits in the aft zone`).toBeGreaterThanOrEqual(170);
+      expect(y, `${part.id} sits in the aft zone`).toBeLessThanOrEqual(260);
+      expect(part.activeStages, `${part.id} activates during the reactor run`).toContain(
+        finalStage?.id,
+      );
+    }
+  });
+
+  it('aligns each regular warship gate with forward, midship, and aft art sections', () => {
+    const bossIds = ['amoeba', 'protocore', 'helios', 'nova'];
+
+    for (const bossId of bossIds) {
+      const boss = BOSSES[bossId];
+      expect(boss, `${bossId} campaign boss`).toBeDefined();
+      if (!boss) continue;
+      const stages = boss.stages ?? [];
+      const first = stages[0];
+      const second = stages[1];
+      const final = stages[2];
+
+      for (const id of first?.advanceWhenDestroyed ?? []) {
+        const part = boss.parts?.find((candidate) => candidate.id === id);
+        const { y } = partWorldAnchor(boss, id);
+        expect(y, `${bossId}.${id} forward gate`).toBeLessThanOrEqual(-80);
+        expect(part?.activeStages, `${bossId}.${id} forward stage ownership`).toContain(first?.id);
+      }
+      for (const id of second?.advanceWhenDestroyed ?? []) {
+        const { y } = partWorldAnchor(boss, id);
+        expect(y, `${bossId}.${id} midship gate lower bound`).toBeGreaterThanOrEqual(-36);
+        expect(y, `${bossId}.${id} midship gate upper bound`).toBeLessThanOrEqual(12);
+      }
+
+      const aftSystems = (boss.parts ?? []).filter(
+        (part) => part.role === 'engine' || part.role === 'weakpoint',
+      );
+      expect(aftSystems.length, `${bossId} aft systems`).toBeGreaterThanOrEqual(3);
+      for (const part of aftSystems) {
+        expect(
+          partWorldAnchor(boss, part.id).y,
+          `${bossId}.${part.id} aft placement`,
+        ).toBeGreaterThanOrEqual(70);
+        expect(part.activeStages, `${bossId}.${part.id} final stage ownership`).toContain(
+          final?.id,
+        );
+      }
+    }
+  });
+
+  it('places the killer snail face forward and shell combat gates over the illustrated shell', () => {
+    const snail = BOSSES.snail;
+    expect(snail, 'killer snail data').toBeDefined();
+    if (!snail) return;
+    const parts = new Map((snail.parts ?? []).map((part) => [part.id, part]));
+
+    for (const id of ['eyeL', 'eyeR', 'feeler']) {
+      const y = partWorldAnchor(snail, id).y;
+      expect(y, `snail ${id} face placement`).toBeGreaterThanOrEqual(-150);
+      expect(y, `snail ${id} face placement`).toBeLessThanOrEqual(-95);
+    }
+    for (const id of ['shellL', 'shellR', 'shellTop', 'shellBottom', 'softHeart']) {
+      const y = partWorldAnchor(snail, id).y;
+      expect(y, `snail ${id} shell placement`).toBeGreaterThanOrEqual(20);
+      expect(y, `snail ${id} shell placement`).toBeLessThanOrEqual(130);
+    }
+
+    expect(parts.get('eyeL')?.protects).toContain('core');
+    expect(parts.get('eyeR')?.protects).toContain('core');
+    for (const id of ['shellL', 'shellR', 'shellTop', 'shellBottom']) {
+      expect(parts.get(id)?.exposedBy, `snail ${id} gaze gate`).toEqual(
+        expect.arrayContaining(['eyeL', 'eyeR']),
+      );
+    }
+  });
+
+  it('retains the killer snail finale with both unavoidable signature attacks authored in data', () => {
+    const snail = BOSSES.snail;
+    expect(snail, 'killer snail boss data').toBeDefined();
+    if (!snail) return;
+    const specials = snail.snailSpecials;
+
+    expect(snail.presentation?.kind).toBe('snail');
+    expect(snail.sprite).toBe('boss-snail');
+    expect(specials, 'killer snail specials').toBeDefined();
+    if (!specials) return;
+
+    expect(specials.rageChargeMs, 'shell-rage charge lasts 1-2 seconds').toBeGreaterThanOrEqual(
+      1000,
+    );
+    expect(specials.rageChargeMs).toBeLessThanOrEqual(2000);
+    expect(specials.rageForcedDamage, 'rage barrage forces damage').toBeGreaterThan(0);
+    expect(specials.barrageCount, 'rage barrage fills the screen').toBeGreaterThanOrEqual(120);
+    expect(specials.huntForcedDamage, 'high-speed hunt forces damage').toBeGreaterThan(0);
+    expect(
+      specials.huntDashCount,
+      'high-speed hunt crosses the screen repeatedly',
+    ).toBeGreaterThanOrEqual(5);
+    expect(specials.speech).toBe("I'll......... kill..............you!!!");
+
+    for (const level of LEVELS.slice(0, -1)) {
+      const boss = BOSSES[level.boss];
+      expect(boss, `${level.boss} campaign boss`).toBeDefined();
+      expect(boss?.snailSpecials, `${level.boss} is not the finale creature`).toBeUndefined();
     }
   });
 

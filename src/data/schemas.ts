@@ -327,6 +327,32 @@ const bossStageSchema = z.object({
   coolScale: z.number().positive().max(3).default(1),
 });
 
+/** Large-boss presentation metadata consumed by the scripted boss runtime. */
+const bossPresentationSchema = z.object({
+  kind: z.enum(['warship', 'scrolling-warship', 'snail']),
+  displayWidth: z.number().positive().max(1200),
+  displayHeight: z.number().positive().max(1600),
+  movementScript: z.enum([
+    'wing-sweep',
+    'carrier-broadside',
+    'solar-lance',
+    'hull-crawl',
+    'fortress-assault',
+    'predator-drift',
+  ]),
+});
+
+/** Data-driven, intentionally unavoidable signature attacks for the campaign finale. */
+const snailSpecialsSchema = z.object({
+  rageChargeMs: z.number().int().min(1000).max(2000),
+  rageForcedDamage: z.number().positive().max(100),
+  barrageCount: z.number().int().min(80).max(512),
+  huntIntervalMs: z.number().int().min(4000).max(30000),
+  huntForcedDamage: z.number().positive().max(100),
+  huntDashCount: z.number().int().min(3).max(12),
+  speech: z.literal("I'll......... kill..............you!!!"),
+});
+
 export const bossesSchema = z.object({
   bosses: z.record(
     z.string(),
@@ -395,6 +421,8 @@ export const bossesSchema = z.object({
         .optional(),
       layoutVersion: z.literal(2).optional(),
       envelope: z.object({ w: z.number().positive(), h: z.number().positive() }).optional(),
+      presentation: bossPresentationSchema.optional(),
+      snailSpecials: snailSpecialsSchema.optional(),
       stages: z.array(bossStageSchema).min(1).max(5).optional(),
       /** 블랙홀 기믹: 플레이어 탄·기체를 끌어당기는 중력 */
       gravity: z

@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 
 import { GAME_HEIGHT, GAME_WIDTH, isSceneKey, SceneKeys } from '../config';
 import { DATA } from '../data';
+import { newSession } from '../game/session';
 import { azSheetVariant, generateTextures } from '../systems/textures';
 
 // 에셋 로딩 담당. M0 시점에는 로딩할 에셋이 없어 진행 바 뼈대만 둔다.
@@ -37,6 +38,38 @@ export class PreloadScene extends Phaser.Scene {
       this.load.image(key, `assets/art/backgrounds/sectors/${key}.webp`);
     }
     this.load.image('hero-fighter-v2', 'assets/art/ships/hero-fighter-v2.webp');
+
+    // Production boss illustrations and armoury component cut-outs. These are authored at
+    // roughly 2x display resolution so large set-pieces remain crisp on high-DPI screens.
+    for (const key of ['kestrel', 'vulcan', 'helios', 'crimson', 'nova'] as const) {
+      this.load.image(`boss-warship-${key}`, `assets/art/bosses/boss-warship-${key}.webp`);
+    }
+    this.load.image('boss-snail', 'assets/art/bosses/boss-snail-v2.webp');
+    this.load.image('boss-snail-shell-v2', 'assets/art/bosses/boss-snail-shell-v2.webp');
+    for (const key of [
+      'pulse',
+      'vulcan',
+      'missile',
+      'proton',
+      'laser',
+      'light',
+      'rail',
+      'scatter',
+    ] as const) {
+      this.load.image(`equipment-primary-${key}`, `assets/art/equipment/primary-${key}.webp`);
+    }
+    for (const id of [
+      'secondary-microgun',
+      'secondary-tail-cannon',
+      'secondary-side-cutter',
+      'secondary-seeker-rack',
+      'secondary-arc-satellite',
+      'secondary-plasma-pods',
+      'secondary-mine-layer',
+      'secondary-drone-swarm',
+    ] as const) {
+      this.load.image(`equipment-${id}`, `assets/art/equipment/${id}.webp`);
+    }
 
     // ansimuz Spaceship Shooter / Starfighter (자유 라이선스, 크레딧 감사 표기)
     this.load.image('poodle', 'assets/poodle-super-v3.png');
@@ -103,6 +136,10 @@ export class PreloadScene extends Phaser.Scene {
     // Boot/Preload로의 점프는 자기 재시작 무한루프가 되므로 제외한다.
     if (import.meta.env.DEV) {
       const jump = new URLSearchParams(window.location.search).get('scene');
+      if (jump === SceneKeys.Shop) {
+        this.scene.start(SceneKeys.Shop, { session: newSession(), returnToTitle: true });
+        return;
+      }
       // 세션 없이 시작 가능한 씬만 허용 (Shop/StageIntro/Result는 세션 필요 → 크래시)
       if (isSceneKey(jump) && (jump === SceneKeys.Title || jump === SceneKeys.Game)) {
         this.scene.start(jump);

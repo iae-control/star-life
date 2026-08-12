@@ -8,7 +8,7 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   {
     // Node 유틸 스크립트 (page.evaluate 내부의 브라우저 전역 포함)
-    files: ['scripts/**/*.mjs'],
+    files: ['scripts/**/*.{mjs,cjs}'],
     languageOptions: {
       globals: {
         process: 'readonly',
@@ -18,7 +18,16 @@ export default tseslint.config(
         document: 'readonly',
         performance: 'readonly',
         localStorage: 'readonly',
+        __dirname: 'readonly',
+        require: 'readonly',
+        module: 'readonly',
       },
+    },
+  },
+  {
+    files: ['scripts/**/*.cjs'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
     },
   },
   prettier,

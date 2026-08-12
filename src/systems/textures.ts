@@ -14,6 +14,12 @@ function canvas(w: number, h: number): [HTMLCanvasElement, CanvasRenderingContex
 }
 
 function addCanvasTexture(scene: Phaser.Scene, key: string, c: HTMLCanvasElement): void {
+  // Preloaded production art always wins over procedural fallbacks with the same key.
+  if (
+    scene.textures.exists(key) &&
+    scene.textures.get(key).getSourceImage() instanceof HTMLImageElement
+  )
+    return;
   if (scene.textures.exists(key)) scene.textures.remove(key);
   scene.textures.addCanvas(key, c);
 }
@@ -903,6 +909,166 @@ function smoothTexture(
   const [c, ctx] = canvas(w, h);
   draw(ctx, w, h);
   addCanvasTexture(scene, key, c);
+}
+
+function capitalPartTextures(scene: Phaser.Scene): void {
+  const metal = '#263448';
+  const edge = '#b7d5e5';
+  const shadow = '#07101c';
+  const glow = '#6eeaff';
+
+  smoothTexture(scene, 'part-shield-array', 84, 48, (ctx, w, h) => {
+    ctx.translate(w / 2, h / 2);
+    const g = ctx.createLinearGradient(-34, 0, 34, 0);
+    g.addColorStop(0, shadow);
+    g.addColorStop(0.45, metal);
+    g.addColorStop(0.55, '#536b80');
+    g.addColorStop(1, shadow);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-40, 0);
+    ctx.lineTo(-27, -18);
+    ctx.lineTo(27, -18);
+    ctx.lineTo(40, 0);
+    ctx.lineTo(27, 18);
+    ctx.lineTo(-27, 18);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = edge;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = glow;
+    ctx.strokeStyle = glow;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-25, 0);
+    ctx.lineTo(25, 0);
+    ctx.stroke();
+  });
+
+  smoothTexture(scene, 'part-armor-plate', 76, 54, (ctx, w, h) => {
+    ctx.translate(w / 2, h / 2);
+    const g = ctx.createLinearGradient(0, -25, 0, 25);
+    g.addColorStop(0, '#8da1af');
+    g.addColorStop(0.18, '#405268');
+    g.addColorStop(1, shadow);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-34, -18);
+    ctx.lineTo(-21, -26);
+    ctx.lineTo(25, -23);
+    ctx.lineTo(36, -7);
+    ctx.lineTo(29, 23);
+    ctx.lineTo(-27, 23);
+    ctx.lineTo(-37, 5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#d4e1e8';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.strokeStyle = '#0d1824';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-20, -8);
+    ctx.lineTo(18, -8);
+    ctx.lineTo(25, 8);
+    ctx.lineTo(-13, 8);
+    ctx.closePath();
+    ctx.stroke();
+  });
+
+  smoothTexture(scene, 'part-capital-turret', 70, 70, (ctx, w, h) => {
+    ctx.translate(w / 2, h / 2);
+    const g = ctx.createRadialGradient(-7, -9, 2, 0, 0, 30);
+    g.addColorStop(0, '#8fa7b8');
+    g.addColorStop(0.45, metal);
+    g.addColorStop(1, shadow);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 5, 29, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = edge;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = '#172434';
+    ctx.fillRect(-19, -7, 38, 25);
+    ctx.fillStyle = '#667c8c';
+    ctx.fillRect(-17, -34, 11, 38);
+    ctx.fillRect(6, -34, 11, 38);
+    ctx.fillStyle = glow;
+    ctx.shadowBlur = 8;
+    ctx.shadowColor = glow;
+    ctx.fillRect(-13, -29, 3, 22);
+    ctx.fillRect(10, -29, 3, 22);
+  });
+
+  smoothTexture(scene, 'part-ion-engine', 68, 82, (ctx, w, h) => {
+    ctx.translate(w / 2, h / 2);
+    const g = ctx.createLinearGradient(0, -34, 0, 34);
+    g.addColorStop(0, '#7a91a4');
+    g.addColorStop(0.35, metal);
+    g.addColorStop(1, shadow);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-27, -32);
+    ctx.lineTo(27, -32);
+    ctx.lineTo(31, 22);
+    ctx.lineTo(19, 36);
+    ctx.lineTo(-19, 36);
+    ctx.lineTo(-31, 22);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = edge;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    const flame = ctx.createRadialGradient(0, 21, 2, 0, 21, 22);
+    flame.addColorStop(0, '#ffffff');
+    flame.addColorStop(0.25, glow);
+    flame.addColorStop(1, '#1c6cff00');
+    ctx.fillStyle = flame;
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = glow;
+    ctx.fillRect(-23, 0, 46, 45);
+  });
+
+  smoothTexture(scene, 'part-reactor-core', 82, 82, (ctx, w, h) => {
+    ctx.translate(w / 2, h / 2);
+    for (let r = 37; r >= 8; r -= 9) {
+      ctx.strokeStyle = r % 2 ? edge : '#52687b';
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 23);
+    g.addColorStop(0, '#ffffff');
+    g.addColorStop(0.28, glow);
+    g.addColorStop(1, '#164bff00');
+    ctx.fillStyle = g;
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = glow;
+    ctx.beginPath();
+    ctx.arc(0, 0, 24, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  smoothTexture(scene, 'part-hull-frame', 82, 42, (ctx, w, h) => {
+    ctx.translate(w / 2, h / 2);
+    ctx.fillStyle = shadow;
+    ctx.fillRect(-40, -18, 80, 36);
+    ctx.strokeStyle = '#50677a';
+    ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.moveTo(-35, 13);
+    ctx.lineTo(-22, -12);
+    ctx.lineTo(22, -12);
+    ctx.lineTo(35, 13);
+    ctx.stroke();
+    ctx.strokeStyle = '#9eb3c2';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  });
 }
 
 type ModernIconFrame = 'token' | 'panel' | 'none';
@@ -2798,6 +2964,7 @@ export function generateTextures(scene: Phaser.Scene): void {
   addCanvasTexture(scene, 'boss-snail', enhance(pixmap(SNAIL_MAP, SNAIL_PAL, 4)));
   addCanvasTexture(scene, 'part-eyestalk', enhance(pixmap(EYESTALK_MAP, EYESTALK_PAL, 3)));
   modernBossTextures(scene);
+  capitalPartTextures(scene);
   modernPlanetTextures(scene);
   addCanvasTexture(scene, 'prop-eye', enhance(pixmap(EYE_MAP, EYE_PAL, 4)));
   addCanvasTexture(
