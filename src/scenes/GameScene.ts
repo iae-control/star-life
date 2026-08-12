@@ -204,7 +204,8 @@ interface EnvironmentalHazard {
   emitsGas: number;
   hit: boolean;
   img: Phaser.GameObjects.Image;
-  warning?: Phaser.GameObjects.Rectangle;
+  warning?: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Container;
+  layers?: Phaser.GameObjects.Image[];
 }
 interface OrbEnt {
   x: number;
@@ -265,15 +266,15 @@ interface RacketState {
 const PS_BUBBLE = '';
 const PS = {
   bubbleUntil: 0,
-  swingEvery: 0.34,
-  swingDur: 0.6,
-  swingCount: 6,
+  swingEvery: 0.24,
+  swingDur: 0.56,
+  swingCount: 10,
   endAt: 3.6,
   bossDamagePerSwing: 40,
   partDamagePerSwing: 34,
   maxBossSwings: 3,
 } as const;
-const PS_DIRS: RacketSwing['dir'][] = ['L', 'R', 'T', 'B', 'L', 'R'];
+const PS_DIRS: RacketSwing['dir'][] = ['L', 'R', 'T', 'B', 'L', 'R', 'T', 'B', 'L', 'R'];
 
 /** 어린지우 필살기 — "비켜!" 초록 산 배경 + 앵무새떼 급강하 (위→아래 전화면) */
 interface Parrot {
@@ -304,6 +305,7 @@ interface KbState {
   y: number;
   vy: number;
   phaseT: number;
+  trailT: number;
   bossHits: number;
   bossTickT: number;
 }
@@ -323,6 +325,7 @@ const KB = {
   partDamagePerHit: 34,
   maxBossHits: 3,
   spinBossEvery: 0.45,
+  scale: 0.16,
 } as const;
 
 // 대사 표기는 정본 — 변경 금지
@@ -331,8 +334,8 @@ const JW_YELLS = ['비켜!', '비켜!', '비켜!!'] as const;
 const JW = {
   bubbleUntil: 0.9,
   bgFade: 0.45,
-  parrotCount: 26,
-  spawnDur: 1.8,
+  parrotCount: 42,
+  spawnDur: 1.65,
   endAt: 4.0,
   yellEvery: 0.13,
   bossDamagePerHit: 24,
@@ -384,6 +387,7 @@ export class GameScene extends Phaser.Scene {
   private fireCd = 0;
   private vseq = 0;
   private playerImg!: Phaser.GameObjects.Image;
+  private pilotHullOverlay: Phaser.GameObjects.Image | null = null;
   private flameImg!: Phaser.GameObjects.Image;
   private auraImg!: Phaser.GameObjects.Image;
 
@@ -437,6 +441,9 @@ export class GameScene extends Phaser.Scene {
   private props: { img: Phaser.GameObjects.Image; rot: number }[] = [];
   private nextPropAt = 4;
   private propT = 0;
+  private combo = 0;
+  private comboT = 0;
+  private comboPeak = 0;
 
   // 장비 (후방무기·사이드킥)
   private rearCd = 0;
@@ -510,6 +517,7 @@ export class GameScene extends Phaser.Scene {
   private hudWaveT!: Phaser.GameObjects.Text;
   private hudScore!: Phaser.GameObjects.Text;
   private hudCredits!: Phaser.GameObjects.Text;
+  private comboText!: Phaser.GameObjects.Text;
   private hudMute!: Phaser.GameObjects.Text;
   private hudHeatBar!: Phaser.GameObjects.Rectangle;
   private envStatus!: Phaser.GameObjects.Text;
@@ -619,6 +627,10 @@ export class GameScene extends Phaser.Scene {
     this.thrustT = 0;
     this.props = [];
     this.propT = 0;
+    this.combo = 0;
+    this.comboT = 0;
+    this.comboPeak = 0;
+    this.pilotHullOverlay = null;
     this.nextPropAt = 4 + Math.random() * 5;
     this.rearCd = 0;
     this.sideCd = 0;
@@ -711,6 +723,17 @@ export class GameScene extends Phaser.Scene {
       .image(this.px, this.py, 'hero-fighter-v2')
       .setScale(0.105)
       .setDepth(DEPTH.player);
+    const pilotHullKey: Record<GameSession['pilot'], string> = {
+      jungjioo: 'ship-overlay-jungjioo',
+      parksulhee: 'ship-overlay-parksulhee',
+      youngjioo: 'ship-overlay-youngjioo',
+      keunaebi: 'ship-overlay-keunaebi',
+    };
+    this.pilotHullOverlay = this.add
+      .image(this.px, this.py, pilotHullKey[this.session.pilot])
+      .setDepth(DEPTH.player + 0.05)
+      .setScale(0.74)
+      .setAlpha(0.9);
     // 엔진 화염은 시트에 포함(행 플리커) — 별도 화염 이미지는 끈다
     this.flameImg.setVisible(false);
 
@@ -889,6 +912,9 @@ export class GameScene extends Phaser.Scene {
       .setDepth(DEPTH.hud + 1)
       .setVisible(false);
     this.envStatus = uiText(this, GAME_WIDTH / 2, 46, '', 8, '#9fefff', 'center')
+      .setDepth(DEPTH.hud + 1)
+      .setVisible(false);
+    this.comboText = uiText(this, GAME_WIDTH - 8, 62, '', 12, '#ffe36d', 'right')
       .setDepth(DEPTH.hud + 1)
       .setVisible(false);
 
@@ -1246,6 +1272,7 @@ export class GameScene extends Phaser.Scene {
   private clearSectorEnvironment(): void {
     for (const hazard of this.envHazards) {
       hazard.warning?.destroy();
+      hazard.layers?.forEach((layer) => layer.destroy());
       hazard.img.destroy();
     }
     this.envHazards = [];
@@ -1271,19 +1298,55 @@ export class GameScene extends Phaser.Scene {
     this.playerImg.clearTint();
   }
 
+  private sectorTransitionSeconds(): number {
+    return 2.4;
+  }
+
   private enterSector(routeWave: number): boolean {
     const next = this.sectorForWave(routeWave);
     if (!next || next.id === this.currentSector?.id) return false;
+    const transitionSeconds = this.sectorTransitionSeconds();
+    const firstSector = this.currentSector === null;
+    const oldBackground = this.spaceBg;
+    const oldLandmark = this.sectorLandmark;
+    const oldVisuals = this.children.list.filter(
+      (child): child is Phaser.GameObjects.Image | Phaser.GameObjects.TileSprite =>
+        (child instanceof Phaser.GameObjects.Image ||
+          child instanceof Phaser.GameObjects.TileSprite) &&
+        child.depth >= DEPTH.bg - 0.1 &&
+        child.depth < DEPTH.hole,
+    );
+
     this.clearSectorEnvironment();
-    this.currentSector = next;
-    this.sectorLandmark?.destroy();
+    // 새 환경 기믹은 전환 카드가 사라진 뒤에만 활성화한다. 잔류 탄도 함께 정리해
+    // 짧지만 실제로 안전한 진입 구간을 보장한다.
+    this.currentSector = { ...next, gimmicks: [] };
+    this.inv = Math.max(this.inv, transitionSeconds + 0.35);
+    for (const hostile of this.ebullets) this.pool.release(hostile.img);
+    this.ebullets = [];
     this.sectorLandmark = null;
     for (const prop of this.props) prop.img.destroy();
     this.props = [];
     this.propT = 0;
-    this.spaceBg.destroy();
+
     const background = next.background ?? this.level.background;
-    this.spaceBg = new SpaceBackground(this, DEPTH.bg, background);
+    const newVisuals: (Phaser.GameObjects.Image | Phaser.GameObjects.TileSprite)[] = [];
+    const newVisualAlphas: number[] = [];
+    if (!firstSector) {
+      const childStart = this.children.list.length;
+      this.spaceBg = new SpaceBackground(this, DEPTH.bg, background);
+      for (const child of this.children.list.slice(childStart)) {
+        if (
+          child instanceof Phaser.GameObjects.Image ||
+          child instanceof Phaser.GameObjects.TileSprite
+        ) {
+          newVisuals.push(child);
+          newVisualAlphas.push(child.alpha);
+          child.setAlpha(0);
+        }
+      }
+    }
+
     const landmarkKey =
       next.id.includes('ice') || next.id.includes('frozen')
         ? 'planet-ice'
@@ -1305,11 +1368,116 @@ export class GameScene extends Phaser.Scene {
         .setScale(0.92)
         .setAlpha(0.84)
         .setBlendMode(Phaser.BlendModes.SCREEN);
+      if (!firstSector) {
+        newVisuals.push(this.sectorLandmark);
+        newVisualAlphas.push(0.84);
+        this.sectorLandmark.setAlpha(0);
+      }
     }
-    playMusic(background.theme);
+
+    const transitionTint: Partial<Record<LevelData['background']['theme'], number>> = {
+      nebula: 0x6aa7d9,
+      protostar: 0xd77742,
+      mainseq: 0xe5bb65,
+      asteroids: 0x8794a6,
+      redgiant: 0xc54b3d,
+      supernova: 0xa778d4,
+      blackhole: 0x49436f,
+      inside: 0x36506f,
+    };
+    const tint = transitionTint[background.theme] ?? 0x6f8fb6;
+    const bridgeVeil = this.add
+      .rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, tint, 1)
+      .setOrigin(0, 0)
+      .setDepth(DEPTH.hole - 0.12)
+      .setAlpha(0);
+    const bridgeStars = this.add
+      .tileSprite(0, 0, GAME_WIDTH, GAME_HEIGHT, 'bg-stars-near')
+      .setOrigin(0, 0)
+      .setDepth(DEPTH.hole - 0.08)
+      .setTint(tint)
+      .setBlendMode(Phaser.BlendModes.SCREEN)
+      .setAlpha(0);
+
+    const panel = this.add
+      .rectangle(0, 0, GAME_WIDTH - 28, 82, 0x04101d, 0.94)
+      .setStrokeStyle(1, tint, 0.92);
+    const accent = this.add.rectangle(-(GAME_WIDTH - 38) / 2, 0, 3, 58, tint, 1);
+    const header = uiText(this, -(GAME_WIDTH - 54) / 2, -29, t('sector.card.header'), 7, '#7692ab');
+    const name = uiText(this, -(GAME_WIDTH - 54) / 2, -11, t(next.nameKey), 15, '#e8f6ff');
+    const tagline = uiText(this, -(GAME_WIDTH - 54) / 2, 11, t(next.taglineKey), 7, '#9cb6c9');
     const bonus =
-      next.bonusMultiplier && next.bonusMultiplier > 1 ? `  x${next.bonusMultiplier}` : '';
-    this.banner(`${t(next.nameKey)}${bonus}`, 2.5, '#9fefff');
+      next.bonusMultiplier && next.bonusMultiplier > 1 ? ` / x${next.bonusMultiplier}` : '';
+    const safe = uiText(
+      this,
+      (GAME_WIDTH - 54) / 2,
+      29,
+      `${t('sector.card.safe')} / ${next.kind.toUpperCase()}${bonus}`,
+      7,
+      '#6edbc5',
+      'right',
+    );
+    const card = this.add
+      .container(GAME_WIDTH / 2 - 12, 126, [panel, accent, header, name, tagline, safe])
+      .setAlpha(0);
+    this.hudRoot.add(card);
+
+    if (!firstSector) {
+      for (const visual of oldVisuals) {
+        if (!visual.active) continue;
+        this.tweens.add({
+          targets: visual,
+          alpha: 0,
+          duration: transitionSeconds * 1000,
+          ease: 'Sine.easeInOut',
+        });
+      }
+      for (let i = 0; i < newVisuals.length; i++) {
+        this.tweens.add({
+          targets: newVisuals[i],
+          alpha: newVisualAlphas[i] ?? 1,
+          duration: transitionSeconds * 1000,
+          ease: 'Sine.easeInOut',
+        });
+      }
+    }
+    this.tweens.add({
+      targets: bridgeVeil,
+      alpha: 0.28,
+      duration: transitionSeconds * 500,
+      ease: 'Sine.easeInOut',
+      yoyo: true,
+    });
+    this.tweens.add({
+      targets: bridgeStars,
+      alpha: 0.5,
+      tilePositionY: -190,
+      duration: transitionSeconds * 500,
+      ease: 'Sine.easeInOut',
+      yoyo: true,
+    });
+    this.tweens.add({
+      targets: card,
+      alpha: 1,
+      x: GAME_WIDTH / 2,
+      duration: 260,
+      hold: transitionSeconds * 1000 - 580,
+      ease: 'Cubic.easeOut',
+      yoyo: true,
+    });
+    this.time.delayedCall(850, () => {
+      if (this.currentSector?.id === next.id) playMusic(background.theme);
+    });
+    this.time.delayedCall(transitionSeconds * 1000, () => {
+      if (this.currentSector?.id === next.id) this.currentSector = next;
+      if (!firstSector) {
+        oldBackground.destroy();
+        oldLandmark?.destroy();
+      }
+      bridgeVeil.destroy();
+      bridgeStars.destroy();
+      card.destroy(true);
+    });
     return true;
   }
 
@@ -1340,6 +1508,10 @@ export class GameScene extends Phaser.Scene {
     const isBossWave = routeWave >= levelWaveCount(li);
     const sectorChanged = this.enterSector(routeWave);
     this.spawnQ = buildLevelWave(li, this.session.levelWave);
+    if (sectorChanged) {
+      const safeDelay = this.sectorTransitionSeconds();
+      this.spawnQ = this.spawnQ.map((event) => ({ ...event, t: event.t + safeDelay }));
+    }
     if (!isBossWave) {
       this.session.wave++;
       this.session.levelWave++;
@@ -2251,6 +2423,7 @@ export class GameScene extends Phaser.Scene {
       this.addBoom(this.px - 11, this.py + 8, 1.4, false);
       this.addBoom(this.px + 11, this.py - 8, 1.4, false);
       this.playerImg.setVisible(false);
+      this.pilotHullOverlay?.setVisible(false);
       this.flameImg.setVisible(false);
       this.podL?.setVisible(false);
       this.podR?.setVisible(false);
@@ -2386,18 +2559,76 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private activeComboMultiplier(): number {
+    return Math.min(3, 1 + Math.floor(this.combo / 8) * 0.25);
+  }
+
+  private registerComboKill(x: number, y: number): number {
+    this.combo = this.comboT > 0 ? this.combo + 1 : 1;
+    this.comboT = 1.75;
+    this.comboPeak = Math.max(this.comboPeak, this.combo);
+    if (this.combo % 10 === 0) {
+      const ring = this.add
+        .image(x, y, 'boom-ring')
+        .setDepth(DEPTH.boom + 0.4)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setTint(this.combo >= 30 ? 0xff7b5d : 0xffe36d)
+        .setScale(0.3);
+      this.tweens.add({
+        targets: ring,
+        scale: this.combo >= 30 ? 5.2 : 3.6,
+        alpha: 0,
+        duration: 420,
+        ease: 'Cubic.easeOut',
+        onComplete: () => ring.destroy(),
+      });
+      const callout = this.combo >= 50 ? 'ANNIHILATION' : this.combo >= 30 ? 'RAMPAGE' : 'CHAIN';
+      this.addFloatText(
+        x,
+        y - 18,
+        `${callout} ${this.combo}`,
+        this.combo >= 30 ? '#ff8a62' : '#ffe36d',
+      );
+      this.shake = Math.min(7, this.shake + (this.combo >= 30 ? 3.2 : 1.6));
+      this.slomo(this.combo >= 30 ? 0.48 : 0.68, 0.09);
+      vibrate(this.combo >= 30 ? 55 : 28);
+    }
+    this.comboText.setScale(1.22);
+    this.tweens.add({ targets: this.comboText, scale: 1, duration: 120, ease: 'Back.easeOut' });
+    return this.activeComboMultiplier();
+  }
+
+  private updateCombo(dt: number): void {
+    if (this.comboT > 0) this.comboT = Math.max(0, this.comboT - dt);
+    if (this.comboT <= 0) this.combo = 0;
+    if (this.combo >= 3) {
+      const multiplier = this.activeComboMultiplier();
+      this.comboText
+        .setVisible(true)
+        .setAlpha(Math.min(1, this.comboT * 1.8))
+        .setText(`${this.combo} HIT  ×${multiplier.toFixed(2)}`)
+        .setColor(this.combo >= 30 ? '#ff8a62' : this.combo >= 10 ? '#ffe36d' : '#b8f4ff');
+    } else {
+      this.comboText.setVisible(false);
+    }
+  }
+
   private killEnemy(e: Enemy): void {
     if (e.dead) return;
     e.dead = true;
     this.session.kills++;
-    const score = Math.round(e.score * (this.currentSector?.bonusMultiplier ?? 1));
+    const comboMultiplier = this.registerComboKill(e.x, e.y);
+    const score = Math.round(
+      e.score * (this.currentSector?.bonusMultiplier ?? 1) * comboMultiplier,
+    );
     this.session.score += score;
-    this.addBoom(e.x, e.y, 1.3, false);
+    this.addBoom(e.x, e.y, 1.25 + Math.min(0.38, this.combo * 0.008), false);
     this.addFloatText(e.x, e.y, `+${score}`, '#ffd76a');
     const orb = DATA.enemies.orb;
     const chance = e.def.behavior === 'turret' ? orb.chanceTurret : orb.chance;
-    if (Math.random() < chance)
-      this.dropOrb(e.x, e.y, false, Math.max(25, Math.round(score * 0.22)));
+    const lootChance = Math.min(0.72, chance + Math.min(0.24, this.combo * 0.004));
+    if (Math.random() < lootChance)
+      this.dropOrb(e.x, e.y, false, Math.max(35, Math.round(score * 0.26)));
     // 분열체: 사망 시 파생 스폰
     if (e.def.onDeath) {
       const sp = e.def.onDeath.spawn;
@@ -2533,9 +2764,12 @@ export class GameScene extends Phaser.Scene {
       S: 'pickup-super',
     };
     const img = this.pool.get(texture[type], x, y);
-    img.setDepth(DEPTH.orb);
+    img.setDepth(DEPTH.orb).setScale(0.62);
     const glow = this.pool.get('orb-glow', x, y);
-    glow.setDepth(DEPTH.orb - 0.5).setBlendMode(Phaser.BlendModes.ADD);
+    glow
+      .setDepth(DEPTH.orb - 0.5)
+      .setScale(0.74)
+      .setBlendMode(Phaser.BlendModes.ADD);
     this.orbs.push({ x, y, vy: orb.fallSpeed, t: 0, type, amount, img, glow });
   }
 
@@ -2559,6 +2793,129 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private playSuperCinematic(color: number): void {
+    this.shake = 7;
+    this.slomo(0.34, 0.16);
+    vibrate([28, 18, 72]);
+
+    const speedlines = this.add
+      .image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'super-speedlines')
+      .setDepth(DEPTH.phantom + 0.2)
+      .setScrollFactor(0)
+      .setBlendMode(Phaser.BlendModes.SCREEN)
+      .setTint(color)
+      .setAlpha(0.9)
+      .setScale(0.86);
+    this.tweens.add({
+      targets: speedlines,
+      scale: 1.12,
+      alpha: 0,
+      duration: 620,
+      ease: 'Cubic.easeOut',
+      onComplete: () => speedlines.destroy(),
+    });
+
+    const impact = this.add
+      .image(this.px, this.py, 'super-impact-burst')
+      .setDepth(DEPTH.phantom + 0.65)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setTint(color)
+      .setScale(0.12)
+      .setAlpha(1);
+    this.tweens.add({
+      targets: impact,
+      scale: 1.2,
+      alpha: 0,
+      duration: 390,
+      ease: 'Quart.easeOut',
+      onComplete: () => impact.destroy(),
+    });
+
+    const shockwave = this.add
+      .image(this.px, this.py, 'super-shockwave')
+      .setDepth(DEPTH.phantom + 0.55)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setTint(color)
+      .setScale(0.14)
+      .setAlpha(0.95);
+    this.tweens.add({
+      targets: shockwave,
+      scale: 1.45,
+      alpha: 0,
+      duration: 540,
+      ease: 'Quart.easeOut',
+      onComplete: () => shockwave.destroy(),
+    });
+
+    this.whiteFlash.setFillStyle(color, 1).setVisible(true).setAlpha(0.78);
+    this.tweens.add({
+      targets: this.whiteFlash,
+      alpha: 0,
+      duration: 260,
+      ease: 'Cubic.easeOut',
+      onComplete: () => this.whiteFlash.setVisible(false),
+    });
+
+    const shade = this.add
+      .rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x02030a, 0.42)
+      .setOrigin(0, 0)
+      .setDepth(DEPTH.phantom - 1);
+    this.tweens.add({
+      targets: shade,
+      alpha: 0,
+      duration: 420,
+      onComplete: () => shade.destroy(),
+    });
+
+    const rays = this.add
+      .graphics()
+      .setPosition(this.px, this.py)
+      .setDepth(DEPTH.phantom + 0.4);
+    rays.lineStyle(3, color, 0.86);
+    for (let i = 0; i < 28; i++) {
+      const angle = (i / 28) * Math.PI * 2 + rnd(-0.045, 0.045);
+      const inner = rnd(18, 34);
+      const outer = rnd(90, 210);
+      rays.lineBetween(
+        Math.cos(angle) * inner,
+        Math.sin(angle) * inner,
+        Math.cos(angle) * outer,
+        Math.sin(angle) * outer,
+      );
+    }
+    rays.setScale(0.24).setAlpha(0.95).setBlendMode(Phaser.BlendModes.ADD);
+    this.tweens.add({
+      targets: rays,
+      scale: 1.35,
+      alpha: 0,
+      duration: 460,
+      ease: 'Cubic.easeOut',
+      onComplete: () => rays.destroy(),
+    });
+
+    const ring = this.add
+      .image(this.px, this.py, 'boom-ring')
+      .setDepth(DEPTH.phantom + 0.5)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setTint(color)
+      .setScale(0.18);
+    this.tweens.add({
+      targets: ring,
+      scale: 7.5,
+      alpha: 0,
+      duration: 520,
+      ease: 'Quart.easeOut',
+      onComplete: () => ring.destroy(),
+    });
+    this.tweens.add({
+      targets: this.cameras.main,
+      zoom: 1.055,
+      duration: 90,
+      yoyo: true,
+      ease: 'Sine.easeInOut',
+    });
+  }
+
   private startSuper(): void {
     // pendingShop 카운트다운 중 발동하면 상점 전환으로 즉시 소멸되므로 차단
     if (
@@ -2572,6 +2929,13 @@ export class GameScene extends Phaser.Scene {
     )
       return;
     this.session.superN--;
+    const superColor: Record<GameSession['pilot'], number> = {
+      jungjioo: 0x8c7dff,
+      parksulhee: 0xff63c6,
+      youngjioo: 0x75ff9c,
+      keunaebi: 0xff9f43,
+    };
+    this.playSuperCinematic(superColor[this.session.pilot]);
     if (this.session.pilot === 'keunaebi') {
       // 지우큰애비: "하무야 물어! 쉭쉭!" — 푸들 하무 전방 돌진
       const glow = this.add
@@ -2583,7 +2947,7 @@ export class GameScene extends Phaser.Scene {
       const img = this.add
         .image(this.px, this.py, 'poodle')
         .setDepth(DEPTH.phantom)
-        .setScale(0.62)
+        .setScale(KB.scale)
         .setVisible(false);
       this.kb = {
         t: 0,
@@ -2594,6 +2958,7 @@ export class GameScene extends Phaser.Scene {
         y: this.py - 30,
         vy: KB.vyStart,
         phaseT: 0,
+        trailT: 0,
         bossHits: 0,
         bossTickT: 0,
       };
@@ -2630,7 +2995,7 @@ export class GameScene extends Phaser.Scene {
       this.shake = 5;
       return;
     }
-    const n = 3 + (Math.random() < 0.5 ? 1 : 0);
+    const n = 5 + (Math.random() < 0.6 ? 1 : 0);
     const holes: Hole[] = [];
     for (let i = 0; i < n; i++) {
       const hx =
@@ -2954,6 +3319,19 @@ export class GameScene extends Phaser.Scene {
       kb.img.setPosition(kb.x + wob, kb.y);
       kb.img.setRotation(Math.sin(kb.t * 14) * 0.1);
       kb.glow.setPosition(kb.x + wob, kb.y).setAlpha(0.5 + Math.sin(kb.t * 24) * 0.25);
+      kb.trailT += dt;
+      if (kb.trailT >= 0.045) {
+        kb.trailT = 0;
+        for (let i = 0; i < 3; i++) {
+          const spark = this.fxPool.get('spark', kb.x + wob + rnd(-28, 28), kb.y + rnd(40, 88));
+          spark
+            .setDepth(DEPTH.phantom - 0.2)
+            .setBlendMode(Phaser.BlendModes.ADD)
+            .setTint(i === 0 ? 0x71eaff : 0xff9f43)
+            .setScale(rnd(0.8, 1.8));
+          this.sparks.push({ img: spark, vx: rnd(-35, 35), vy: rnd(170, 310), t: 0 });
+        }
+      }
       for (const e of this.enemies) {
         if (!e.dead && Math.abs(e.x - kb.x) < KB.halfWidth && e.y > kb.y - 240 && e.y < kb.y + 220)
           this.killEnemy(e);
@@ -2984,6 +3362,23 @@ export class GameScene extends Phaser.Scene {
       kb.img.setRotation(kb.img.rotation + dt * 17);
       kb.glow.setPosition(kb.x, kb.y).setAlpha(0.6 + Math.sin(kb.phaseT * 40) * 0.3);
       this.shake = Math.min(6, this.shake + dt * 8);
+      kb.trailT += dt;
+      if (kb.trailT >= 0.12) {
+        kb.trailT = 0;
+        const ring = this.add
+          .image(kb.x, kb.y, 'boom-ring')
+          .setDepth(DEPTH.phantom - 0.1)
+          .setBlendMode(Phaser.BlendModes.ADD)
+          .setTint(0xffa34e)
+          .setScale(0.4);
+        this.tweens.add({
+          targets: ring,
+          scale: 4.8,
+          alpha: 0,
+          duration: 260,
+          onComplete: () => ring.destroy(),
+        });
+      }
       const r2 = KB.spinRadius * KB.spinRadius;
       for (const e of this.enemies) {
         if (e.dead) continue;
@@ -3011,7 +3406,7 @@ export class GameScene extends Phaser.Scene {
       kb.phaseT += dt;
       const p = Math.min(1, kb.phaseT / KB.fadeDur);
       kb.img.setRotation(kb.img.rotation + dt * 17);
-      kb.img.setAlpha(1 - p).setScale(0.62 * (1 + p * 0.5));
+      kb.img.setAlpha(1 - p).setScale(KB.scale * (1 + p * 0.5));
       kb.glow.setAlpha((1 - p) * 0.6);
       if (p >= 1) {
         kb.img.destroy();
@@ -3188,6 +3583,7 @@ export class GameScene extends Phaser.Scene {
     this.updateBoss(dt);
     this.updateOrbs(dt);
     this.updateFx(dt);
+    this.updateCombo(dt);
     this.updateHud();
     this.updateDebug();
 
@@ -3449,9 +3845,8 @@ export class GameScene extends Phaser.Scene {
     // 렌더 반영 — 뱅킹은 시트 열(0..4), 엔진 플리커는 행(0/1)
     this.playerImg.setPosition(Math.round(this.px), Math.round(this.py));
     const bank = clamp(this.pvx / 240, -1, 1);
-    this.playerImg
-      .setRotation(bank * 0.1)
-      .setScale(0.105 * (1 + Math.sin(this.worldT * 18) * 0.006));
+    const shipPulse = 1 + Math.sin(this.worldT * 18) * 0.006;
+    this.playerImg.setRotation(bank * 0.1).setScale(0.105 * shipPulse);
     this.playerImg.setVisible(
       !(
         this.inv > 0 &&
@@ -3462,6 +3857,11 @@ export class GameScene extends Phaser.Scene {
         Math.floor(this.worldT * 20) % 2 === 1
       ),
     );
+    this.pilotHullOverlay
+      ?.setPosition(Math.round(this.px), Math.round(this.py))
+      .setRotation(bank * 0.11)
+      .setScale(0.74 * shipPulse)
+      .setVisible(this.playerImg.visible);
     if (this.sp || this.ps || this.jw || this.kb) this.auraImg.setPosition(this.px, this.py);
   }
 
@@ -3965,8 +4365,8 @@ export class GameScene extends Phaser.Scene {
       }
       const yy = o.y + Math.sin(o.t * 5) * 2;
       const pulse = 1 + Math.sin(o.t * 6) * 0.14;
-      o.img.setPosition(o.x, yy).setScale(pulse);
-      o.glow.setPosition(o.x, yy).setScale(pulse);
+      o.img.setPosition(o.x, yy).setScale(0.62 * pulse);
+      o.glow.setPosition(o.x, yy).setScale(0.74 * pulse);
       if (
         this.alive &&
         aabb(o.x, o.y, 16, 16, this.px, this.py, PLAYER.hitW + 7, PLAYER.hitH + 8)
@@ -4102,12 +4502,148 @@ export class GameScene extends Phaser.Scene {
       .setBlendMode(Phaser.BlendModes.ADD);
   }
 
+  private playVolcanicBlast(x: number): void {
+    this.shake = 7;
+    this.slomo(0.72, 0.09);
+    vibrate([42, 18, 92]);
+    SFX.pow();
+
+    const flash = this.add
+      .rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0xff6128, 0.3)
+      .setOrigin(0, 0)
+      .setDepth(DEPTH.hud - 0.9)
+      .setBlendMode(Phaser.BlendModes.ADD);
+    this.tweens.add({
+      targets: flash,
+      alpha: 0,
+      duration: 430,
+      ease: 'Cubic.easeOut',
+      onComplete: () => flash.destroy(),
+    });
+
+    const vent = this.add
+      .image(x, GAME_HEIGHT - 36, 'hazard-volcanic-vent')
+      .setDepth(DEPTH.ebullet - 0.35)
+      .setDisplaySize(158, 98)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setAlpha(0.95);
+    this.tweens.add({
+      targets: vent,
+      scaleX: 1.24,
+      scaleY: 1.18,
+      alpha: 0,
+      duration: 1180,
+      ease: 'Cubic.easeOut',
+      onComplete: () => vent.destroy(),
+    });
+
+    const shockwave = this.add
+      .image(x, GAME_HEIGHT - 54, 'hazard-disaster-shockwave')
+      .setDepth(DEPTH.ebullet - 0.2)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setTint(0xff7a30)
+      .setScale(0.18)
+      .setAlpha(0.95);
+    this.tweens.add({
+      targets: shockwave,
+      scale: 1.36,
+      alpha: 0,
+      duration: 720,
+      ease: 'Quart.easeOut',
+      onComplete: () => shockwave.destroy(),
+    });
+
+    for (let i = 0; i < 5; i++) {
+      const flame = this.add
+        .image(x + rnd(-42, 42), GAME_HEIGHT - 26, 'hazard-disaster-flame')
+        .setDepth(DEPTH.ebullet - 0.05 + i * 0.003)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setScale(rnd(0.42, 0.78), rnd(0.48, 0.92))
+        .setAlpha(0.92);
+      this.tweens.add({
+        targets: flame,
+        y: GAME_HEIGHT - rnd(118, 220),
+        scaleX: flame.scaleX * rnd(0.55, 0.85),
+        scaleY: flame.scaleY * rnd(1.35, 1.9),
+        alpha: 0,
+        duration: rnd(520, 860),
+        ease: 'Cubic.easeOut',
+        onComplete: () => flame.destroy(),
+      });
+    }
+
+    for (let i = 0; i < 4; i++) {
+      const smoke = this.add
+        .image(x + rnd(-38, 38), GAME_HEIGHT - 58, 'hazard-disaster-smoke')
+        .setDepth(DEPTH.ebullet - 0.45 + i * 0.002)
+        .setScale(rnd(0.42, 0.7))
+        .setAlpha(rnd(0.48, 0.72));
+      this.tweens.add({
+        targets: smoke,
+        x: smoke.x + rnd(-45, 45),
+        y: smoke.y - rnd(90, 180),
+        rotation: rnd(-0.3, 0.3),
+        scale: smoke.scaleX * rnd(1.35, 1.85),
+        alpha: 0,
+        duration: rnd(1050, 1550),
+        ease: 'Sine.easeOut',
+        onComplete: () => smoke.destroy(),
+      });
+    }
+
+    for (let i = 0; i < 5; i++) {
+      const rock = this.add
+        .image(x + rnd(-25, 25), GAME_HEIGHT - 54, 'hazard-disaster-rock')
+        .setDepth(DEPTH.ebullet - 0.1)
+        .setScale(rnd(0.18, 0.36))
+        .setAlpha(0.88);
+      this.tweens.add({
+        targets: rock,
+        x: rock.x + rnd(-85, 85),
+        y: rock.y - rnd(80, 180),
+        rotation: rnd(-4, 4),
+        alpha: 0,
+        duration: rnd(520, 900),
+        ease: 'Cubic.easeOut',
+        onComplete: () => rock.destroy(),
+      });
+    }
+  }
+
   private spawnVolcanicEruption(g: Extract<GimmickData, { type: 'volcanic' }>): void {
     const eruptionX = rnd(55, GAME_WIDTH - 55);
+    const crack = this.add
+      .image(0, 0, 'hazard-volcanic-crack')
+      .setDisplaySize(270, 96)
+      .setAlpha(0.9);
+    const thermalRing = this.add
+      .image(0, -8, 'hazard-volcanic-thermal-ring')
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setScale(0.56)
+      .setAlpha(0.74);
+    const vent = this.add
+      .image(0, 12, 'hazard-volcanic-vent')
+      .setDisplaySize(132, 82)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setAlpha(0.76);
     const warning = this.add
-      .rectangle(eruptionX, GAME_HEIGHT - 92, 52, 184, 0xff6429, 0.28)
-      .setDepth(DEPTH.ebullet - 0.2)
-      .setStrokeStyle(2, 0xffc04d, 0.8);
+      .container(eruptionX, GAME_HEIGHT - 50, [crack, thermalRing, vent])
+      .setDepth(DEPTH.ebullet - 0.2);
+    this.tweens.add({
+      targets: crack,
+      scaleY: crack.scaleY * 1.16,
+      alpha: 0.62,
+      duration: Math.max(180, g.warn * 480),
+      yoyo: true,
+      ease: 'Sine.easeInOut',
+    });
+    this.tweens.add({
+      targets: thermalRing,
+      scale: 0.94,
+      alpha: 0.18,
+      duration: Math.max(220, g.warn * 920),
+      ease: 'Cubic.easeOut',
+    });
     for (let i = 0; i < g.fireballs; i++) {
       const fireball = this.addEnvironmentalHazard(
         'fireball',
@@ -4129,7 +4665,6 @@ export class GameScene extends Phaser.Scene {
       );
       fireball.img.setScale(rnd(0.7, 1.08)).setBlendMode(Phaser.BlendModes.ADD);
     }
-    this.shake = Math.min(7, this.shake + 1.4);
   }
 
   private spawnCoolant(): void {
@@ -4146,35 +4681,58 @@ export class GameScene extends Phaser.Scene {
         hitH: 38,
       },
     );
-    coolant.img.setDepth(DEPTH.orb + 0.25).setBlendMode(Phaser.BlendModes.ADD);
+    coolant.img
+      .setDepth(DEPTH.orb + 0.25)
+      .setScale(0.66)
+      .setBlendMode(Phaser.BlendModes.ADD);
   }
 
   private spawnProminence(g: Extract<GimmickData, { type: 'prominence' }>): void {
     const side: -1 | 1 = Math.random() < 0.5 ? -1 : 1;
     const y = rnd(105, GAME_HEIGHT - 125);
     const warning = this.add
-      .rectangle(GAME_WIDTH / 2, y, GAME_WIDTH, 7, 0xff5638, 0.3)
-      .setDepth(DEPTH.ebullet - 0.2);
+      .image(side < 0 ? -48 : GAME_WIDTH + 48, y, 'hazard-corona')
+      .setDepth(DEPTH.ebullet - 0.25)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setTint(0xff673c)
+      .setScale(0.82)
+      .setAlpha(0.24);
     const prominence = this.addEnvironmentalHazard(
       'prominence',
-      'hazard-prominence',
-      side < 0 ? -98 : GAME_WIDTH + 98,
+      'hazard-prominence-ribbon',
+      side < 0 ? -160 : GAME_WIDTH + 160,
       y,
       {
-        life: 2.6,
+        life: 3.15,
         activeAt: g.warn,
-        hitW: Math.min(170, g.reach),
-        hitH: 48,
+        hitW: Math.min(250, g.reach),
+        hitH: 62,
         damage: g.damage,
         side,
         reach: g.reach,
         warning,
       },
     );
+    const filament = this.add
+      .image(prominence.x, prominence.y, 'hazard-prominence-filament')
+      .setDepth(DEPTH.ebullet + 0.06)
+      .setFlipX(side > 0)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setAlpha(0.82)
+      .setVisible(false);
+    const corona = this.add
+      .image(side < 0 ? -112 : GAME_WIDTH + 112, y, 'hazard-corona')
+      .setDepth(DEPTH.ebullet - 0.18)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setTint(0xff7044)
+      .setScale(1.16)
+      .setAlpha(0.52)
+      .setVisible(false);
+    prominence.layers = [filament, corona];
     prominence.img
       .setFlipX(side > 0)
       .setBlendMode(Phaser.BlendModes.ADD)
-      .setScale(Math.max(0.72, Math.min(1.3, g.reach / 170)), rnd(0.82, 1.18));
+      .setScale(clamp(g.reach / 270, 0.84, 1.08), 0.92);
   }
 
   private spawnLightning(g: Extract<GimmickData, { type: 'electricStorm' }>): void {
@@ -4210,7 +4768,9 @@ export class GameScene extends Phaser.Scene {
         continue;
       }
       if (!hazard.img.visible) hazard.img.setVisible(true);
+      hazard.layers?.forEach((layer) => layer.setVisible(true));
       if (hazard.warning) {
+        if (hazard.kind === 'fireball') this.playVolcanicBlast(hazard.x);
         hazard.warning.destroy();
         hazard.warning = undefined;
         hazard.img.setVisible(true);
@@ -4227,9 +4787,45 @@ export class GameScene extends Phaser.Scene {
         const extension = Math.sin(clamp(age / hazard.life, 0, 1) * Math.PI);
         hazard.x =
           hazard.side < 0
-            ? -98 + extension * hazard.reach
-            : GAME_WIDTH + 98 - extension * hazard.reach;
-        hazard.img.setScale(hazard.img.scaleX, 0.92 + Math.sin(this.worldT * 8) * 0.13);
+            ? -160 + extension * hazard.reach
+            : GAME_WIDTH + 160 - extension * hazard.reach;
+        const tongue = Math.sin(this.worldT * 8.6 + hazard.y * 0.017);
+        const billow = Math.sin(this.worldT * 3.1 + hazard.t * 1.7);
+        const baseScale = clamp(hazard.reach / 270, 0.84, 1.08);
+        hazard.img
+          .setScale(baseScale * (1 + tongue * 0.035), 0.9 + tongue * 0.11)
+          .setRotation(billow * 0.035);
+        const filament = hazard.layers?.[0];
+        if (filament) {
+          filament
+            .setPosition(hazard.x - hazard.side * (5 + tongue * 7), hazard.y + tongue * 5)
+            .setScale(baseScale * (1.02 - tongue * 0.025), 0.84 + billow * 0.14)
+            .setRotation(-billow * 0.025)
+            .setAlpha(0.64 + Math.abs(tongue) * 0.28);
+        }
+        const corona = hazard.layers?.[1];
+        if (corona) {
+          corona
+            .setPosition(hazard.side < 0 ? -112 : GAME_WIDTH + 112, hazard.y)
+            .setScale(1.1 + billow * 0.08)
+            .setRotation(this.worldT * 0.08 * -hazard.side)
+            .setAlpha(0.4 + Math.abs(tongue) * 0.16);
+        }
+        if (Math.random() < dt * 18) {
+          const tipX = hazard.x - hazard.side * baseScale * 145;
+          const spark = this.fxPool.get('spark', tipX + rnd(-12, 12), hazard.y + rnd(-38, 38));
+          spark
+            .setDepth(DEPTH.ebullet + 0.08)
+            .setBlendMode(Phaser.BlendModes.ADD)
+            .setTint(Math.random() < 0.45 ? 0xffe08a : 0xff563d)
+            .setScale(rnd(0.8, 1.8));
+          this.sparks.push({
+            img: spark,
+            vx: -hazard.side * rnd(55, 125),
+            vy: rnd(-70, 70),
+            t: 0.24,
+          });
+        }
       } else {
         hazard.x += hazard.vx * dt;
         hazard.y += hazard.vy * dt;
@@ -4243,7 +4839,7 @@ export class GameScene extends Phaser.Scene {
         hazard.img.rotation += dt * 0.04;
       } else if (hazard.kind === 'coolant') {
         hazard.img.rotation = Math.sin(this.worldT * 3 + hazard.x) * 0.14;
-        hazard.img.setScale(1 + Math.sin(this.worldT * 6) * 0.08);
+        hazard.img.setScale(0.66 * (1 + Math.sin(this.worldT * 6) * 0.08));
       } else if (hazard.kind === 'lightning') {
         hazard.img.setAlpha(Math.random() > 0.3 ? 1 : 0.42);
         this.environmentOverlay.setFillStyle(0xb9efff, 1).setAlpha(0.13);
@@ -4295,6 +4891,7 @@ export class GameScene extends Phaser.Scene {
         hazard.x < -240 ||
         hazard.x > GAME_WIDTH + 240;
       if (expired) {
+        hazard.layers?.forEach((layer) => layer.destroy());
         hazard.img.destroy();
         this.envHazards.splice(i, 1);
       }
@@ -4466,6 +5063,7 @@ export class GameScene extends Phaser.Scene {
       this.environmentWind = gust * g.windForce;
       this.environmentSpeed = 1 - g.slow;
       this.playerImg.setTint(0xb8efff);
+      this.environmentOverlay.setFillStyle(0x8edfff, 1).setAlpha(0.035 + Math.abs(gust) * 0.035);
       if (!hazardGate && this.gimmickTimer('ice-shards', dt, g.shardEvery)) this.spawnIceStorm(g);
     } else if (g.type === 'volcanic') {
       if (!hazardGate && this.gimmickTimer('volcanic-eruption', dt, g.eruptionEvery)) {
@@ -4492,6 +5090,16 @@ export class GameScene extends Phaser.Scene {
     } else if (g.type === 'prominence') {
       this.environmentWind =
         (Math.sin(this.worldT * 0.58) + Math.sin(this.worldT * 1.73) * 0.35) * g.windForce;
+      this.environmentOverlay
+        .setFillStyle(0xff6835, 1)
+        .setAlpha(0.035 + Math.abs(Math.sin(this.worldT * 1.4)) * 0.035);
+      if (
+        this.envHazards.some(
+          (hazard) => hazard.kind === 'prominence' && hazard.t >= hazard.activeAt,
+        )
+      ) {
+        this.shake = Math.min(3.2, this.shake + dt * 0.85);
+      }
       if (!hazardGate && this.gimmickTimer('stellar-prominence', dt, g.interval)) {
         this.spawnProminence(g);
       }

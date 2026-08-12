@@ -8,10 +8,10 @@
     "armor": "armor-light-plating"
   },
   "stageRewards": {
-    "base": 900,
-    "perStage": 350,
-    "repeatMultiplier": 0.55,
-    "firstClearMultiplier": 1.4,
+    "base": 4500,
+    "perStage": 1100,
+    "repeatMultiplier": 0.45,
+    "firstClearMultiplier": 1.25,
     "flawlessBonus": 0.2,
     "difficulty": { "easy": 0.85, "normal": 1, "hard": 1.25 },
     "roundTo": 25

@@ -1942,6 +1942,730 @@ function modernPlanetTextures(scene: Phaser.Scene): void {
   );
 }
 
+/**
+ * Production FX contract: every texture is transparent, centre-origin friendly and pre-rendered.
+ * Large-area layers are designed for NORMAL/SCREEN, emissive cores for ADD, and may be tinted.
+ * Keeping the detail in cached canvases avoids per-frame Graphics path construction on mobile.
+ */
+function productionFxTextures(scene: Phaser.Scene): void {
+  // Volcanic warning set: irregular ground fissure + expanding elliptical heat front + vent mouth.
+  smoothTexture(scene, 'hazard-volcanic-crack', 360, 128, (ctx, w, h) => {
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    const cx = w / 2;
+    const groundY = h * 0.68;
+
+    ctx.save();
+    ctx.translate(cx, groundY);
+    ctx.scale(1, 0.34);
+    const heat = ctx.createRadialGradient(0, 0, 4, 0, 0, 176);
+    heat.addColorStop(0, 'rgba(255,245,184,0.5)');
+    heat.addColorStop(0.28, 'rgba(255,125,32,0.27)');
+    heat.addColorStop(0.68, 'rgba(180,32,18,0.1)');
+    heat.addColorStop(1, 'rgba(40,5,9,0)');
+    ctx.fillStyle = heat;
+    ctx.fillRect(-180, -180, 360, 360);
+    ctx.restore();
+
+    const cracks: Array<Array<[number, number]>> = [
+      [
+        [180, 83],
+        [145, 76],
+        [118, 84],
+        [88, 78],
+        [54, 92],
+        [14, 89],
+      ],
+      [
+        [181, 84],
+        [212, 74],
+        [240, 82],
+        [272, 73],
+        [304, 88],
+        [350, 83],
+      ],
+      [
+        [145, 77],
+        [132, 61],
+        [109, 54],
+        [94, 39],
+      ],
+      [
+        [118, 84],
+        [101, 99],
+        [78, 105],
+        [63, 121],
+      ],
+      [
+        [213, 74],
+        [225, 57],
+        [248, 48],
+        [258, 29],
+      ],
+      [
+        [272, 73],
+        [286, 101],
+        [318, 110],
+        [330, 126],
+      ],
+    ];
+    const strokeCracks = (color: string, width: number, blur: number): void => {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = blur;
+      ctx.beginPath();
+      for (const crack of cracks) {
+        const first = crack[0];
+        if (!first) continue;
+        ctx.moveTo(first[0], first[1]);
+        for (let i = 1; i < crack.length; i++) {
+          const point = crack[i];
+          if (point) ctx.lineTo(point[0], point[1]);
+        }
+      }
+      ctx.stroke();
+    };
+    strokeCracks('rgba(35,5,10,0.78)', 17, 0);
+    strokeCracks('rgba(255,68,19,0.78)', 8, 16);
+    strokeCracks('rgba(255,215,92,0.96)', 3, 8);
+    strokeCracks('rgba(255,255,224,0.9)', 1.1, 3);
+    ctx.shadowBlur = 0;
+  });
+
+  smoothTexture(scene, 'hazard-volcanic-thermal-ring', 288, 144, (ctx, w, h) => {
+    const cx = w / 2;
+    const cy = h * 0.55;
+    ctx.lineCap = 'round';
+    ctx.save();
+    ctx.shadowColor = '#ff6b25';
+    ctx.shadowBlur = 20;
+    for (const [rx, ry, width, alpha] of [
+      [126, 48, 10, 0.16],
+      [104, 38, 5, 0.38],
+      [78, 28, 2.5, 0.86],
+    ] as const) {
+      ctx.strokeStyle = `rgba(255,${Math.round(120 + alpha * 100)},62,${alpha})`;
+      ctx.lineWidth = width;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    ctx.strokeStyle = 'rgba(255,236,164,0.72)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([9, 13]);
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, 116, 43, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    for (let i = 0; i < 9; i++) {
+      const x = 40 + i * 27;
+      const lift = 12 + (i % 3) * 7;
+      ctx.strokeStyle = `rgba(255,${128 + i * 8},72,${0.18 + (i % 2) * 0.1})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x, cy + 5);
+      ctx.bezierCurveTo(x - 8, cy - lift, x + 11, cy - lift * 1.4, x + 2, cy - lift * 2);
+      ctx.stroke();
+    }
+  });
+
+  smoothTexture(scene, 'hazard-volcanic-vent', 192, 120, (ctx, w, h) => {
+    const cx = w / 2;
+    const cy = h * 0.67;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(1, 0.38);
+    const glow = ctx.createRadialGradient(0, 0, 2, 0, 0, 82);
+    glow.addColorStop(0, 'rgba(255,255,208,0.95)');
+    glow.addColorStop(0.26, 'rgba(255,117,27,0.82)');
+    glow.addColorStop(0.62, 'rgba(105,25,20,0.48)');
+    glow.addColorStop(1, 'rgba(15,5,12,0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(0, 0, 90, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(20,7,12,0.9)';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 46, 28, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(255,185,74,0.86)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(51, 84);
+    ctx.lineTo(30, 101);
+    ctx.moveTo(70, 91);
+    ctx.lineTo(58, 115);
+    ctx.moveTo(141, 85);
+    ctx.lineTo(166, 101);
+    ctx.moveTo(122, 91);
+    ctx.lineTo(136, 116);
+    ctx.stroke();
+  });
+
+  const drawProminence = (
+    key: string,
+    width: number,
+    height: number,
+    filamentsOnly: boolean,
+  ): void => {
+    smoothTexture(scene, key, width, height, (ctx, w, h) => {
+      const mid = h / 2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      if (!filamentsOnly) {
+        const haze = ctx.createLinearGradient(0, 0, w, 0);
+        haze.addColorStop(0, 'rgba(255,250,194,0.9)');
+        haze.addColorStop(0.24, 'rgba(255,152,47,0.76)');
+        haze.addColorStop(0.72, 'rgba(255,48,61,0.42)');
+        haze.addColorStop(1, 'rgba(255,20,72,0)');
+        ctx.shadowColor = '#ff4c32';
+        ctx.shadowBlur = h * 0.18;
+        ctx.fillStyle = haze;
+        ctx.beginPath();
+        ctx.moveTo(0, mid - h * 0.23);
+        ctx.bezierCurveTo(w * 0.18, 0, w * 0.3, mid + h * 0.1, w * 0.47, h * 0.14);
+        ctx.bezierCurveTo(w * 0.62, -h * 0.03, w * 0.78, mid + h * 0.04, w, mid - h * 0.02);
+        ctx.lineTo(w, mid + h * 0.18);
+        ctx.bezierCurveTo(w * 0.77, h * 1.02, w * 0.64, mid + h * 0.08, w * 0.45, h * 0.86);
+        ctx.bezierCurveTo(w * 0.27, h * 1.05, w * 0.17, mid - h * 0.08, 0, mid + h * 0.25);
+        ctx.closePath();
+        ctx.fill();
+
+        const middle = ctx.createLinearGradient(0, mid, w, mid);
+        middle.addColorStop(0, 'rgba(255,255,224,0.98)');
+        middle.addColorStop(0.34, 'rgba(255,191,63,0.92)');
+        middle.addColorStop(0.78, 'rgba(255,76,41,0.64)');
+        middle.addColorStop(1, 'rgba(255,30,70,0)');
+        ctx.fillStyle = middle;
+        ctx.beginPath();
+        ctx.moveTo(0, mid - h * 0.09);
+        ctx.bezierCurveTo(
+          w * 0.2,
+          mid - h * 0.35,
+          w * 0.31,
+          mid + h * 0.19,
+          w * 0.5,
+          mid - h * 0.1,
+        );
+        ctx.bezierCurveTo(w * 0.67, mid - h * 0.37, w * 0.8, mid + h * 0.25, w, mid - h * 0.02);
+        ctx.lineTo(w, mid + h * 0.08);
+        ctx.bezierCurveTo(
+          w * 0.79,
+          mid + h * 0.34,
+          w * 0.67,
+          mid - h * 0.13,
+          w * 0.49,
+          mid + h * 0.14,
+        );
+        ctx.bezierCurveTo(w * 0.3, mid + h * 0.38, w * 0.2, mid - h * 0.13, 0, mid + h * 0.12);
+        ctx.closePath();
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+
+      for (const [offset, color, lineWidth, alpha] of [
+        [-0.11, '#fffbd8', 3.6, 0.95],
+        [0.03, '#ffd05e', 2.5, 0.84],
+        [0.16, '#ff6b3d', 2, 0.56],
+        [-0.22, '#ff4568', 1.4, 0.42],
+      ] as const) {
+        ctx.strokeStyle = color;
+        ctx.globalAlpha = alpha;
+        ctx.lineWidth = lineWidth;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = lineWidth * 3;
+        ctx.beginPath();
+        ctx.moveTo(2, mid + h * offset);
+        ctx.bezierCurveTo(
+          w * 0.22,
+          mid - h * (0.2 + offset),
+          w * 0.33,
+          mid + h * (0.22 - offset),
+          w * 0.52,
+          mid - h * (0.08 + offset),
+        );
+        ctx.bezierCurveTo(
+          w * 0.7,
+          mid - h * (0.3 - offset),
+          w * 0.82,
+          mid + h * (0.2 + offset),
+          w - 2,
+          mid - h * offset * 0.4,
+        );
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      ctx.shadowBlur = 0;
+    });
+  };
+  // Preserve the live key's 190x86 footprint while replacing its flat ribbon artwork.
+  drawProminence('hazard-prominence', 190, 86, false);
+  drawProminence('hazard-prominence-ribbon', 320, 128, false);
+  drawProminence('hazard-prominence-filament', 320, 128, true);
+
+  smoothTexture(scene, 'hazard-corona', 320, 320, (ctx, w, h) => {
+    const cx = w / 2;
+    const cy = h / 2;
+    const halo = ctx.createRadialGradient(cx, cy, 76, cx, cy, 157);
+    halo.addColorStop(0, 'rgba(255,246,178,0)');
+    halo.addColorStop(0.46, 'rgba(255,152,45,0.09)');
+    halo.addColorStop(0.74, 'rgba(255,72,44,0.2)');
+    halo.addColorStop(1, 'rgba(255,28,78,0)');
+    ctx.fillStyle = halo;
+    ctx.fillRect(0, 0, w, h);
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 18; i++) {
+      const radius = 94 + (i % 6) * 9;
+      const start = i * 1.47;
+      const length = 0.32 + (i % 4) * 0.15;
+      const color = i % 3 === 0 ? '#fff2ae' : i % 3 === 1 ? '#ff9b3b' : '#ff4760';
+      ctx.strokeStyle = color;
+      ctx.globalAlpha = 0.32 + (i % 5) * 0.09;
+      ctx.lineWidth = 1.2 + (i % 3) * 0.8;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, start, start + length);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+    for (let i = 0; i < 9; i++) {
+      const angle = i * 2.19;
+      const inner = 105 + (i % 3) * 6;
+      const outer = 138 + (i % 4) * 8;
+      const x1 = cx + Math.cos(angle) * inner;
+      const y1 = cy + Math.sin(angle) * inner;
+      const x2 = cx + Math.cos(angle + 0.18) * outer;
+      const y2 = cy + Math.sin(angle + 0.18) * outer;
+      ctx.strokeStyle = i % 2 === 0 ? 'rgba(255,218,112,0.62)' : 'rgba(255,80,72,0.48)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.bezierCurveTo(
+        cx + Math.cos(angle - 0.22) * outer,
+        cy + Math.sin(angle - 0.22) * outer,
+        cx + Math.cos(angle + 0.45) * outer,
+        cy + Math.sin(angle + 0.45) * outer,
+        x2,
+        y2,
+      );
+      ctx.stroke();
+    }
+  });
+
+  // Disaster kit: each sprite can be layered independently and tinted per sector.
+  smoothTexture(scene, 'hazard-disaster-shockwave', 256, 256, (ctx, w, h) => {
+    const cx = w / 2;
+    const cy = h / 2;
+    const wash = ctx.createRadialGradient(cx, cy, 34, cx, cy, 126);
+    wash.addColorStop(0, 'rgba(255,247,210,0)');
+    wash.addColorStop(0.55, 'rgba(255,158,65,0.08)');
+    wash.addColorStop(0.76, 'rgba(255,100,41,0.26)');
+    wash.addColorStop(1, 'rgba(72,42,42,0)');
+    ctx.fillStyle = wash;
+    ctx.fillRect(0, 0, w, h);
+    ctx.lineCap = 'round';
+    for (const [radius, width, color] of [
+      [112, 9, 'rgba(255,109,45,0.2)'],
+      [102, 3.5, 'rgba(255,230,157,0.86)'],
+      [89, 2, 'rgba(184,203,220,0.46)'],
+    ] as const) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = width * 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.shadowBlur = 0;
+  });
+
+  smoothTexture(scene, 'hazard-disaster-rock', 112, 112, (ctx, w, h) => {
+    const cx = w / 2;
+    const cy = h / 2;
+    const points: Array<[number, number]> = [
+      [52, 5],
+      [75, 12],
+      [95, 29],
+      [107, 52],
+      [96, 78],
+      [78, 101],
+      [51, 108],
+      [25, 96],
+      [8, 76],
+      [3, 50],
+      [17, 24],
+      [34, 10],
+    ];
+    const rockPath = (): void => {
+      const first = points[0];
+      if (!first) return;
+      ctx.beginPath();
+      ctx.moveTo(first[0], first[1]);
+      for (let i = 1; i < points.length; i++) {
+        const point = points[i];
+        if (point) ctx.lineTo(point[0], point[1]);
+      }
+      ctx.closePath();
+    };
+    ctx.shadowColor = '#ff5a24';
+    ctx.shadowBlur = 13;
+    const body = ctx.createRadialGradient(39, 31, 4, cx, cy, 57);
+    body.addColorStop(0, '#b98766');
+    body.addColorStop(0.34, '#6d493e');
+    body.addColorStop(0.72, '#35252d');
+    body.addColorStop(1, '#12121c');
+    ctx.fillStyle = body;
+    rockPath();
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.save();
+    rockPath();
+    ctx.clip();
+    ctx.fillStyle = 'rgba(235,170,115,0.18)';
+    ctx.beginPath();
+    ctx.moveTo(16, 25);
+    ctx.lineTo(53, 8);
+    ctx.lineTo(45, 51);
+    ctx.lineTo(8, 57);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = 'rgba(7,8,15,0.34)';
+    ctx.beginPath();
+    ctx.moveTo(46, 52);
+    ctx.lineTo(96, 29);
+    ctx.lineTo(106, 71);
+    ctx.lineTo(69, 77);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle = '#14131c';
+    ctx.lineWidth = 4;
+    rockPath();
+    ctx.stroke();
+    ctx.strokeStyle = '#ff9c45';
+    ctx.lineWidth = 2.2;
+    ctx.shadowColor = '#ff5a24';
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.moveTo(37, 18);
+    ctx.lineTo(48, 43);
+    ctx.lineTo(41, 65);
+    ctx.lineTo(55, 83);
+    ctx.moveTo(48, 43);
+    ctx.lineTo(70, 52);
+    ctx.lineTo(82, 73);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  });
+
+  smoothTexture(scene, 'hazard-disaster-smoke', 192, 192, (ctx) => {
+    const puffs: Array<[number, number, number, number]> = [
+      [95, 128, 57, 0.82],
+      [58, 120, 42, 0.68],
+      [132, 112, 48, 0.72],
+      [83, 78, 43, 0.64],
+      [124, 66, 37, 0.58],
+      [97, 37, 29, 0.46],
+      [48, 77, 27, 0.42],
+    ];
+    for (const [x, y, radius, alpha] of puffs) {
+      const puff = ctx.createRadialGradient(x - radius * 0.24, y - radius * 0.28, 2, x, y, radius);
+      puff.addColorStop(0, `rgba(119,124,132,${alpha})`);
+      puff.addColorStop(0.38, `rgba(58,62,72,${alpha * 0.82})`);
+      puff.addColorStop(0.76, `rgba(28,29,39,${alpha * 0.48})`);
+      puff.addColorStop(1, 'rgba(13,14,22,0)');
+      ctx.fillStyle = puff;
+      ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+    }
+    const ember = ctx.createRadialGradient(96, 153, 1, 96, 153, 66);
+    ember.addColorStop(0, 'rgba(255,132,43,0.42)');
+    ember.addColorStop(0.5, 'rgba(255,57,31,0.12)');
+    ember.addColorStop(1, 'rgba(255,35,24,0)');
+    ctx.fillStyle = ember;
+    ctx.fillRect(25, 82, 142, 110);
+  });
+
+  smoothTexture(scene, 'hazard-disaster-flame', 96, 160, (ctx, w, h) => {
+    const flame = (inset: number, top: number, colorStops: Array<[number, string]>): void => {
+      const gradient = ctx.createLinearGradient(0, top, 0, h - inset);
+      for (const [stop, color] of colorStops) gradient.addColorStop(stop, color);
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.moveTo(w / 2, top);
+      ctx.bezierCurveTo(w * 0.62, top + 26, w * 0.88 - inset, h * 0.51, w - inset, h - inset);
+      ctx.bezierCurveTo(w * 0.7, h - inset * 0.45, w * 0.58, h * 0.88, w / 2, h - inset * 0.2);
+      ctx.bezierCurveTo(w * 0.36, h * 0.9, w * 0.18, h - inset * 0.3, inset, h - inset);
+      ctx.bezierCurveTo(w * 0.17, h * 0.56, w * 0.4, top + 30, w / 2, top);
+      ctx.closePath();
+      ctx.fill();
+    };
+    ctx.shadowColor = '#ff5229';
+    ctx.shadowBlur = 18;
+    flame(5, 4, [
+      [0, 'rgba(255,57,36,0)'],
+      [0.25, 'rgba(255,68,28,0.82)'],
+      [1, 'rgba(128,18,18,0.22)'],
+    ]);
+    ctx.shadowBlur = 8;
+    flame(20, 33, [
+      [0, 'rgba(255,235,138,0.12)'],
+      [0.35, 'rgba(255,178,51,0.96)'],
+      [1, 'rgba(255,66,20,0.64)'],
+    ]);
+    ctx.shadowBlur = 0;
+    flame(34, 68, [
+      [0, 'rgba(255,255,238,0.25)'],
+      [0.5, 'rgba(255,251,194,0.98)'],
+      [1, 'rgba(255,162,42,0.72)'],
+    ]);
+  });
+
+  // Pilot overlays extend around the shared craft and deliberately alter its outer silhouette.
+  const pilotOverlay = (
+    key: string,
+    glowColor: string,
+    drawAttachments: (ctx: CanvasRenderingContext2D, cx: number, cy: number) => void,
+  ): void => {
+    smoothTexture(scene, key, 96, 112, (ctx, w, h) => {
+      const cx = w / 2;
+      const cy = h * 0.48;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.shadowColor = glowColor;
+      ctx.shadowBlur = 10;
+      drawAttachments(ctx, cx, cy);
+      ctx.shadowBlur = 0;
+      const cockpit = ctx.createRadialGradient(cx - 2, cy - 10, 1, cx, cy - 8, 13);
+      cockpit.addColorStop(0, 'rgba(255,255,255,0.92)');
+      cockpit.addColorStop(0.34, glowColor);
+      cockpit.addColorStop(1, 'rgba(5,12,28,0)');
+      ctx.fillStyle = cockpit;
+      ctx.fillRect(cx - 15, cy - 23, 30, 30);
+      const engine = ctx.createLinearGradient(cx, cy + 16, cx, h - 2);
+      engine.addColorStop(0, glowColor);
+      engine.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = engine;
+      ctx.beginPath();
+      ctx.moveTo(cx - 5, cy + 13);
+      ctx.lineTo(cx + 5, cy + 13);
+      ctx.lineTo(cx, h - 2);
+      ctx.closePath();
+      ctx.fill();
+    });
+  };
+
+  pilotOverlay('ship-overlay-jungjioo', '#73e9ff', (ctx, cx, cy) => {
+    const blade = ctx.createLinearGradient(8, cy, cx, cy);
+    blade.addColorStop(0, 'rgba(107,230,255,0.18)');
+    blade.addColorStop(0.55, '#43bfe3');
+    blade.addColorStop(1, '#d9fbff');
+    ctx.fillStyle = blade;
+    for (const side of [-1, 1]) {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(side, 1);
+      ctx.beginPath();
+      ctx.moveTo(-7, -15);
+      ctx.quadraticCurveTo(33, -31, 43, -4);
+      ctx.quadraticCurveTo(26, -12, 13, 13);
+      ctx.lineTo(5, 9);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.strokeStyle = '#dffcff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy - 5, 24, Math.PI * 1.08, Math.PI * 1.92);
+    ctx.stroke();
+  });
+
+  pilotOverlay('ship-overlay-parksulhee', '#ff62cf', (ctx, cx, cy) => {
+    const wing = ctx.createLinearGradient(6, cy, 90, cy);
+    wing.addColorStop(0, '#7a1f67');
+    wing.addColorStop(0.5, '#ff64cc');
+    wing.addColorStop(1, '#7a1f67');
+    ctx.fillStyle = wing;
+    ctx.beginPath();
+    ctx.moveTo(cx - 7, cy - 18);
+    ctx.lineTo(6, cy - 5);
+    ctx.lineTo(19, cy + 12);
+    ctx.lineTo(cx - 5, cy + 5);
+    ctx.lineTo(cx + 5, cy + 5);
+    ctx.lineTo(77, cy + 12);
+    ctx.lineTo(90, cy - 5);
+    ctx.lineTo(cx + 7, cy - 18);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#ffd9f3';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(cx - 28, cy - 3, 12, 20, -0.7, 0, Math.PI * 2);
+    ctx.ellipse(cx + 28, cy - 3, 12, 20, 0.7, 0, Math.PI * 2);
+    ctx.stroke();
+  });
+
+  pilotOverlay('ship-overlay-youngjioo', '#64ef9a', (ctx, cx, cy) => {
+    const feather = ctx.createLinearGradient(0, cy, cx, cy);
+    feather.addColorStop(0, '#0e6e4d');
+    feather.addColorStop(0.65, '#43d983');
+    feather.addColorStop(1, '#caffdc');
+    ctx.fillStyle = feather;
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < 3; i++) {
+        ctx.save();
+        ctx.translate(cx, cy - 8 + i * 10);
+        ctx.scale(side, 1);
+        ctx.beginPath();
+        ctx.moveTo(1, -7);
+        ctx.quadraticCurveTo(24 + i * 5, -18, 44 - i * 4, -6 + i * 4);
+        ctx.quadraticCurveTo(25, 1 + i * 3, 4, 7);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+    ctx.fillStyle = '#dffff0';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 33);
+    ctx.lineTo(cx - 6, cy - 14);
+    ctx.lineTo(cx + 6, cy - 14);
+    ctx.closePath();
+    ctx.fill();
+  });
+
+  pilotOverlay('ship-overlay-keunaebi', '#f2c25f', (ctx, cx, cy) => {
+    const armor = ctx.createLinearGradient(8, cy, 88, cy);
+    armor.addColorStop(0, '#5d3c16');
+    armor.addColorStop(0.5, '#e5b24e');
+    armor.addColorStop(1, '#5d3c16');
+    ctx.fillStyle = armor;
+    ctx.beginPath();
+    ctx.moveTo(cx - 8, cy - 19);
+    ctx.lineTo(12, cy - 5);
+    ctx.lineTo(4, cy + 19);
+    ctx.lineTo(cx - 6, cy + 10);
+    ctx.lineTo(cx + 6, cy + 10);
+    ctx.lineTo(92, cy + 19);
+    ctx.lineTo(84, cy - 5);
+    ctx.lineTo(cx + 8, cy - 19);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#fff0b0';
+    ctx.lineWidth = 5;
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(cx + side * 20, cy - 3);
+      ctx.quadraticCurveTo(cx + side * 42, cy - 21, cx + side * 39, cy + 20);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#5f421c';
+    ctx.fillRect(cx - 16, cy + 9, 32, 11);
+  });
+
+  // Tintable super layers. Use fixed-to-camera placement and ADD/SCREEN blending.
+  smoothTexture(scene, 'super-speedlines', GAME_WIDTH, GAME_HEIGHT, (ctx, w, h) => {
+    const cx = w / 2;
+    const cy = h * 0.51;
+    for (let i = 0; i < 34; i++) {
+      const angle = (i / 34) * Math.PI * 2 + ((i * 17) % 11) * 0.011;
+      const inner = 62 + (i % 7) * 13;
+      const outer = 290 + (i % 6) * 44;
+      const width = 0.8 + (i % 5) * 0.62;
+      const x1 = cx + Math.cos(angle) * inner;
+      const y1 = cy + Math.sin(angle) * inner * 1.62;
+      const x2 = cx + Math.cos(angle) * outer;
+      const y2 = cy + Math.sin(angle) * outer * 1.62;
+      const gradient = ctx.createLinearGradient(x1, y1, x2, y2);
+      gradient.addColorStop(0, 'rgba(220,247,255,0)');
+      gradient.addColorStop(0.35, `rgba(190,235,255,${0.18 + (i % 4) * 0.07})`);
+      gradient.addColorStop(1, 'rgba(255,255,255,0)');
+      const px = -Math.sin(angle) * width;
+      const py = Math.cos(angle) * width;
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.moveTo(x1 - px * 0.25, y1 - py * 0.25);
+      ctx.lineTo(x2 - px, y2 - py);
+      ctx.lineTo(x2 + px, y2 + py);
+      ctx.lineTo(x1 + px * 0.25, y1 + py * 0.25);
+      ctx.closePath();
+      ctx.fill();
+    }
+  });
+
+  smoothTexture(scene, 'super-impact-burst', 256, 256, (ctx, w, h) => {
+    const cx = w / 2;
+    const cy = h / 2;
+    ctx.save();
+    ctx.translate(cx, cy);
+    for (let i = 0; i < 24; i++) {
+      const angle = (i / 24) * Math.PI * 2;
+      const inner = 18 + (i % 3) * 4;
+      const outer = 84 + (i % 5) * 8;
+      const half = 0.018 + (i % 4) * 0.006;
+      const ray = ctx.createLinearGradient(
+        Math.cos(angle) * inner,
+        Math.sin(angle) * inner,
+        Math.cos(angle) * outer,
+        Math.sin(angle) * outer,
+      );
+      ray.addColorStop(0, 'rgba(255,255,255,0.94)');
+      ray.addColorStop(0.42, 'rgba(154,229,255,0.54)');
+      ray.addColorStop(1, 'rgba(89,178,255,0)');
+      ctx.fillStyle = ray;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(angle - half) * inner, Math.sin(angle - half) * inner);
+      ctx.lineTo(Math.cos(angle - half) * outer, Math.sin(angle - half) * outer);
+      ctx.lineTo(Math.cos(angle + half) * outer, Math.sin(angle + half) * outer);
+      ctx.lineTo(Math.cos(angle + half) * inner, Math.sin(angle + half) * inner);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+    const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, 68);
+    core.addColorStop(0, 'rgba(255,255,255,1)');
+    core.addColorStop(0.16, 'rgba(219,250,255,0.92)');
+    core.addColorStop(0.48, 'rgba(101,211,255,0.3)');
+    core.addColorStop(1, 'rgba(58,143,255,0)');
+    ctx.fillStyle = core;
+    ctx.fillRect(0, 0, w, h);
+  });
+
+  smoothTexture(scene, 'super-shockwave', 320, 320, (ctx, w, h) => {
+    const cx = w / 2;
+    const cy = h / 2;
+    const wash = ctx.createRadialGradient(cx, cy, 48, cx, cy, 158);
+    wash.addColorStop(0, 'rgba(255,255,255,0)');
+    wash.addColorStop(0.56, 'rgba(178,236,255,0.06)');
+    wash.addColorStop(0.8, 'rgba(111,206,255,0.2)');
+    wash.addColorStop(1, 'rgba(65,142,255,0)');
+    ctx.fillStyle = wash;
+    ctx.fillRect(0, 0, w, h);
+    ctx.lineCap = 'round';
+    for (const [radius, width, alpha] of [
+      [142, 10, 0.12],
+      [126, 4, 0.7],
+      [110, 1.6, 0.42],
+    ] as const) {
+      ctx.strokeStyle = `rgba(218,249,255,${alpha})`;
+      ctx.lineWidth = width;
+      ctx.shadowColor = '#78dfff';
+      ctx.shadowBlur = width * 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.shadowBlur = 0;
+  });
+}
+
 export function generateTextures(scene: Phaser.Scene): void {
   modernEnemySheet(scene, 'az-small', 48, 48, 'light');
   modernEnemySheet(scene, 'az-medium', 96, 48, 'medium');
@@ -3163,4 +3887,6 @@ export function generateTextures(scene: Phaser.Scene): void {
     const pal = { O: '#0c0c14', h: '#3a3a4a', H: '#5a5a70', w: '#8a93b0' };
     addCanvasTexture(scene, 'prop-derelict', enhance(pixmap(rows, pal, 4)));
   }
+  // 마지막에 등록해 기존 라이브 키는 개선본으로 교체하고 신규 FX 계약은 한곳에서 보장한다.
+  productionFxTextures(scene);
 }

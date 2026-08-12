@@ -68,7 +68,7 @@ export const SUPER = {
   spidAt: 1.0,
   rushFrom: 1.0,
   rushTo: 3.0,
-  rushPerSec: 26,
+  rushPerSec: 42,
   phantomVxMax: 79, // (70) ×SX
   phantomVyMin: 627, // (470) ×SY
   phantomVyMax: 907, // (680)

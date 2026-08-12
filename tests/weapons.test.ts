@@ -94,6 +94,19 @@ describe('24-weapon catalogue', () => {
     expect(mobRoles.size).toBe(24);
   });
 
+  it('prices every non-starter primary and keeps variants in distinct economy bands', () => {
+    expect(DATA.weapons.weapons.pulse?.price).toBe(0);
+    for (const key of WEAPON_KINDS.filter((candidate) => candidate !== 'pulse')) {
+      expect(DATA.weapons.weapons[key]?.price, key).toBeGreaterThan(0);
+    }
+    for (const archetype of BASE_WEAPONS) {
+      const familyPrices = WEAPON_KINDS.filter(
+        (key) => WEAPON_PROFILES[key].archetype === archetype,
+      ).map((key) => DATA.weapons.weapons[key]!.price);
+      expect(new Set(familyPrices).size, archetype).toBe(3);
+    }
+  });
+
   it('gives the eight core systems non-overlapping boss, mob, and screen jobs', () => {
     const profiles = BASE_WEAPONS.map((key) => WEAPON_PROFILES[key]);
     expect(new Set(profiles.map((profile) => profile.mechanic)).size).toBe(8);

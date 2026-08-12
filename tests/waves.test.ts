@@ -99,6 +99,28 @@ describe('data integrity (참조 무결성)', () => {
     }
   });
 
+  it('uses unique dry catalog codes for every sector label', () => {
+    const catalogNames = new Set<string>();
+    for (const level of DATA.levels.levels) {
+      for (const sector of level.sectors) {
+        expect(sector.nameKey).toMatch(/^sector\.catalog\.[a-z]{2}\d{3}\.name$/);
+        expect(sector.taglineKey).toMatch(/^sector\.catalog\.[a-z]{2}\d{3}\.tag$/);
+        const koName = DATA.i18n.ko[sector.nameKey];
+        const enName = DATA.i18n.en[sector.nameKey];
+        expect(koName).toMatch(/^SL-[A-Z]{2}-\d{3}(?: \/ .+)?$/);
+        expect(enName).toBe(koName);
+        expect(DATA.i18n.ko[sector.taglineKey]).toContain('·');
+        expect(DATA.i18n.en[sector.taglineKey]).toContain('·');
+        catalogNames.add(koName!);
+      }
+    }
+    expect(catalogNames.size).toBe(20);
+    expect(DATA.i18n.ko['sector.card.header']).toBeDefined();
+    expect(DATA.i18n.ko['sector.card.safe']).toBeDefined();
+    expect(DATA.i18n.en['sector.card.header']).toBeDefined();
+    expect(DATA.i18n.en['sector.card.safe']).toBeDefined();
+  });
+
   it('assigns one stable authored-art key to each of the 20 sectors', () => {
     const sectors = DATA.levels.levels.flatMap((level) => level.sectors);
     expect(sectors).toHaveLength(20);

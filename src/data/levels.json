@@ -23,8 +23,8 @@
       "sectors": [
         {
           "id": "nebula-water-garden",
-          "nameKey": "sector.nebula.water.name",
-          "taglineKey": "sector.nebula.water.tag",
+          "nameKey": "sector.catalog.nb014.name",
+          "taglineKey": "sector.catalog.nb014.tag",
           "kind": "resource",
           "startWave": 0,
           "background": {
@@ -39,8 +39,8 @@
         },
         {
           "id": "nebula-ice-front",
-          "nameKey": "sector.nebula.ice.name",
-          "taglineKey": "sector.nebula.ice.tag",
+          "nameKey": "sector.catalog.nb027.name",
+          "taglineKey": "sector.catalog.nb027.tag",
           "kind": "hazard",
           "startWave": 4,
           "background": {
@@ -64,8 +64,8 @@
         },
         {
           "id": "nebula-bonus-lane",
-          "nameKey": "sector.nebula.bonus.name",
-          "taglineKey": "sector.nebula.bonus.tag",
+          "nameKey": "sector.catalog.nb041.name",
+          "taglineKey": "sector.catalog.nb041.tag",
           "kind": "bonus",
           "startWave": 9,
           "background": {
@@ -361,8 +361,8 @@
       "sectors": [
         {
           "id": "protostar-volcanic-forge",
-          "nameKey": "sector.protostar.volcanic.name",
-          "taglineKey": "sector.protostar.volcanic.tag",
+          "nameKey": "sector.catalog.ps103.name",
+          "taglineKey": "sector.catalog.ps103.tag",
           "kind": "hazard",
           "startWave": 0,
           "background": {
@@ -387,8 +387,8 @@
         },
         {
           "id": "protostar-desert-kiln",
-          "nameKey": "sector.protostar.desert.name",
-          "taglineKey": "sector.protostar.desert.tag",
+          "nameKey": "sector.catalog.ps117.name",
+          "taglineKey": "sector.catalog.ps117.tag",
           "kind": "hazard",
           "startWave": 4,
           "background": {
@@ -411,8 +411,8 @@
         },
         {
           "id": "protostar-rock-belt",
-          "nameKey": "sector.protostar.rock.name",
-          "taglineKey": "sector.protostar.rock.tag",
+          "nameKey": "sector.catalog.ps126.name",
+          "taglineKey": "sector.catalog.ps126.tag",
           "kind": "resource",
           "startWave": 8,
           "background": {
@@ -427,8 +427,8 @@
         },
         {
           "id": "protostar-bonus-drift",
-          "nameKey": "sector.protostar.bonus.name",
-          "taglineKey": "sector.protostar.bonus.tag",
+          "nameKey": "sector.catalog.ps139.name",
+          "taglineKey": "sector.catalog.ps139.tag",
           "kind": "bonus",
           "startWave": 10,
           "background": {
@@ -725,8 +725,8 @@
       "sectors": [
         {
           "id": "mainseq-prominence-sea",
-          "nameKey": "sector.mainseq.prominence.name",
-          "taglineKey": "sector.mainseq.prominence.tag",
+          "nameKey": "sector.catalog.ms204.name",
+          "taglineKey": "sector.catalog.ms204.tag",
           "kind": "hazard",
           "startWave": 0,
           "background": {
@@ -750,8 +750,8 @@
         },
         {
           "id": "mainseq-electric-crown",
-          "nameKey": "sector.mainseq.electric.name",
-          "taglineKey": "sector.mainseq.electric.tag",
+          "nameKey": "sector.catalog.ms219.name",
+          "taglineKey": "sector.catalog.ms219.tag",
           "kind": "hazard",
           "startWave": 4,
           "background": {
@@ -766,8 +766,8 @@
         },
         {
           "id": "mainseq-bonus-orbit",
-          "nameKey": "sector.mainseq.bonus.name",
-          "taglineKey": "sector.mainseq.bonus.tag",
+          "nameKey": "sector.catalog.ms233.name",
+          "taglineKey": "sector.catalog.ms233.tag",
           "kind": "bonus",
           "startWave": 9,
           "background": {
@@ -1051,8 +1051,8 @@
       "sectors": [
         {
           "id": "redgiant-betelgeuse",
-          "nameKey": "sector.redgiant.betelgeuse.name",
-          "taglineKey": "sector.redgiant.betelgeuse.tag",
+          "nameKey": "sector.catalog.rg301.name",
+          "taglineKey": "sector.catalog.rg301.tag",
           "kind": "story",
           "startWave": 0,
           "background": {
@@ -1076,8 +1076,8 @@
         },
         {
           "id": "redgiant-uy-scuti",
-          "nameKey": "sector.redgiant.uy.name",
-          "taglineKey": "sector.redgiant.uy.tag",
+          "nameKey": "sector.catalog.rg318.name",
+          "taglineKey": "sector.catalog.rg318.tag",
           "kind": "story",
           "startWave": 4,
           "background": {
@@ -1100,8 +1100,8 @@
         },
         {
           "id": "redgiant-bonus-shear",
-          "nameKey": "sector.redgiant.bonus.name",
-          "taglineKey": "sector.redgiant.bonus.tag",
+          "nameKey": "sector.catalog.rg337.name",
+          "taglineKey": "sector.catalog.rg337.tag",
           "kind": "bonus",
           "startWave": 9,
           "background": {
@@ -1375,8 +1375,8 @@
       "sectors": [
         {
           "id": "supernova-meteor-field",
-          "nameKey": "sector.supernova.meteor.name",
-          "taglineKey": "sector.supernova.meteor.tag",
+          "nameKey": "sector.catalog.sn405.name",
+          "taglineKey": "sector.catalog.sn405.tag",
           "kind": "hazard",
           "startWave": 0,
           "background": {
@@ -1391,8 +1391,8 @@
         },
         {
           "id": "supernova-electric-storm",
-          "nameKey": "sector.supernova.electric.name",
-          "taglineKey": "sector.supernova.electric.tag",
+          "nameKey": "sector.catalog.sn419.name",
+          "taglineKey": "sector.catalog.sn419.tag",
           "kind": "hazard",
           "startWave": 4,
           "background": {
@@ -1407,8 +1407,8 @@
         },
         {
           "id": "supernova-bonus-eye",
-          "nameKey": "sector.supernova.bonus.name",
-          "taglineKey": "sector.supernova.bonus.tag",
+          "nameKey": "sector.catalog.sn438.name",
+          "taglineKey": "sector.catalog.sn438.tag",
           "kind": "bonus",
           "startWave": 8,
           "background": {
@@ -1666,8 +1666,8 @@
       "sectors": [
         {
           "id": "blackhole-rock-graveyard",
-          "nameKey": "sector.blackhole.rock.name",
-          "taglineKey": "sector.blackhole.rock.tag",
+          "nameKey": "sector.catalog.bh502.name",
+          "taglineKey": "sector.catalog.bh502.tag",
           "kind": "hazard",
           "startWave": 0,
           "background": {
@@ -1682,8 +1682,8 @@
         },
         {
           "id": "blackhole-event-horizon",
-          "nameKey": "sector.blackhole.horizon.name",
-          "taglineKey": "sector.blackhole.horizon.tag",
+          "nameKey": "sector.catalog.bh517.name",
+          "taglineKey": "sector.catalog.bh517.tag",
           "kind": "story",
           "startWave": 3,
           "background": {
@@ -1698,8 +1698,8 @@
         },
         {
           "id": "blackhole-frozen-core",
-          "nameKey": "sector.blackhole.ice.name",
-          "taglineKey": "sector.blackhole.ice.tag",
+          "nameKey": "sector.catalog.bh531.name",
+          "taglineKey": "sector.catalog.bh531.tag",
           "kind": "hazard",
           "startWave": 6,
           "background": {
@@ -1723,8 +1723,8 @@
         },
         {
           "id": "blackhole-final-bonus",
-          "nameKey": "sector.blackhole.bonus.name",
-          "taglineKey": "sector.blackhole.bonus.tag",
+          "nameKey": "sector.catalog.bh549.name",
+          "taglineKey": "sector.catalog.bh549.tag",
           "kind": "bonus",
           "startWave": 8,
           "background": {

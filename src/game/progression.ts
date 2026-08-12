@@ -9,6 +9,8 @@ export const PROGRESSION_VERSION = 1 as const;
 export const PROGRESSION_STORAGE_KEY = 'starlife.progression.v1';
 export const PROGRESSION_BACKUP_KEY = 'starlife.progression.v1.bak';
 export const MAX_CREDITS = 999_999_999;
+/** Tyrian-style resale keeps experimentation useful without making repeated flips profitable. */
+export const SELL_REFUND_RATIO = 0.6;
 
 export const LOADOUT_SLOTS = ['primary', 'secondary', 'engine', 'cooler', 'armor'] as const;
 export type LoadoutSlot = (typeof LOADOUT_SLOTS)[number];
@@ -28,6 +30,8 @@ export interface ProgressionState {
   credits: number;
   /** Item id -> current tier. Primary weapon ids deliberately remain open strings. */
   owned: Record<string, number>;
+  /** Item id -> credits actually paid for purchase and upgrades. Missing means a legacy save. */
+  spent: Record<string, number>;
   /** Shop visibility/progression is separate from ownership. */
   unlocked: string[];
   loadout: ProgressionLoadout;
@@ -56,12 +60,23 @@ export type TransactionReason =
   | 'not-owned'
   | 'max-tier'
   | 'insufficient-credits'
+  | 'not-sellable'
+  | 'credit-cap'
   | 'slot-mismatch';
 
 export interface TransactionResult {
   ok: boolean;
   reason: TransactionReason;
   cost: number;
+  state: ProgressionState;
+}
+
+export interface SellResult {
+  ok: boolean;
+  reason: TransactionReason;
+  refund: number;
+  /** Default item selected when the sold item occupied its slot. */
+  replacement: string | null;
   state: ProgressionState;
 }
 
@@ -137,6 +152,7 @@ function cloneState(state: ProgressionState): ProgressionState {
   return {
     ...state,
     owned: { ...state.owned },
+    spent: { ...state.spent },
     unlocked: [...state.unlocked],
     loadout: { ...state.loadout },
     stageClears: { ...state.stageClears },
@@ -164,6 +180,7 @@ export function createDefaultProgression(): ProgressionState {
     v: PROGRESSION_VERSION,
     credits: 0,
     owned: starterOwned(),
+    spent: {},
     unlocked: [...unlocked],
     loadout: { ...defaults },
     stageClears: {},
@@ -184,6 +201,20 @@ export function parseProgression(raw: string | null): ProgressionState | null {
       for (const [id, tier] of Object.entries(parsed.owned)) {
         if (isSafeId(id) && typeof tier === 'number' && Number.isFinite(tier) && tier >= 1) {
           state.owned[id] = finiteInt(tier, 1, 1, 99);
+        }
+      }
+    }
+
+    if (isRecord(parsed.spent)) {
+      for (const [id, amount] of Object.entries(parsed.spent)) {
+        if (
+          isSafeId(id) &&
+          state.owned[id] !== undefined &&
+          typeof amount === 'number' &&
+          Number.isFinite(amount) &&
+          amount > 0
+        ) {
+          state.spent[id] = finiteInt(amount, 0, 1, MAX_CREDITS);
         }
       }
     }
@@ -325,6 +356,23 @@ export function definePrimaryWeapon(
   };
 }
 
+/** Shared primary catalogue curve: archetypes get modest price bands, not runaway index inflation. */
+export function defineCatalogPrimaryWeapon(
+  id: string,
+  purchase: number,
+  catalogIndex: number,
+): StoreItemDefinition {
+  const index = finiteInt(catalogIndex, 0, 0, 9999);
+  const archetypeBand = Math.floor(index / 3);
+  const variantBand = index % 3;
+  return definePrimaryWeapon(id, purchase, {
+    maxTier: 10,
+    upgradeBase: 600 + archetypeBand * 60 + variantBand * 45,
+    growth: 1.36,
+    roundTo: 25,
+  });
+}
+
 function resolveItem(
   item: string | StoreItemDefinition | EquipmentCatalogItem,
 ): StoreItemDefinition | undefined {
@@ -365,6 +413,18 @@ export function priceForTier(item: StoreItemDefinition, targetTier: number): num
   if (targetTier === 1) return roundCurrency(item.price.purchase, item.price.roundTo);
   const raw = item.price.upgradeBase * item.price.growth ** (targetTier - 2);
   return Math.min(MAX_CREDITS, roundCurrency(raw, item.price.roundTo));
+}
+
+/** Purchase plus every upgrade through `tier`; useful for legacy saves and economy budgets. */
+export function cumulativePriceThroughTier(item: StoreItemDefinition, tier: number): number | null {
+  if (!validItem(item) || !Number.isInteger(tier) || tier < 1 || tier > item.maxTier) return null;
+  let total = 0;
+  for (let target = 1; target <= tier; target++) {
+    const price = priceForTier(item, target);
+    if (price === null) return null;
+    total = Math.min(MAX_CREDITS, total + price);
+  }
+  return total;
 }
 
 export function isUnlocked(state: ProgressionState, itemId: string): boolean {
@@ -428,6 +488,7 @@ export function purchaseItem(
   const next = cloneState(state);
   next.credits -= cost;
   next.owned[item.id] = 1;
+  if (cost > 0) next.spent[item.id] = cost;
   return { ok: true, reason: 'ok', cost, state: next };
 }
 
@@ -446,7 +507,78 @@ export function upgradeItem(
   const next = cloneState(state);
   next.credits -= cost;
   next.owned[item.id] = tier + 1;
+  const legacySpend = cumulativePriceThroughTier(item, tier) ?? 0;
+  next.spent[item.id] = Math.min(MAX_CREDITS, (state.spent[item.id] ?? legacySpend) + cost);
   return { ok: true, reason: 'ok', cost, state: next };
+}
+
+function isStarterItem(item: StoreItemDefinition): boolean {
+  return EQUIPMENT_CATALOG.defaults[item.slot] === item.id;
+}
+
+/** Returns tracked real spend, reconstructing the deterministic old price curve for v1 saves. */
+export function spentOnItem(state: ProgressionState, itemInput: StoreItemDefinition): number {
+  if (!validItem(itemInput)) return 0;
+  const tier = itemTier(state, itemInput.id);
+  if (tier === 0) return 0;
+  const tracked = state.spent[itemInput.id];
+  if (tracked !== undefined) return finiteInt(tracked, 0, 0, MAX_CREDITS);
+  return cumulativePriceThroughTier(itemInput, tier) ?? 0;
+}
+
+function refundCurrency(value: number, increment: number): number {
+  return Math.max(0, Math.floor(value / increment) * increment);
+}
+
+export function sellRefundForItem(state: ProgressionState, itemInput: StoreItemDefinition): number {
+  const spend = spentOnItem(state, itemInput);
+  return refundCurrency(spend * SELL_REFUND_RATIO, itemInput.price.roundTo);
+}
+
+/**
+ * Sells a purchased item and safely falls back to the slot's starter item when equipped.
+ * Starter gear is never removed: selling an upgraded starter is a grade reset, while grade 1
+ * cannot be sold. This makes the operation reversible without a free-credit starter exploit.
+ */
+export function sellItem(
+  state: ProgressionState,
+  itemInput: string | StoreItemDefinition | EquipmentCatalogItem,
+): SellResult {
+  const item = resolveItem(itemInput);
+  if (!validItem(item)) {
+    return { ok: false, reason: 'unknown-item', refund: 0, replacement: null, state };
+  }
+  if (!isOwned(state, item.id)) {
+    return { ok: false, reason: 'not-owned', refund: 0, replacement: null, state };
+  }
+
+  const refund = sellRefundForItem(state, item);
+  if (refund <= 0) {
+    return { ok: false, reason: 'not-sellable', refund: 0, replacement: null, state };
+  }
+  if (state.credits > MAX_CREDITS - refund) {
+    return { ok: false, reason: 'credit-cap', refund: 0, replacement: null, state };
+  }
+  const credited = refund;
+
+  const next = cloneState(state);
+  next.credits += credited;
+  delete next.spent[item.id];
+
+  if (isStarterItem(item)) {
+    next.owned[item.id] = 1;
+    return { ok: true, reason: 'ok', refund: credited, replacement: null, state: next };
+  }
+
+  delete next.owned[item.id];
+  let replacement: string | null = null;
+  if (next.loadout[item.slot] === item.id) {
+    replacement = EQUIPMENT_CATALOG.defaults[item.slot];
+    next.loadout[item.slot] = replacement;
+    next.owned[replacement] ??= 1;
+    if (!next.unlocked.includes(replacement)) next.unlocked.push(replacement);
+  }
+  return { ok: true, reason: 'ok', refund: credited, replacement, state: next };
 }
 
 export function equipItem(

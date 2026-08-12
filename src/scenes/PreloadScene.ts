@@ -39,7 +39,7 @@ export class PreloadScene extends Phaser.Scene {
     this.load.image('hero-fighter-v2', 'assets/art/ships/hero-fighter-v2.webp');
 
     // ansimuz Spaceship Shooter / Starfighter (자유 라이선스, 크레딧 감사 표기)
-    this.load.image('poodle', 'assets/poodle.png');
+    this.load.image('poodle', 'assets/poodle-super-v3.png');
     this.load.spritesheet('az-ship', 'assets/ansimuz/ship.png', {
       frameWidth: 16,
       frameHeight: 24,

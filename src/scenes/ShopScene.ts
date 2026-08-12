@@ -8,17 +8,21 @@ import {
   awardStageClear,
   catalogItemsForSlot,
   coolerStats,
-  definePrimaryWeapon,
+  defineCatalogPrimaryWeapon,
   engineStats,
+  EQUIPMENT_CATALOG,
   equipItem,
   isOwned,
   isUnlocked,
   itemTier,
   loadProgression,
+  MAX_CREDITS,
   priceForTier,
   purchaseItem,
   saveProgression,
   secondaryStats,
+  sellItem,
+  sellRefundForItem,
   unlockCatalogThroughStage,
   unlockItem,
   upgradeItem,
@@ -27,6 +31,7 @@ import {
   type StoreItemDefinition,
   type TransactionReason,
 } from '../game/progression';
+import { cooldownFor, firePattern, type WeaponShotSpec } from '../game/logic/weapons';
 import { setSessionWeapon, type GameSession } from '../game/session';
 import { playMusic } from '../systems/Music';
 import { audioResume, SFX } from '../systems/Sfx';
@@ -63,6 +68,17 @@ interface StatRow {
   value: string;
 }
 
+interface PreviewProjectile {
+  shot: WeaponShotSpec;
+  x: number;
+  y: number;
+  delay: number;
+  initialDelay: number;
+  age: number;
+  maxAge: number;
+  seed: number;
+}
+
 type RewardRegistry = WeakMap<GameSession, Set<string>>;
 
 const REWARD_REGISTRY_KEY = 'shop.rewarded-session-stages';
@@ -71,7 +87,13 @@ const TAB_COLORS = [0x57d8ff, 0xff6ed8, 0xffb85c, 0x6fb9ff, 0x85eea8] as const;
 const FOCUS_CAROUSEL = 5;
 const FOCUS_BUY = 6;
 const FOCUS_EQUIP = 7;
-const FOCUS_CONTINUE = 8;
+const FOCUS_SELL = 8;
+const FOCUS_CONTINUE = 9;
+const PREVIEW_LEFT = 78;
+const PREVIEW_RIGHT = GAME_WIDTH - 78;
+const PREVIEW_TOP = 151;
+const PREVIEW_BOTTOM = 236;
+const PREVIEW_EMITTER_Y = 226;
 
 const REASON_TEXT: Record<TransactionReason, string> = {
   ok: 'TRANSACTION COMPLETE',
@@ -81,6 +103,8 @@ const REASON_TEXT: Record<TransactionReason, string> = {
   'not-owned': 'PURCHASE REQUIRED',
   'max-tier': 'MAXIMUM GRADE REACHED',
   'insufficient-credits': 'INSUFFICIENT CREDITS',
+  'not-sellable': 'STARTER GRADE HAS NO RESALE VALUE',
+  'credit-cap': 'CREDIT RESERVE IS FULL',
   'slot-mismatch': 'INCOMPATIBLE HARDPOINT',
 };
 
@@ -134,8 +158,17 @@ export class ShopScene extends Phaser.Scene {
   private buyText!: Phaser.GameObjects.Text;
   private equipRect!: Phaser.GameObjects.Rectangle;
   private equipText!: Phaser.GameObjects.Text;
+  private sellRect!: Phaser.GameObjects.Rectangle;
+  private sellText!: Phaser.GameObjects.Text;
   private continueRect!: Phaser.GameObjects.Rectangle;
   private continueText!: Phaser.GameObjects.Text;
+  private previewPanel!: Phaser.GameObjects.Rectangle;
+  private previewGraphics!: Phaser.GameObjects.Graphics;
+  private previewLabel!: Phaser.GameObjects.Text;
+  private previewProjectiles: PreviewProjectile[] = [];
+  private previewTimer = 0;
+  private previewSequence = 0;
+  private previewKey = '';
 
   constructor() {
     super(SceneKeys.Shop);
@@ -157,6 +190,10 @@ export class ShopScene extends Phaser.Scene {
     this.statLabels = [];
     this.statValues = [];
     this.tierPips = [];
+    this.previewProjectiles = [];
+    this.previewTimer = 0;
+    this.previewSequence = 0;
+    this.previewKey = '';
 
     const reward = this.grantClearReward(data);
     const accessStage = Math.max(
@@ -181,10 +218,12 @@ export class ShopScene extends Phaser.Scene {
   }
 
   update(_time: number, deltaMs: number): void {
-    this.elapsed += deltaMs / 1000;
+    const delta = Math.min(0.05, Math.max(0, deltaMs / 1000));
+    this.elapsed += delta;
     const pulse = 1 + Math.sin(this.elapsed * 2.8) * 0.025;
     this.iconRing.setScale(pulse);
     this.continueRect.setAlpha(0.88 + Math.sin(this.elapsed * 3.4) * 0.08);
+    this.updateWeaponPreview(delta);
   }
 
   private buildTabs(): ShopTab[] {
@@ -198,7 +237,7 @@ export class ShopScene extends Phaser.Scene {
         )}`,
         unlockStage: Math.min(6, 1 + Math.floor(index / 4)),
         color: toColor(weapon.color),
-        definition: definePrimaryWeapon(id, 600 + index * 180, { maxTier: 10 }),
+        definition: defineCatalogPrimaryWeapon(id, weapon.price, index),
         weapon,
       }),
     );
@@ -365,6 +404,17 @@ export class ShopScene extends Phaser.Scene {
     }
 
     this.itemCounter = uiText(this, GAME_WIDTH / 2, 139, '', 8, '#6686a8', 'center');
+    this.previewPanel = this.add.rectangle(
+      GAME_WIDTH / 2,
+      (PREVIEW_TOP + PREVIEW_BOTTOM) / 2,
+      PREVIEW_RIGHT - PREVIEW_LEFT,
+      PREVIEW_BOTTOM - PREVIEW_TOP,
+      0x030a14,
+      0.9,
+    );
+    this.previewPanel.setStrokeStyle(1, 0x57d8ff, 0.45);
+    this.previewGraphics = this.add.graphics();
+    this.previewLabel = uiText(this, PREVIEW_LEFT + 7, PREVIEW_TOP + 6, 'LIVE FIRE', 6, '#6686a8');
     this.iconRing = this.add.circle(GAME_WIDTH / 2, 196, 43, 0x081421, 0.55);
     this.iconRing.setStrokeStyle(2, 0x57d8ff, 0.86);
     this.iconCore = this.add.circle(GAME_WIDTH / 2, 196, 29, 0x57d8ff, 0.88);
@@ -390,10 +440,11 @@ export class ShopScene extends Phaser.Scene {
     }
     this.statusText = uiText(this, GAME_WIDTH / 2, 427, '', 8, '#8fe8ff', 'center');
 
-    this.buyRect = this.add.rectangle(91, 480, 158, 44, 0x173f55, 0.95);
-    this.buyText = uiText(this, 91, 480, '', 10, '#bff4ff', 'center');
+    // Three 104x44 touch targets fit the 360px mobile canvas with 12px gutters.
+    this.buyRect = this.add.rectangle(64, 480, 104, 44, 0x173f55, 0.95);
+    this.buyText = uiText(this, 64, 480, '', 8, '#bff4ff', 'center');
     this.add
-      .zone(12, 458, 158, 44)
+      .zone(12, 458, 104, 44)
       .setOrigin(0, 0)
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', () => {
@@ -402,16 +453,28 @@ export class ShopScene extends Phaser.Scene {
         this.buyOrUpgrade();
       });
 
-    this.equipRect = this.add.rectangle(269, 480, 158, 44, 0x244b38, 0.95);
-    this.equipText = uiText(this, 269, 480, '', 10, '#caffda', 'center');
+    this.equipRect = this.add.rectangle(180, 480, 104, 44, 0x244b38, 0.95);
+    this.equipText = uiText(this, 180, 480, '', 8, '#caffda', 'center');
     this.add
-      .zone(190, 458, 158, 44)
+      .zone(128, 458, 104, 44)
       .setOrigin(0, 0)
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', () => {
         audioResume();
         this.focus = FOCUS_EQUIP;
         this.equipSelected();
+      });
+
+    this.sellRect = this.add.rectangle(296, 480, 104, 44, 0x523641, 0.95);
+    this.sellText = uiText(this, 296, 480, '', 8, '#ffd4df', 'center');
+    this.add
+      .zone(244, 458, 104, 44)
+      .setOrigin(0, 0)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => {
+        audioResume();
+        this.focus = FOCUS_SELL;
+        this.sellSelected();
       });
 
     this.continueRect = this.add.rectangle(GAME_WIDTH / 2, 548, 226, 44, 0x2c5478, 0.94);
@@ -462,18 +525,25 @@ export class ShopScene extends Phaser.Scene {
       this.setTab(next);
       return;
     }
-    if (this.focus !== FOCUS_CONTINUE) this.cycleItem(direction);
+    if (this.focus >= FOCUS_BUY && this.focus <= FOCUS_SELL) {
+      this.focus = Phaser.Math.Wrap(this.focus + direction, FOCUS_BUY, FOCUS_SELL + 1);
+      this.refresh();
+    } else if (this.focus === FOCUS_CAROUSEL) {
+      this.cycleItem(direction);
+    }
   }
 
   private moveVertical(direction: number): void {
     SFX.chirp();
-    if (direction < 0) {
-      if (this.focus < TAB_LABELS.length) this.focus = FOCUS_CONTINUE;
-      else if (this.focus === FOCUS_CAROUSEL) this.focus = this.tabIndex;
-      else this.focus--;
-    } else if (this.focus < TAB_LABELS.length) this.focus = FOCUS_CAROUSEL;
-    else if (this.focus === FOCUS_CONTINUE) this.focus = this.tabIndex;
-    else this.focus++;
+    if (this.focus < TAB_LABELS.length) {
+      this.focus = direction < 0 ? FOCUS_CONTINUE : FOCUS_CAROUSEL;
+    } else if (this.focus === FOCUS_CAROUSEL) {
+      this.focus = direction < 0 ? this.tabIndex : FOCUS_BUY;
+    } else if (this.focus >= FOCUS_BUY && this.focus <= FOCUS_SELL) {
+      this.focus = direction < 0 ? FOCUS_CAROUSEL : FOCUS_CONTINUE;
+    } else {
+      this.focus = direction < 0 ? FOCUS_BUY : this.tabIndex;
+    }
     this.refresh();
   }
 
@@ -481,9 +551,10 @@ export class ShopScene extends Phaser.Scene {
     if (this.focus < TAB_LABELS.length) this.setTab(this.focus);
     else if (this.focus === FOCUS_BUY) this.buyOrUpgrade();
     else if (this.focus === FOCUS_EQUIP) this.equipSelected();
+    else if (this.focus === FOCUS_SELL) this.sellSelected();
     else if (this.focus === FOCUS_CONTINUE) this.continueRun();
     else {
-      this.feedback = 'USE BUY / UPGRADE OR EQUIP';
+      this.feedback = 'USE BUY / UPGRADE, EQUIP OR SELL';
       this.feedbackColor = '#8fe8ff';
       this.refresh();
     }
@@ -556,6 +627,31 @@ export class ShopScene extends Phaser.Scene {
     this.refresh();
   }
 
+  private sellSelected(): void {
+    const entry = this.currentEntry();
+    const result = sellItem(this.progression, entry.definition);
+    if (!result.ok) {
+      this.feedback = REASON_TEXT[result.reason];
+      this.feedbackColor = '#ff8b92';
+      SFX.deny();
+      this.refresh();
+      return;
+    }
+
+    this.progression = result.state;
+    saveProgression(this.progression);
+    if (entry.slot === 'primary') {
+      delete this.session.weapons[entry.id];
+      const activePrimary = this.progression.loadout.primary;
+      setSessionWeapon(this.session, activePrimary);
+      this.session.weapons[activePrimary] = itemTier(this.progression, activePrimary);
+    }
+    this.feedback = `SOLD / RESET  +${formatCredits(result.refund)} CR`;
+    this.feedbackColor = '#ffd18f';
+    SFX.buy();
+    this.refresh();
+  }
+
   private continueRun(): void {
     if (this.leaving) return;
     this.leaving = true;
@@ -577,6 +673,223 @@ export class ShopScene extends Phaser.Scene {
     const tab = this.currentTab();
     const index = this.itemIndices[this.tabIndex] ?? 0;
     return tab.entries[index] ?? tab.entries[0]!;
+  }
+
+  private ensureWeaponPreview(entry: ShopEntry, tier: number): void {
+    const nextKey = entry.weapon ? `${entry.id}:${tier}` : '';
+    if (nextKey === this.previewKey) return;
+    this.previewKey = nextKey;
+    this.previewProjectiles = [];
+    this.previewSequence = 0;
+    this.previewTimer = 0.08;
+    this.previewGraphics.clear();
+  }
+
+  private emitPreviewVolley(entry: ShopEntry, tier: number): void {
+    if (!entry.weapon) return;
+    let randomState = ((this.previewSequence + 1) * 2_654_435_761) >>> 0;
+    const rng = (): number => {
+      randomState = (Math.imul(randomState, 1_664_525) + 1_013_904_223) >>> 0;
+      return randomState / 4_294_967_296;
+    };
+    const volley = firePattern(
+      entry.id,
+      tier,
+      GAME_WIDTH / 2,
+      PREVIEW_EMITTER_Y + 16,
+      this.previewSequence % 3,
+      rng,
+    );
+    for (const [index, shot] of volley.entries()) {
+      const speed = Math.max(1, Math.hypot(shot.vx, shot.vy));
+      let maxAge = Phaser.Math.Clamp(105 / (speed * 0.22), 0.3, 1.25);
+      if (shot.beam || shot.chain) maxAge = 0.22;
+      else if (shot.expansion) maxAge = Math.max(0.82, maxAge);
+      this.previewProjectiles.push({
+        shot,
+        x: shot.x,
+        y: shot.y,
+        delay: Math.max(0, shot.spawnDelay ?? 0),
+        initialDelay: Math.max(0, shot.spawnDelay ?? 0),
+        age: 0,
+        maxAge,
+        seed: (this.previewSequence * 31 + index * 17) * 0.73,
+      });
+    }
+    this.previewSequence++;
+  }
+
+  private updateWeaponPreview(delta: number): void {
+    if (!this.previewGraphics.visible || delta <= 0) return;
+    const entry = this.currentEntry();
+    if (!entry.weapon) return;
+    const tier = Math.max(1, itemTier(this.progression, entry.id));
+    this.ensureWeaponPreview(entry, tier);
+
+    this.previewTimer -= delta;
+    if (this.previewTimer <= 0) {
+      this.emitPreviewVolley(entry, tier);
+      this.previewTimer += Phaser.Math.Clamp(cooldownFor(entry.id, tier), 0.14, 1.15);
+    }
+
+    const velocityScale = 0.22;
+    for (const projectile of this.previewProjectiles) {
+      if (projectile.delay > 0) {
+        projectile.delay = Math.max(0, projectile.delay - delta);
+        continue;
+      }
+      projectile.age += delta;
+      projectile.x += projectile.shot.vx * velocityScale * delta;
+      projectile.y += projectile.shot.vy * velocityScale * delta;
+      if (projectile.shot.guidance) {
+        projectile.x += Math.sin(projectile.age * 8 + projectile.seed) * 13 * delta;
+      } else if (projectile.shot.ph !== undefined) {
+        projectile.x += Math.sin(projectile.age * 11 + projectile.seed) * 9 * delta;
+      }
+    }
+    this.previewProjectiles = this.previewProjectiles.filter(
+      (projectile) =>
+        projectile.age < projectile.maxAge &&
+        projectile.y > PREVIEW_TOP - 16 &&
+        projectile.x > PREVIEW_LEFT - 20 &&
+        projectile.x < PREVIEW_RIGHT + 20,
+    );
+    this.drawWeaponPreview(isUnlocked(this.progression, entry.id) ? entry.color : 0x526070);
+  }
+
+  private drawWeaponPreview(color: number): void {
+    const graphics = this.previewGraphics;
+    graphics.clear();
+    graphics.lineStyle(1, color, 0.08);
+    for (let x = PREVIEW_LEFT + 20; x < PREVIEW_RIGHT; x += 20) {
+      graphics.lineBetween(x, PREVIEW_TOP, x, PREVIEW_BOTTOM);
+    }
+    for (let y = PREVIEW_TOP + 18; y < PREVIEW_BOTTOM; y += 18) {
+      graphics.lineBetween(PREVIEW_LEFT, y, PREVIEW_RIGHT, y);
+    }
+
+    graphics.fillStyle(color, 0.18);
+    graphics.fillCircle(GAME_WIDTH / 2, PREVIEW_EMITTER_Y, 10);
+    graphics.lineStyle(1, color, 0.9);
+    graphics.strokeCircle(GAME_WIDTH / 2, PREVIEW_EMITTER_Y, 8);
+    graphics.fillStyle(0xe8fbff, 0.94);
+    graphics.fillTriangle(
+      GAME_WIDTH / 2,
+      PREVIEW_EMITTER_Y - 7,
+      GAME_WIDTH / 2 - 5,
+      PREVIEW_EMITTER_Y + 5,
+      GAME_WIDTH / 2 + 5,
+      PREVIEW_EMITTER_Y + 5,
+    );
+
+    for (const projectile of this.previewProjectiles) {
+      const shot = projectile.shot;
+      if (projectile.delay > 0) {
+        if (shot.charge && projectile.initialDelay > 0) {
+          const progress = 1 - projectile.delay / projectile.initialDelay;
+          graphics.lineStyle(1.5, color, 0.35 + progress * 0.6);
+          graphics.strokeCircle(GAME_WIDTH / 2, PREVIEW_EMITTER_Y, 11 - progress * 6);
+        }
+        continue;
+      }
+      const life = Math.max(0, 1 - projectile.age / projectile.maxAge);
+      if (projectile.y < PREVIEW_TOP || projectile.y > PREVIEW_BOTTOM) continue;
+
+      if (shot.beam) {
+        const travel = (PREVIEW_TOP - projectile.y) / Math.min(-1, shot.vy);
+        const endX = Phaser.Math.Clamp(
+          projectile.x + shot.vx * travel,
+          PREVIEW_LEFT + 2,
+          PREVIEW_RIGHT - 2,
+        );
+        const width = Phaser.Math.Clamp(shot.beam.width * 0.48, 2, 7);
+        graphics.lineStyle(width + 2, color, life * 0.26);
+        graphics.lineBetween(projectile.x, projectile.y, endX, PREVIEW_TOP + 1);
+        graphics.lineStyle(width, color, life * 0.92);
+        graphics.lineBetween(projectile.x, projectile.y, endX, PREVIEW_TOP + 1);
+        graphics.lineStyle(1, 0xffffff, life * 0.9);
+        graphics.lineBetween(projectile.x, projectile.y, endX, PREVIEW_TOP + 1);
+        continue;
+      }
+
+      if (shot.chain) {
+        let lastX = projectile.x;
+        let lastY = projectile.y;
+        const hops = Math.min(5, shot.chain.maxTargets);
+        graphics.lineStyle(2, color, life * 0.88);
+        for (let hop = 0; hop < hops; hop++) {
+          const nextX = Phaser.Math.Clamp(
+            projectile.x + Math.sin(projectile.seed + hop * 2.1) * (18 + hop * 5),
+            PREVIEW_LEFT + 8,
+            PREVIEW_RIGHT - 8,
+          );
+          const nextY = Math.max(PREVIEW_TOP + 2, projectile.y - ((hop + 1) * 66) / hops);
+          graphics.lineBetween(lastX, lastY, nextX, nextY);
+          graphics.fillStyle(0xf7ffff, life);
+          graphics.fillCircle(nextX, nextY, 1.6);
+          lastX = nextX;
+          lastY = nextY;
+        }
+        continue;
+      }
+
+      const speed = Math.max(1, Math.hypot(shot.vx, shot.vy));
+      const nx = shot.vx / speed;
+      const ny = shot.vy / speed;
+      if (shot.trail || shot.stretch) {
+        const trailLength = shot.trail ? 13 * shot.trail.scale : 9;
+        graphics.lineStyle(Math.max(1, shot.w * 0.22), color, life * 0.38);
+        graphics.lineBetween(
+          projectile.x,
+          projectile.y,
+          projectile.x - nx * trailLength,
+          projectile.y - ny * trailLength,
+        );
+      }
+
+      if (shot.expansion) {
+        if (projectile.y < PREVIEW_TOP + 13) continue;
+        const progress = projectile.age / projectile.maxAge;
+        const scale = Phaser.Math.Linear(
+          shot.expansion.startScale,
+          shot.expansion.endScale,
+          progress,
+        );
+        const radius = Phaser.Math.Clamp((shot.w * scale) / 2, 3, 13);
+        graphics.fillStyle(color, life * 0.28);
+        graphics.fillCircle(projectile.x, projectile.y, radius + 3);
+        graphics.fillStyle(color, life * 0.88);
+        graphics.fillCircle(projectile.x, projectile.y, radius);
+        graphics.fillStyle(0xffffff, life * 0.75);
+        graphics.fillCircle(
+          projectile.x - radius * 0.2,
+          projectile.y - radius * 0.25,
+          radius * 0.28,
+        );
+      } else if (shot.rotateToVelocity || shot.guidance) {
+        if (projectile.y < PREVIEW_TOP + 7) continue;
+        const sideX = -ny;
+        const sideY = nx;
+        graphics.fillStyle(color, life);
+        graphics.fillTriangle(
+          projectile.x + nx * 6,
+          projectile.y + ny * 6,
+          projectile.x - nx * 4 + sideX * 3.5,
+          projectile.y - ny * 4 + sideY * 3.5,
+          projectile.x - nx * 4 - sideX * 3.5,
+          projectile.y - ny * 4 - sideY * 3.5,
+        );
+      } else {
+        if (projectile.y < PREVIEW_TOP + 7) continue;
+        graphics.fillStyle(color, life);
+        graphics.fillRect(
+          projectile.x - Phaser.Math.Clamp(shot.w * 0.28, 1, 4),
+          projectile.y - Phaser.Math.Clamp(shot.h * 0.22, 2, 7),
+          Phaser.Math.Clamp(shot.w * 0.56, 2, 8),
+          Phaser.Math.Clamp(shot.h * 0.44, 4, 14),
+        );
+      }
+    }
   }
 
   private refresh(): void {
@@ -614,12 +927,25 @@ export class ShopScene extends Phaser.Scene {
         : `GRADE -- / ${String(entry.definition.maxTier).padStart(2, '0')}  //  T1 PREVIEW`,
     );
     this.lockText.setText(unlocked ? '' : `LOCKED // CLEAR STAGE ${entry.unlockStage}`);
+    const livePreview = entry.weapon !== undefined;
+    this.previewPanel
+      .setVisible(livePreview)
+      .setStrokeStyle(1, unlocked ? entry.color : 0x526070, unlocked ? 0.58 : 0.3);
+    this.previewGraphics.setVisible(livePreview);
+    this.previewLabel
+      .setVisible(livePreview)
+      .setText(`LIVE FIRE // GRADE ${Math.max(1, tier)}`)
+      .setColor(unlocked ? '#6686a8' : '#4f5a68');
+    this.iconCore.setVisible(!livePreview);
+    this.iconRing.setVisible(!livePreview);
+    this.iconGlyph.setVisible(!livePreview);
     this.iconCore.setFillStyle(entry.color, unlocked ? 0.88 : 0.22);
     this.iconCore.setStrokeStyle(1, unlocked ? 0xffffff : 0x6a7480, unlocked ? 0.7 : 0.35);
     this.iconRing.setStrokeStyle(2, unlocked ? entry.color : 0x526070, unlocked ? 0.9 : 0.4);
     this.iconGlyph
       .setText(entry.weapon?.short ?? entry.name.slice(0, 2).toUpperCase())
       .setColor(unlocked ? '#06101c' : '#87919b');
+    this.ensureWeaponPreview(entry, Math.max(1, tier));
 
     const stats = this.statsFor(entry, Math.max(1, tier));
     for (let i = 0; i < 4; i++) {
@@ -662,6 +988,25 @@ export class ShopScene extends Phaser.Scene {
         this.focus === FOCUS_EQUIP ? 1 : 0.5,
       );
     this.equipText.setColor(!unlocked || !owned ? '#778493' : '#d4ffe2');
+
+    const refund = sellRefundForItem(this.progression, entry.definition);
+    const starter = EQUIPMENT_CATALOG.defaults[entry.slot] === entry.id;
+    const canSell = owned && refund > 0 && this.progression.credits <= MAX_CREDITS - refund;
+    this.sellText.setText(
+      !owned
+        ? 'NO ASSET'
+        : refund <= 0
+          ? 'BASE UNIT'
+          : `${starter ? 'RESET' : 'SELL'} +${formatCredits(refund)}`,
+    );
+    this.sellRect
+      .setFillStyle(canSell ? 0x5a3341 : 0x2b3240, 0.95)
+      .setStrokeStyle(
+        this.focus === FOCUS_SELL ? 2 : 1,
+        0xffa0ba,
+        this.focus === FOCUS_SELL ? 1 : 0.5,
+      );
+    this.sellText.setColor(canSell ? '#ffd4df' : '#778493');
     this.continueRect.setStrokeStyle(
       this.focus === FOCUS_CONTINUE ? 2 : 1,
       0x9de5ff,

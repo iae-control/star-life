@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
+import { DATA } from '../src/data';
 import {
   armorStats,
   awardStageClear,
   catalogItem,
   catalogItemsForSlot,
   coolerStats,
+  cumulativePriceThroughTier,
   createDefaultProgression,
+  defineCatalogPrimaryWeapon,
   definePrimaryWeapon,
   engineStats,
   EQUIPMENT_CATALOG,
@@ -25,6 +28,9 @@ import {
   purchaseItem,
   saveProgression,
   secondaryStats,
+  SELL_REFUND_RATIO,
+  sellItem,
+  sellRefundForItem,
   stageClearReward,
   unlockCatalogThroughStage,
   unlockItem,
@@ -105,6 +111,7 @@ describe('persistent economy and loadout', () => {
     expect(purchase.cost).toBe(item.price.purchase);
     expect(purchase.state.credits).toBe(10_000 - purchase.cost);
     expect(itemTier(purchase.state, item.id)).toBe(1);
+    expect(purchase.state.spent[item.id]).toBe(purchase.cost);
 
     const equipped = equipItem(purchase.state, 'engine', item.id);
     expect(equipped.ok).toBe(true);
@@ -148,6 +155,80 @@ describe('persistent economy and loadout', () => {
     expect(equipped.ok).toBe(true);
     expect(equipped.state.loadout.primary).toBe('rail.future-lance');
     expect(upgradeItem(equipped.state, weapon).state.owned['rail.future-lance']).toBe(2);
+  });
+
+  it('tracks real spend and refunds 60% when selling an equipped purchased item', () => {
+    const item = catalogItem('engine-vector-twin');
+    expect(item).toBeDefined();
+    if (!item) return;
+
+    let state = grantCredits(createDefaultProgression(), 20_000);
+    state = purchaseItem(state, item).state;
+    state = upgradeItem(state, item).state;
+    state = equipItem(state, 'engine', item.id).state;
+    const paid = (priceForTier(item, 1) ?? 0) + (priceForTier(item, 2) ?? 0);
+    const expectedRefund =
+      Math.floor((paid * SELL_REFUND_RATIO) / item.price.roundTo) * item.price.roundTo;
+    expect(state.spent[item.id]).toBe(paid);
+    expect(sellRefundForItem(state, item)).toBe(expectedRefund);
+
+    const capped = grantCredits(state, MAX_CREDITS);
+    const blockedAtCap = sellItem(capped, item);
+    expect(blockedAtCap.reason).toBe('credit-cap');
+    expect(blockedAtCap.state).toBe(capped);
+
+    const creditsBefore = state.credits;
+    const sold = sellItem(state, item);
+    expect(sold.ok).toBe(true);
+    expect(sold.refund).toBe(expectedRefund);
+    expect(sold.state.credits).toBe(creditsBefore + expectedRefund);
+    expect(sold.state.owned[item.id]).toBeUndefined();
+    expect(sold.state.spent[item.id]).toBeUndefined();
+    expect(sold.state.loadout.engine).toBe(EQUIPMENT_CATALOG.defaults.engine);
+    expect(itemTier(sold.state, EQUIPMENT_CATALOG.defaults.engine)).toBeGreaterThanOrEqual(1);
+  });
+
+  it('resets upgraded starter gear but never sells its free grade-one chassis', () => {
+    const starterId = EQUIPMENT_CATALOG.defaults.cooler;
+    const starter = catalogItem(starterId);
+    expect(starter).toBeDefined();
+    if (!starter) return;
+
+    let state = grantCredits(createDefaultProgression(), 10_000);
+    state = upgradeItem(state, starter).state;
+    const expectedRefund = sellRefundForItem(state, starter);
+    expect(expectedRefund).toBeGreaterThan(0);
+
+    const sold = sellItem(state, starter);
+    expect(sold.ok).toBe(true);
+    expect(sold.refund).toBe(expectedRefund);
+    expect(itemTier(sold.state, starterId)).toBe(1);
+    expect(sold.state.loadout.cooler).toBe(starterId);
+    expect(sold.state.spent[starterId]).toBeUndefined();
+    expect(sellItem(sold.state, starter).reason).toBe('not-sellable');
+  });
+
+  it('reconstructs cumulative spend for sellable legacy saves without a spend ledger', () => {
+    const item = catalogItem('armor-titanium-weave');
+    expect(item).toBeDefined();
+    if (!item) return;
+    const legacy = parseProgression(
+      JSON.stringify({
+        v: 1,
+        credits: 0,
+        owned: { [item.id]: 2 },
+        unlocked: [item.id],
+        loadout: { armor: item.id },
+      }),
+    );
+    expect(legacy).not.toBeNull();
+    if (!legacy) return;
+    expect(legacy.spent[item.id]).toBeUndefined();
+    const historicalSpend = cumulativePriceThroughTier(item, 2) ?? 0;
+    expect(sellRefundForItem(legacy, item)).toBe(
+      Math.floor((historicalSpend * SELL_REFUND_RATIO) / item.price.roundTo) * item.price.roundTo,
+    );
+    expect(sellItem(legacy, item).state.loadout.armor).toBe(EQUIPMENT_CATALOG.defaults.armor);
   });
 
   it('clamps credit grants and ignores invalid or negative amounts', () => {
@@ -201,6 +282,30 @@ describe('stage rewards and unlock pacing', () => {
     expect(catalogItemsForSlot('armor').every((item) => isUnlocked(unlocked, item.id))).toBe(true);
     expect(isUnlocked(unlocked, 'scatter.future-burst')).toBe(true);
   });
+
+  it('funds a maxed primary plus several equipment purchases across the campaign', () => {
+    const starterWeapon = DATA.weapons.weapons.pulse!;
+    const primary = defineCatalogPrimaryWeapon('pulse', starterWeapon.price, 0);
+    const maxPrimarySpend = cumulativePriceThroughTier(primary, primary.maxTier) ?? Infinity;
+    const supportIds = [
+      'engine-vector-twin',
+      'cooler-cryo-loop',
+      'armor-titanium-weave',
+      'secondary-tail-cannon',
+    ];
+    const supportSpend = supportIds.reduce((total, id) => {
+      const item = catalogItem(id);
+      return total + (item ? (priceForTier(item, 1) ?? 0) : Infinity);
+    }, 0);
+    const stages = DATA.levels.levels.length;
+    const easyCampaignIncome = Array.from({ length: stages }, (_, index) =>
+      stageClearReward({ stageNumber: index + 1, difficulty: 'easy', firstClear: true }),
+    ).reduce((sum, reward) => sum + reward, 0);
+
+    expect(stages).toBeGreaterThanOrEqual(6);
+    expect(maxPrimarySpend).toBeGreaterThan(20_000);
+    expect(easyCampaignIncome).toBeGreaterThanOrEqual(maxPrimarySpend + supportSpend);
+  });
 });
 
 describe('tier-scaled equipment stats', () => {
@@ -246,6 +351,7 @@ describe('safe progression persistence', () => {
         v: 1,
         credits: -50,
         owned: { 'laser.future-beam': 3, bad: -2 },
+        spent: { 'laser.future-beam': 900, orphan: 400, bad: -10 },
         unlocked: ['laser.future-beam', '', '__proto__'],
         loadout: {
           primary: 'laser.future-beam',
@@ -261,6 +367,7 @@ describe('safe progression persistence', () => {
     expect(parsed?.loadout.secondary).toBe(EQUIPMENT_CATALOG.defaults.secondary);
     expect(parsed?.loadout.engine).toBe(EQUIPMENT_CATALOG.defaults.engine);
     expect(parsed?.owned['laser.future-beam']).toBe(3);
+    expect(parsed?.spent).toEqual({ 'laser.future-beam': 900 });
     expect(parsed?.owned.bad).toBeUndefined();
     expect(parsed?.stageClears).toEqual({ nebula: 2 });
   });

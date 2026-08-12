@@ -48,7 +48,7 @@
     "pulse_overdrive": {
       "name": "PULSE OVERDRIVE",
       "short": "P-OVR",
-      "price": 0,
+      "price": 1800,
       "descKey": "weapon.pulse.desc",
       "color": "#74e8ff",
       "archetype": "pulse",
@@ -92,7 +92,7 @@
     "pulse_lattice": {
       "name": "PULSE LATTICE",
       "short": "PLATT",
-      "price": 0,
+      "price": 2200,
       "descKey": "weapon.pulse.desc",
       "color": "#6aa8ff",
       "archetype": "pulse",
@@ -135,7 +135,7 @@
     "vulcan": {
       "name": "ROTARY VULCAN",
       "short": "VULCN",
-      "price": 0,
+      "price": 1400,
       "descKey": "weapon.vulcan.desc",
       "color": "#ffe28a",
       "archetype": "vulcan",
@@ -176,7 +176,7 @@
     "vulcan_gatling": {
       "name": "CYCLONE GATLING",
       "short": "CYCLN",
-      "price": 0,
+      "price": 2600,
       "descKey": "weapon.vulcan.desc",
       "color": "#ffb74d",
       "archetype": "vulcan",
@@ -217,7 +217,7 @@
     "vulcan_needle": {
       "name": "NEEDLE ROTARY",
       "short": "NEEDL",
-      "price": 0,
+      "price": 3000,
       "descKey": "weapon.vulcan.desc",
       "color": "#fff3bd",
       "archetype": "vulcan",
@@ -258,7 +258,7 @@
     "missile": {
       "name": "LOCK CLUSTER",
       "short": "LOCK",
-      "price": 0,
+      "price": 2600,
       "descKey": "weapon.missile.desc",
       "color": "#ff9a5a",
       "archetype": "missile",
@@ -306,7 +306,7 @@
     "missile_swarm": {
       "name": "WASP SWARM",
       "short": "WASP",
-      "price": 0,
+      "price": 3400,
       "descKey": "weapon.missile.desc",
       "color": "#ffd166",
       "archetype": "missile",
@@ -351,7 +351,7 @@
     "missile_torpedo": {
       "name": "SIEGE TORPEDO",
       "short": "TORPED",
-      "price": 0,
+      "price": 4200,
       "descKey": "weapon.missile.desc",
       "color": "#ff714b",
       "archetype": "missile",
@@ -394,7 +394,7 @@
     "proton": {
       "name": "EXPANDING PROTON",
       "short": "PROTON",
-      "price": 0,
+      "price": 2800,
       "descKey": "weapon.proton.desc",
       "color": "#59e659",
       "archetype": "proton",
@@ -436,7 +436,7 @@
     "proton_nova": {
       "name": "NOVA BLOOM",
       "short": "N-BLOM",
-      "price": 0,
+      "price": 3800,
       "descKey": "weapon.proton.desc",
       "color": "#89ff7d",
       "archetype": "proton",
@@ -482,7 +482,7 @@
     "proton_comet": {
       "name": "COMET PLASMA",
       "short": "COMET",
-      "price": 0,
+      "price": 3400,
       "descKey": "weapon.proton.desc",
       "color": "#39d98a",
       "archetype": "proton",
@@ -525,7 +525,7 @@
     "laser": {
       "name": "SUSTAINED LASER",
       "short": "LASER",
-      "price": 0,
+      "price": 3200,
       "descKey": "weapon.laser.desc",
       "color": "#ff6a6a",
       "archetype": "laser",
@@ -565,7 +565,7 @@
     "laser_prism": {
       "name": "PRISM LASER",
       "short": "PRISM",
-      "price": 0,
+      "price": 4000,
       "descKey": "weapon.laser.desc",
       "color": "#ff8bd8",
       "archetype": "laser",
@@ -611,7 +611,7 @@
     "laser_cutter": {
       "name": "CORE CUTTER",
       "short": "CUTTER",
-      "price": 0,
+      "price": 4800,
       "descKey": "weapon.laser.desc",
       "color": "#ff3b5c",
       "archetype": "laser",
@@ -655,7 +655,7 @@
     "light": {
       "name": "CHAIN LIGHTNING",
       "short": "CHAIN",
-      "price": 0,
+      "price": 3400,
       "descKey": "weapon.light.desc",
       "color": "#aef4ff",
       "archetype": "light",
@@ -695,7 +695,7 @@
     "light_storm": {
       "name": "TESLA STORM",
       "short": "STORM",
-      "price": 0,
+      "price": 4200,
       "descKey": "weapon.light.desc",
       "color": "#7de7ff",
       "archetype": "light",
@@ -739,7 +739,7 @@
     "light_judgment": {
       "name": "JUDGMENT ARC",
       "short": "JUDGE",
-      "price": 0,
+      "price": 5000,
       "descKey": "weapon.light.desc",
       "color": "#e9ffff",
       "archetype": "light",
@@ -783,7 +783,7 @@
     "rail": {
       "name": "CHARGED RAILGUN",
       "short": "RAIL",
-      "price": 0,
+      "price": 3800,
       "descKey": "weapon.laser.desc",
       "color": "#d8f2ff",
       "archetype": "rail",
@@ -823,7 +823,7 @@
     "rail_splitter": {
       "name": "RAIL SPLITTER",
       "short": "RSPLIT",
-      "price": 0,
+      "price": 4600,
       "descKey": "weapon.laser.desc",
       "color": "#a7d8ff",
       "archetype": "rail",
@@ -865,7 +865,7 @@
     "rail_siege": {
       "name": "SIEGE RAIL",
       "short": "S-RAIL",
-      "price": 0,
+      "price": 5600,
       "descKey": "weapon.laser.desc",
       "color": "#ffffff",
       "archetype": "rail",
@@ -905,7 +905,7 @@
     "scatter": {
       "name": "NOVA SCATTER",
       "short": "SCATTR",
-      "price": 0,
+      "price": 2400,
       "descKey": "weapon.proton.desc",
       "color": "#ff63d8",
       "archetype": "scatter",
@@ -947,7 +947,7 @@
     "scatter_shredder": {
       "name": "SHREDDER CLOUD",
       "short": "SHRED",
-      "price": 0,
+      "price": 3200,
       "descKey": "weapon.proton.desc",
       "color": "#ff8ce8",
       "archetype": "scatter",
@@ -989,7 +989,7 @@
     "scatter_slug": {
       "name": "PLASMA SLUG",
       "short": "P-SLUG",
-      "price": 0,
+      "price": 3800,
       "descKey": "weapon.proton.desc",
       "color": "#f449c8",
       "archetype": "scatter",
