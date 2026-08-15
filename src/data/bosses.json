@@ -11,8 +11,8 @@
         "w": 62,
         "h": 58
       },
-      "entryY": 32,
-      "entrySpd": 55,
+      "entryY": -68,
+      "entrySpd": 150,
       "movement": {
         "type": "sway",
         "amp": 72,
@@ -56,358 +56,331 @@
       "touchDamage": 20,
       "layoutVersion": 2,
       "envelope": {
-        "w": 278,
-        "h": 238
+        "w": 432,
+        "h": 645
       },
       "stages": [
         {
-          "id": "outer-screen",
+          "id": "engine-deck",
           "coreTargetable": false,
-          "advanceWhenDestroyed": ["aegisL", "aegisR"],
+          "advanceWhenDestroyed": [
+            "driveL",
+            "driveR"
+          ],
           "coolScale": 1
         },
         {
-          "id": "bow-breach",
+          "id": "wing-batteries",
           "coreTargetable": false,
-          "advanceWhenDestroyed": ["bowPlateL", "bowPlateR"],
-          "coolScale": 0.88
+          "advanceWhenDestroyed": [
+            "wingPortL",
+            "wingPortR"
+          ],
+          "coolScale": 1.05
+        },
+        {
+          "id": "reactor-breach",
+          "coreTargetable": false,
+          "advanceWhenDestroyed": [
+            "reactor"
+          ],
+          "coolScale": 1.12
         },
         {
           "id": "bridge-assault",
           "coreTargetable": true,
-          "coolScale": 0.72
+          "advanceWhenDestroyed": [
+            "bridge"
+          ],
+          "coolScale": 1.2
         }
       ],
       "parts": [
         {
-          "id": "aegisL",
-          "sprite": "part-shield-array",
-          "parentId": "frameL",
-          "dx": 32,
-          "dy": -104,
+          "id": "driveL",
+          "sprite": "boss-warship-kestrel",
+          "crop": {
+            "x": 188,
+            "y": 742,
+            "w": 92,
+            "h": 118
+          },
+          "dx": -40.5,
+          "dy": 278.3,
+          "role": "engine",
           "hp": {
-            "base": 45,
-            "perWave": 4
+            "base": 43,
+            "perWave": 3.7
           },
           "hitbox": {
-            "w": 24,
-            "h": 24
+            "w": 69,
+            "h": 88.5
           },
-          "role": "shield",
-          "protects": ["core"],
-          "destroyScore": 420,
           "shield": true,
-          "phase": {
-            "type": "aimed",
-            "speed": 150,
-            "offsetX": 0,
-            "big": false
-          },
-          "fireEvery": 2.4,
-          "activeStages": ["outer-screen"]
-        },
-        {
-          "id": "aegisR",
-          "sprite": "part-shield-array",
-          "parentId": "frameR",
-          "dx": -32,
-          "dy": -104,
-          "hp": {
-            "base": 45,
-            "perWave": 4
-          },
-          "hitbox": {
-            "w": 24,
-            "h": 24
-          },
-          "role": "shield",
-          "protects": ["core"],
           "destroyScore": 420,
+          "protects": [
+            "core"
+          ]
+        },
+        {
+          "id": "driveR",
+          "sprite": "boss-warship-kestrel",
+          "crop": {
+            "x": 296,
+            "y": 742,
+            "w": 92,
+            "h": 118
+          },
+          "dx": 40.5,
+          "dy": 278.3,
+          "role": "engine",
+          "hp": {
+            "base": 43,
+            "perWave": 3.7
+          },
+          "hitbox": {
+            "w": 69,
+            "h": 88.5
+          },
           "shield": true,
+          "destroyScore": 420,
+          "protects": [
+            "core"
+          ]
+        },
+        {
+          "id": "wingPortL",
+          "sprite": "boss-warship-kestrel",
+          "crop": {
+            "x": 118,
+            "y": 648,
+            "w": 108,
+            "h": 98
+          },
+          "dx": -87,
+          "dy": 200.3,
+          "role": "turret",
+          "hp": {
+            "base": 35,
+            "perWave": 2.8
+          },
+          "hitbox": {
+            "w": 81,
+            "h": 73.5
+          },
+          "shield": true,
+          "destroyScore": 260,
           "phase": {
-            "type": "aimed",
-            "speed": 150,
-            "offsetX": 0,
-            "big": false
+            "type": "fan",
+            "count": 3,
+            "angleStep": 0.28,
+            "speed": 128
           },
-          "fireEvery": 2.4,
-          "activeStages": ["outer-screen"]
+          "fireEvery": 3.2,
+          "exposedBy": [
+            "driveL",
+            "driveR"
+          ],
+          "protects": [
+            "core"
+          ]
         },
         {
-          "id": "bowPlateL",
-          "sprite": "part-armor-plate",
-          "parentId": "frameL",
-          "dx": 2,
-          "dy": -18,
-          "scale": 1.15,
-          "rotation": -0.32,
-          "role": "armor",
+          "id": "wingPortR",
+          "sprite": "boss-warship-kestrel",
+          "crop": {
+            "x": 350,
+            "y": 648,
+            "w": 108,
+            "h": 98
+          },
+          "dx": 87,
+          "dy": 200.3,
+          "role": "turret",
           "hp": {
-            "base": 32,
-            "perWave": 2
+            "base": 35,
+            "perWave": 2.8
           },
           "hitbox": {
-            "w": 22,
-            "h": 38
+            "w": 81,
+            "h": 73.5
           },
-          "shield": false,
-          "exposedBy": ["aegisL", "aegisR"],
-          "activeStages": ["bow-breach", "bridge-assault"],
-          "destroyScore": 300
+          "shield": true,
+          "destroyScore": 260,
+          "phase": {
+            "type": "fan",
+            "count": 3,
+            "angleStep": 0.28,
+            "speed": 128
+          },
+          "fireEvery": 3.2,
+          "exposedBy": [
+            "driveL",
+            "driveR"
+          ],
+          "protects": [
+            "core"
+          ]
         },
         {
-          "id": "bowPlateR",
-          "sprite": "part-armor-plate",
-          "parentId": "frameR",
-          "dx": -2,
-          "dy": -18,
-          "scale": 1.15,
-          "rotation": 0.32,
-          "role": "armor",
+          "id": "reactor",
+          "sprite": "boss-warship-kestrel",
+          "crop": {
+            "x": 240,
+            "y": 528,
+            "w": 96,
+            "h": 100
+          },
+          "dx": 0,
+          "dy": 111,
+          "role": "weakpoint",
           "hp": {
-            "base": 32,
-            "perWave": 2
+            "base": 48,
+            "perWave": 3.7
           },
           "hitbox": {
-            "w": 22,
-            "h": 38
+            "w": 72,
+            "h": 75
           },
-          "shield": false,
-          "exposedBy": ["aegisL", "aegisR"],
-          "activeStages": ["bow-breach", "bridge-assault"],
-          "destroyScore": 300
+          "shield": true,
+          "destroyScore": 520,
+          "damageMultiplier": 1.4,
+          "exposedBy": [
+            "wingPortL",
+            "wingPortR"
+          ],
+          "protects": [
+            "core"
+          ]
         },
         {
           "id": "batteryL",
-          "sprite": "part-capital-turret",
-          "parentId": "frameL",
-          "dx": -20,
-          "dy": -62,
-          "scale": 0.82,
+          "sprite": "boss-warship-kestrel",
+          "crop": {
+            "x": 163,
+            "y": 352,
+            "w": 98,
+            "h": 94
+          },
+          "dx": -57,
+          "dy": -23.2,
           "role": "turret",
           "hp": {
-            "base": 20,
-            "perWave": 1
+            "base": 24,
+            "perWave": 1.9
           },
           "hitbox": {
-            "w": 18,
-            "h": 18
+            "w": 73.5,
+            "h": 70.5
           },
           "shield": false,
-          "motion": {
-            "type": "oscillate",
-            "axis": "y",
-            "amplitude": 7,
-            "speed": 2.1
-          },
-          "phase": {
-            "type": "fan",
-            "count": 3,
-            "angleStep": 0.3,
-            "speed": 125
-          },
-          "fireEvery": 3.2,
-          "destroyScore": 140
-        },
-        {
-          "id": "batteryR",
-          "sprite": "part-capital-turret",
-          "parentId": "frameR",
-          "dx": 20,
-          "dy": -62,
-          "scale": 0.82,
-          "role": "turret",
-          "hp": {
-            "base": 20,
-            "perWave": 1
-          },
-          "hitbox": {
-            "w": 18,
-            "h": 18
-          },
-          "shield": false,
-          "motion": {
-            "type": "oscillate",
-            "axis": "y",
-            "amplitude": 7,
-            "speed": 2.1,
-            "phase": 3.14
-          },
-          "phase": {
-            "type": "fan",
-            "count": 3,
-            "angleStep": 0.3,
-            "speed": 125
-          },
-          "fireEvery": 3.2,
-          "destroyScore": 140
-        },
-        {
-          "id": "thrusterL",
-          "sprite": "part-ion-engine",
-          "parentId": "frameL",
-          "dx": -34,
-          "dy": 112,
-          "scale": 0.72,
-          "rotation": -0.62,
-          "role": "engine",
-          "hp": {
-            "base": 18,
-            "perWave": 1
-          },
-          "hitbox": {
-            "w": 16,
-            "h": 28
-          },
-          "shield": false,
-          "motion": {
-            "type": "oscillate",
-            "axis": "y",
-            "amplitude": 10,
-            "speed": 2.8
-          },
-          "destroyScore": 120,
-          "activeStages": ["bridge-assault"]
-        },
-        {
-          "id": "thrusterR",
-          "sprite": "part-ion-engine",
-          "parentId": "frameR",
-          "dx": 34,
-          "dy": 112,
-          "scale": 0.72,
-          "rotation": 0.62,
-          "role": "engine",
-          "hp": {
-            "base": 18,
-            "perWave": 1
-          },
-          "hitbox": {
-            "w": 16,
-            "h": 28
-          },
-          "shield": false,
-          "motion": {
-            "type": "oscillate",
-            "axis": "y",
-            "amplitude": 10,
-            "speed": 2.8,
-            "phase": 3.14
-          },
-          "destroyScore": 120,
-          "activeStages": ["bridge-assault"]
-        },
-        {
-          "id": "frameL",
-          "sprite": "part-hull-frame",
-          "parentId": "core",
-          "dx": -72,
-          "dy": 0,
-          "scale": 0.76,
-          "rotation": -1.57,
-          "role": "structure",
-          "hp": {
-            "base": 14,
-            "perWave": 1
-          },
-          "hitbox": {
-            "w": 30,
-            "h": 16
-          },
-          "shield": false,
-          "exposedBy": ["aegisL", "bowPlateL", "batteryL", "thrusterL"],
-          "destroyScore": 80
-        },
-        {
-          "id": "frameR",
-          "sprite": "part-hull-frame",
-          "parentId": "core",
-          "dx": 72,
-          "dy": 0,
-          "scale": 0.76,
-          "rotation": 1.57,
-          "role": "structure",
-          "hp": {
-            "base": 14,
-            "perWave": 1
-          },
-          "hitbox": {
-            "w": 30,
-            "h": 16
-          },
-          "shield": false,
-          "exposedBy": ["aegisR", "bowPlateR", "batteryR", "thrusterR"],
-          "destroyScore": 80
-        },
-        {
-          "id": "bridgeCore",
-          "sprite": "part-reactor-core",
-          "parentId": "core",
-          "dx": 0,
-          "dy": 76,
-          "scale": 1.06,
-          "role": "weakpoint",
-          "hp": {
-            "base": 42,
-            "perWave": 3
-          },
-          "hitbox": {
-            "w": 22,
-            "h": 22
-          },
-          "shield": false,
-          "protects": ["core"],
-          "exposedBy": ["bowPlateL", "bowPlateR"],
-          "activeStages": ["bridge-assault"],
-          "damageMultiplier": 1.4,
-          "motion": {
-            "type": "oscillate",
-            "axis": "y",
-            "amplitude": 4,
-            "speed": 3.1
-          },
-          "destroyScore": 400
-        },
-        {
-          "id": "interceptorDrone",
-          "sprite": "part-capital-turret",
-          "parentId": "bridgeCore",
-          "dx": 0,
-          "dy": 0,
-          "scale": 0.62,
-          "role": "turret",
-          "hp": {
-            "base": 16,
-            "perWave": 1
-          },
-          "hitbox": {
-            "w": 14,
-            "h": 14
-          },
-          "shield": false,
-          "exposedBy": ["bowPlateL", "bowPlateR"],
-          "activeStages": ["bridge-assault"],
-          "motion": {
-            "type": "orbit",
-            "radiusX": 58,
-            "radiusY": 28,
-            "speed": 0.55,
-            "phase": 0.4
-          },
+          "destroyScore": 160,
           "phase": {
             "type": "aimed",
-            "speed": 165,
+            "speed": 150,
             "offsetX": 0,
             "big": false
           },
-          "fireEvery": 4.4,
-          "destroyScore": 100
+          "fireEvery": 2.9,
+          "exposedBy": [
+            "reactor"
+          ]
+        },
+        {
+          "id": "batteryR",
+          "sprite": "boss-warship-kestrel",
+          "crop": {
+            "x": 315,
+            "y": 352,
+            "w": 98,
+            "h": 94
+          },
+          "dx": 57,
+          "dy": -23.2,
+          "role": "turret",
+          "hp": {
+            "base": 24,
+            "perWave": 1.9
+          },
+          "hitbox": {
+            "w": 73.5,
+            "h": 70.5
+          },
+          "shield": false,
+          "destroyScore": 160,
+          "phase": {
+            "type": "aimed",
+            "speed": 150,
+            "offsetX": 0,
+            "big": false
+          },
+          "fireEvery": 2.9,
+          "exposedBy": [
+            "reactor"
+          ]
+        },
+        {
+          "id": "bridge",
+          "sprite": "boss-warship-kestrel",
+          "crop": {
+            "x": 228,
+            "y": 238,
+            "w": 120,
+            "h": 116
+          },
+          "dx": 0,
+          "dy": -100.5,
+          "role": "armor",
+          "hp": {
+            "base": 41,
+            "perWave": 2.8
+          },
+          "hitbox": {
+            "w": 90,
+            "h": 87
+          },
+          "shield": true,
+          "destroyScore": 380,
+          "exposedBy": [
+            "reactor"
+          ],
+          "protects": [
+            "core"
+          ]
+        },
+        {
+          "id": "prow",
+          "sprite": "boss-warship-kestrel",
+          "crop": {
+            "x": 232,
+            "y": 14,
+            "w": 112,
+            "h": 150
+          },
+          "dx": 0,
+          "dy": -255.7,
+          "role": "structure",
+          "hp": {
+            "base": 21,
+            "perWave": 1
+          },
+          "hitbox": {
+            "w": 84,
+            "h": 112.5
+          },
+          "shield": false,
+          "destroyScore": 120,
+          "exposedBy": [
+            "reactor"
+          ]
         }
       ],
       "presentation": {
-        "kind": "warship",
-        "displayWidth": 288,
-        "displayHeight": 430,
+        "kind": "scrolling-warship",
+        "displayWidth": 432,
+        "displayHeight": 645,
+        "artWidth": 576,
+        "artHeight": 860,
         "movementScript": "wing-sweep"
       }
     },
@@ -422,8 +395,8 @@
         "w": 58,
         "h": 62
       },
-      "entryY": 28,
-      "entrySpd": 58,
+      "entryY": -72,
+      "entrySpd": 150,
       "movement": {
         "type": "patrol",
         "base": 58,
@@ -485,330 +458,385 @@
       "touchDamage": 22,
       "layoutVersion": 2,
       "envelope": {
-        "w": 312,
-        "h": 254
+        "w": 489,
+        "h": 705
       },
       "stages": [
         {
-          "id": "flight-screen",
+          "id": "engine-deck",
           "coreTargetable": false,
-          "advanceWhenDestroyed": ["flightShieldL", "flightShieldR"],
+          "advanceWhenDestroyed": [
+            "driveL",
+            "driveR"
+          ],
           "coolScale": 1
         },
         {
-          "id": "hangar-breach",
+          "id": "gun-deck",
           "coreTargetable": false,
-          "advanceWhenDestroyed": ["hangarPlateL", "hangarPlateR"],
-          "coolScale": 0.84
+          "advanceWhenDestroyed": [
+            "gunDeckL",
+            "gunDeckR"
+          ],
+          "coolScale": 1.05
         },
         {
-          "id": "reactor-run",
+          "id": "hangar-core",
+          "coreTargetable": false,
+          "advanceWhenDestroyed": [
+            "reactor"
+          ],
+          "coolScale": 1.12
+        },
+        {
+          "id": "bridge-assault",
           "coreTargetable": true,
-          "coolScale": 0.66
+          "advanceWhenDestroyed": [
+            "bridge"
+          ],
+          "coolScale": 1.2
         }
       ],
       "parts": [
         {
-          "id": "flightShieldL",
-          "sprite": "part-shield-array",
-          "parentId": "frameL",
-          "dx": 20,
-          "dy": -112,
-          "hp": {
-            "base": 65,
-            "perWave": 5
+          "id": "driveL",
+          "sprite": "boss-warship-vulcan",
+          "crop": {
+            "x": 210,
+            "y": 752,
+            "w": 105,
+            "h": 188
           },
-          "hitbox": {
-            "w": 26,
-            "h": 40
-          },
-          "role": "shield",
-          "protects": ["core"],
-          "destroyScore": 450,
-          "shield": true,
-          "activeStages": ["flight-screen"]
-        },
-        {
-          "id": "flightShieldR",
-          "sprite": "part-shield-array",
-          "parentId": "frameR",
-          "dx": -20,
-          "dy": -112,
-          "hp": {
-            "base": 65,
-            "perWave": 5
-          },
-          "hitbox": {
-            "w": 26,
-            "h": 40
-          },
-          "role": "shield",
-          "protects": ["core"],
-          "destroyScore": 450,
-          "shield": true,
-          "activeStages": ["flight-screen"]
-        },
-        {
-          "id": "hangarPlateL",
-          "sprite": "part-armor-plate",
-          "parentId": "frameL",
-          "dx": -6,
-          "dy": -10,
-          "scale": 1.05,
-          "rotation": -0.5,
-          "role": "armor",
-          "hp": {
-            "base": 36,
-            "perWave": 2
-          },
-          "hitbox": {
-            "w": 22,
-            "h": 38
-          },
-          "shield": false,
-          "exposedBy": ["flightShieldL", "flightShieldR"],
-          "activeStages": ["hangar-breach", "reactor-run"],
-          "destroyScore": 320
-        },
-        {
-          "id": "hangarPlateR",
-          "sprite": "part-armor-plate",
-          "parentId": "frameR",
-          "dx": 6,
-          "dy": -10,
-          "scale": 1.05,
-          "rotation": 0.5,
-          "role": "armor",
-          "hp": {
-            "base": 36,
-            "perWave": 2
-          },
-          "hitbox": {
-            "w": 22,
-            "h": 38
-          },
-          "shield": false,
-          "exposedBy": ["flightShieldL", "flightShieldR"],
-          "activeStages": ["hangar-breach", "reactor-run"],
-          "destroyScore": 320
-        },
-        {
-          "id": "deckGunL",
-          "sprite": "part-capital-turret",
-          "parentId": "frameL",
-          "dx": 34,
-          "dy": -76,
-          "scale": 0.85,
-          "role": "turret",
-          "hp": {
-            "base": 22,
-            "perWave": 1
-          },
-          "hitbox": {
-            "w": 18,
-            "h": 18
-          },
-          "shield": false,
-          "motion": {
-            "type": "oscillate",
-            "axis": "x",
-            "amplitude": 9,
-            "speed": 2.4
-          },
-          "phase": {
-            "type": "spiral",
-            "arms": 1,
-            "speed": 130,
-            "rotStep": 0.5
-          },
-          "fireEvery": 2.9,
-          "destroyScore": 150
-        },
-        {
-          "id": "deckGunR",
-          "sprite": "part-capital-turret",
-          "parentId": "frameR",
-          "dx": -34,
-          "dy": -76,
-          "scale": 0.85,
-          "role": "turret",
-          "hp": {
-            "base": 22,
-            "perWave": 1
-          },
-          "hitbox": {
-            "w": 18,
-            "h": 18
-          },
-          "shield": false,
-          "motion": {
-            "type": "oscillate",
-            "axis": "x",
-            "amplitude": 9,
-            "speed": 2.4,
-            "phase": 3.14
-          },
-          "phase": {
-            "type": "spiral",
-            "arms": 1,
-            "speed": 130,
-            "rotStep": -0.5
-          },
-          "fireEvery": 2.9,
-          "destroyScore": 150
-        },
-        {
-          "id": "mainDriveL",
-          "sprite": "part-ion-engine",
-          "parentId": "frameL",
-          "dx": -24,
-          "dy": 122,
-          "scale": 0.72,
-          "rotation": -0.2,
+          "dx": -47.6,
+          "dy": 282,
           "role": "engine",
-          "hp": {
-            "base": 20,
-            "perWave": 1
-          },
-          "hitbox": {
-            "w": 16,
-            "h": 28
-          },
-          "shield": false,
-          "destroyScore": 140,
-          "activeStages": ["reactor-run"]
-        },
-        {
-          "id": "mainDriveR",
-          "sprite": "part-ion-engine",
-          "parentId": "frameR",
-          "dx": 24,
-          "dy": 122,
-          "scale": 0.72,
-          "rotation": 0.2,
-          "role": "engine",
-          "hp": {
-            "base": 20,
-            "perWave": 1
-          },
-          "hitbox": {
-            "w": 16,
-            "h": 28
-          },
-          "shield": false,
-          "destroyScore": 140,
-          "activeStages": ["reactor-run"]
-        },
-        {
-          "id": "frameL",
-          "sprite": "part-hull-frame",
-          "parentId": "core",
-          "dx": -68,
-          "dy": 0,
-          "scale": 0.82,
-          "rotation": -1.57,
-          "role": "structure",
-          "hp": {
-            "base": 14,
-            "perWave": 1
-          },
-          "hitbox": {
-            "w": 32,
-            "h": 16
-          },
-          "shield": false,
-          "exposedBy": ["flightShieldL", "hangarPlateL", "deckGunL", "mainDriveL"],
-          "destroyScore": 80
-        },
-        {
-          "id": "frameR",
-          "sprite": "part-hull-frame",
-          "parentId": "core",
-          "dx": 68,
-          "dy": 0,
-          "scale": 0.82,
-          "rotation": 1.57,
-          "role": "structure",
-          "hp": {
-            "base": 14,
-            "perWave": 1
-          },
-          "hitbox": {
-            "w": 32,
-            "h": 16
-          },
-          "shield": false,
-          "exposedBy": ["flightShieldR", "hangarPlateR", "deckGunR", "mainDriveR"],
-          "destroyScore": 80
-        },
-        {
-          "id": "carrierReactor",
-          "sprite": "part-reactor-core",
-          "parentId": "core",
-          "dx": 0,
-          "dy": 82,
-          "scale": 1.08,
-          "role": "weakpoint",
           "hp": {
             "base": 45,
-            "perWave": 3
+            "perWave": 3.6
           },
           "hitbox": {
-            "w": 22,
-            "h": 22
+            "w": 78.8,
+            "h": 141
           },
-          "shield": false,
-          "protects": ["core"],
-          "exposedBy": ["hangarPlateL", "hangarPlateR"],
-          "activeStages": ["reactor-run"],
-          "damageMultiplier": 1.45,
-          "motion": {
-            "type": "oscillate",
-            "axis": "y",
-            "amplitude": 3,
-            "speed": 3.8
-          },
-          "destroyScore": 420
+          "shield": true,
+          "destroyScore": 440,
+          "protects": [
+            "core"
+          ]
         },
         {
-          "id": "commandDrone",
-          "sprite": "part-capital-turret",
-          "parentId": "carrierReactor",
-          "dx": 0,
-          "dy": 0,
-          "scale": 0.62,
+          "id": "driveR",
+          "sprite": "boss-warship-vulcan",
+          "crop": {
+            "x": 337,
+            "y": 752,
+            "w": 105,
+            "h": 188
+          },
+          "dx": 47.6,
+          "dy": 282,
+          "role": "engine",
+          "hp": {
+            "base": 45,
+            "perWave": 3.6
+          },
+          "hitbox": {
+            "w": 78.8,
+            "h": 141
+          },
+          "shield": true,
+          "destroyScore": 440,
+          "protects": [
+            "core"
+          ]
+        },
+        {
+          "id": "gunDeckL",
+          "sprite": "boss-warship-vulcan",
+          "crop": {
+            "x": 190,
+            "y": 528,
+            "w": 100,
+            "h": 100
+          },
+          "dx": -64.5,
+          "dy": 81,
           "role": "turret",
           "hp": {
-            "base": 18,
+            "base": 36,
+            "perWave": 2.7
+          },
+          "hitbox": {
+            "w": 75,
+            "h": 75
+          },
+          "shield": true,
+          "destroyScore": 270,
+          "phase": {
+            "type": "fan",
+            "count": 4,
+            "angleStep": 0.28,
+            "speed": 128
+          },
+          "fireEvery": 3,
+          "exposedBy": [
+            "driveL",
+            "driveR"
+          ],
+          "protects": [
+            "core"
+          ]
+        },
+        {
+          "id": "gunDeckR",
+          "sprite": "boss-warship-vulcan",
+          "crop": {
+            "x": 362,
+            "y": 528,
+            "w": 100,
+            "h": 100
+          },
+          "dx": 64.5,
+          "dy": 81,
+          "role": "turret",
+          "hp": {
+            "base": 36,
+            "perWave": 2.7
+          },
+          "hitbox": {
+            "w": 75,
+            "h": 75
+          },
+          "shield": true,
+          "destroyScore": 270,
+          "phase": {
+            "type": "fan",
+            "count": 4,
+            "angleStep": 0.28,
+            "speed": 128
+          },
+          "fireEvery": 3,
+          "exposedBy": [
+            "driveL",
+            "driveR"
+          ],
+          "protects": [
+            "core"
+          ]
+        },
+        {
+          "id": "reactor",
+          "sprite": "boss-warship-vulcan",
+          "crop": {
+            "x": 278,
+            "y": 430,
+            "w": 96,
+            "h": 100
+          },
+          "dx": 0,
+          "dy": 7.5,
+          "role": "weakpoint",
+          "hp": {
+            "base": 50,
+            "perWave": 3.6
+          },
+          "hitbox": {
+            "w": 72,
+            "h": 75
+          },
+          "shield": true,
+          "destroyScore": 540,
+          "damageMultiplier": 1.4,
+          "exposedBy": [
+            "gunDeckL",
+            "gunDeckR"
+          ],
+          "protects": [
+            "core"
+          ]
+        },
+        {
+          "id": "hangarL",
+          "sprite": "boss-warship-vulcan",
+          "crop": {
+            "x": 125,
+            "y": 300,
+            "w": 120,
+            "h": 270
+          },
+          "dx": -105.7,
+          "dy": -26.2,
+          "role": "armor",
+          "hp": {
+            "base": 31,
+            "perWave": 2.7
+          },
+          "hitbox": {
+            "w": 90,
+            "h": 202.5
+          },
+          "shield": false,
+          "destroyScore": 300,
+          "exposedBy": [
+            "gunDeckL",
+            "gunDeckR"
+          ]
+        },
+        {
+          "id": "hangarR",
+          "sprite": "boss-warship-vulcan",
+          "crop": {
+            "x": 407,
+            "y": 300,
+            "w": 120,
+            "h": 270
+          },
+          "dx": 105.8,
+          "dy": -26.2,
+          "role": "armor",
+          "hp": {
+            "base": 31,
+            "perWave": 2.7
+          },
+          "hitbox": {
+            "w": 90,
+            "h": 202.5
+          },
+          "shield": false,
+          "destroyScore": 300,
+          "exposedBy": [
+            "gunDeckL",
+            "gunDeckR"
+          ]
+        },
+        {
+          "id": "bridge",
+          "sprite": "boss-warship-vulcan",
+          "crop": {
+            "x": 268,
+            "y": 150,
+            "w": 116,
+            "h": 120
+          },
+          "dx": 0,
+          "dy": -195,
+          "role": "armor",
+          "hp": {
+            "base": 41,
+            "perWave": 2.7
+          },
+          "hitbox": {
+            "w": 87,
+            "h": 90
+          },
+          "shield": true,
+          "destroyScore": 400,
+          "exposedBy": [
+            "reactor"
+          ],
+          "protects": [
+            "core"
+          ]
+        },
+        {
+          "id": "turretUL",
+          "sprite": "boss-warship-vulcan",
+          "crop": {
+            "x": 140,
+            "y": 162,
+            "w": 112,
+            "h": 112
+          },
+          "dx": -97.5,
+          "dy": -189,
+          "role": "turret",
+          "hp": {
+            "base": 25,
+            "perWave": 1.8
+          },
+          "hitbox": {
+            "w": 84,
+            "h": 84
+          },
+          "shield": false,
+          "destroyScore": 170,
+          "phase": {
+            "type": "aimed",
+            "speed": 150,
+            "offsetX": 0,
+            "big": false
+          },
+          "fireEvery": 3.4,
+          "exposedBy": [
+            "reactor"
+          ]
+        },
+        {
+          "id": "turretUR",
+          "sprite": "boss-warship-vulcan",
+          "crop": {
+            "x": 400,
+            "y": 162,
+            "w": 112,
+            "h": 112
+          },
+          "dx": 97.5,
+          "dy": -189,
+          "role": "turret",
+          "hp": {
+            "base": 25,
+            "perWave": 1.8
+          },
+          "hitbox": {
+            "w": 84,
+            "h": 84
+          },
+          "shield": false,
+          "destroyScore": 170,
+          "phase": {
+            "type": "aimed",
+            "speed": 150,
+            "offsetX": 0,
+            "big": false
+          },
+          "fireEvery": 3.4,
+          "exposedBy": [
+            "reactor"
+          ]
+        },
+        {
+          "id": "prow",
+          "sprite": "boss-warship-vulcan",
+          "crop": {
+            "x": 248,
+            "y": 8,
+            "w": 156,
+            "h": 140
+          },
+          "dx": 0,
+          "dy": -294,
+          "role": "structure",
+          "hp": {
+            "base": 22,
             "perWave": 1
           },
           "hitbox": {
-            "w": 14,
-            "h": 14
+            "w": 117,
+            "h": 105
           },
           "shield": false,
-          "exposedBy": ["hangarPlateL", "hangarPlateR"],
-          "activeStages": ["reactor-run"],
-          "motion": {
-            "type": "orbit",
-            "radiusX": 54,
-            "radiusY": 34,
-            "speed": -0.7,
-            "phase": 1.57
-          },
-          "phase": {
-            "type": "ring",
-            "count": 6,
-            "speed": 118
-          },
-          "fireEvery": 4.6,
-          "destroyScore": 100
+          "destroyScore": 130,
+          "exposedBy": [
+            "reactor"
+          ]
         }
       ],
       "presentation": {
-        "kind": "warship",
-        "displayWidth": 326,
-        "displayHeight": 470,
+        "kind": "scrolling-warship",
+        "displayWidth": 489,
+        "displayHeight": 705,
+        "artWidth": 652,
+        "artHeight": 940,
         "movementScript": "carrier-broadside"
       }
     },
@@ -823,8 +851,8 @@
         "w": 66,
         "h": 66
       },
-      "entryY": 26,
-      "entrySpd": 52,
+      "entryY": -78,
+      "entrySpd": 150,
       "movement": {
         "type": "sway",
         "amp": 46,
@@ -877,347 +905,337 @@
       "touchDamage": 24,
       "layoutVersion": 2,
       "envelope": {
-        "w": 308,
-        "h": 250
+        "w": 477,
+        "h": 690
       },
       "stages": [
         {
-          "id": "aegis-ring",
+          "id": "engine-deck",
           "coreTargetable": false,
-          "advanceWhenDestroyed": ["solarAegisL", "solarAegisR"],
+          "advanceWhenDestroyed": [
+            "driveL",
+            "driveR"
+          ],
           "coolScale": 1
         },
         {
-          "id": "lance-deck",
+          "id": "lance-core",
           "coreTargetable": false,
-          "advanceWhenDestroyed": ["lanceArmorL", "lanceArmorR"],
-          "coolScale": 0.82
+          "advanceWhenDestroyed": [
+            "lanceCore"
+          ],
+          "coolScale": 1.06
         },
         {
-          "id": "solar-reactor",
+          "id": "solar-wings",
+          "coreTargetable": false,
+          "advanceWhenDestroyed": [
+            "wingL",
+            "wingR"
+          ],
+          "coolScale": 1.14
+        },
+        {
+          "id": "aegis-ring",
           "coreTargetable": true,
-          "coolScale": 0.64
+          "advanceWhenDestroyed": [
+            "ringL",
+            "ringR"
+          ],
+          "coolScale": 1.22
         }
       ],
       "parts": [
         {
-          "id": "solarAegisL",
-          "sprite": "part-shield-array",
-          "parentId": "frameL",
-          "dx": 30,
-          "dy": -108,
+          "id": "driveL",
+          "sprite": "boss-warship-helios",
+          "crop": {
+            "x": 212,
+            "y": 768,
+            "w": 92,
+            "h": 152
+          },
+          "dx": -45,
+          "dy": 288,
+          "role": "engine",
           "hp": {
-            "base": 60,
-            "perWave": 5
+            "base": 48,
+            "perWave": 4
           },
           "hitbox": {
-            "w": 24,
-            "h": 30
+            "w": 69,
+            "h": 114
           },
-          "role": "shield",
-          "protects": ["core"],
-          "destroyScore": 450,
           "shield": true,
+          "destroyScore": 430,
+          "protects": [
+            "core"
+          ]
+        },
+        {
+          "id": "driveR",
+          "sprite": "boss-warship-helios",
+          "crop": {
+            "x": 332,
+            "y": 768,
+            "w": 92,
+            "h": 152
+          },
+          "dx": 45,
+          "dy": 288,
+          "role": "engine",
+          "hp": {
+            "base": 48,
+            "perWave": 4
+          },
+          "hitbox": {
+            "w": 69,
+            "h": 114
+          },
+          "shield": true,
+          "destroyScore": 430,
+          "protects": [
+            "core"
+          ]
+        },
+        {
+          "id": "wingL",
+          "sprite": "boss-warship-helios",
+          "crop": {
+            "x": 115,
+            "y": 495,
+            "w": 100,
+            "h": 100
+          },
+          "dx": -114.7,
+          "dy": 63.8,
+          "role": "turret",
+          "hp": {
+            "base": 38,
+            "perWave": 3
+          },
+          "hitbox": {
+            "w": 75,
+            "h": 75
+          },
+          "shield": true,
+          "destroyScore": 265,
           "phase": {
             "type": "fan",
             "count": 3,
-            "angleStep": 0.35,
-            "speed": 140
+            "angleStep": 0.28,
+            "speed": 128
           },
-          "fireEvery": 2.6,
-          "activeStages": ["aegis-ring"]
+          "fireEvery": 3.1,
+          "exposedBy": [
+            "lanceCore"
+          ],
+          "protects": [
+            "core"
+          ]
         },
         {
-          "id": "solarAegisR",
-          "sprite": "part-shield-array",
-          "parentId": "frameR",
-          "dx": -30,
-          "dy": -108,
+          "id": "wingR",
+          "sprite": "boss-warship-helios",
+          "crop": {
+            "x": 421,
+            "y": 495,
+            "w": 100,
+            "h": 100
+          },
+          "dx": 114.8,
+          "dy": 63.8,
+          "role": "turret",
           "hp": {
-            "base": 60,
-            "perWave": 5
+            "base": 38,
+            "perWave": 3
           },
           "hitbox": {
-            "w": 24,
-            "h": 30
+            "w": 75,
+            "h": 75
           },
-          "role": "shield",
-          "protects": ["core"],
-          "destroyScore": 450,
           "shield": true,
+          "destroyScore": 265,
           "phase": {
             "type": "fan",
             "count": 3,
-            "angleStep": 0.35,
-            "speed": 140
-          },
-          "fireEvery": 2.6,
-          "activeStages": ["aegis-ring"]
-        },
-        {
-          "id": "lanceArmorL",
-          "sprite": "part-armor-plate",
-          "parentId": "frameL",
-          "dx": 4,
-          "dy": -6,
-          "scale": 1.08,
-          "rotation": -0.5,
-          "role": "armor",
-          "hp": {
-            "base": 36,
-            "perWave": 2
-          },
-          "hitbox": {
-            "w": 22,
-            "h": 34
-          },
-          "shield": false,
-          "exposedBy": ["solarAegisL", "solarAegisR"],
-          "activeStages": ["lance-deck", "solar-reactor"],
-          "destroyScore": 320
-        },
-        {
-          "id": "lanceArmorR",
-          "sprite": "part-armor-plate",
-          "parentId": "frameR",
-          "dx": -4,
-          "dy": -6,
-          "scale": 1.08,
-          "rotation": 0.5,
-          "role": "armor",
-          "hp": {
-            "base": 36,
-            "perWave": 2
-          },
-          "hitbox": {
-            "w": 22,
-            "h": 34
-          },
-          "shield": false,
-          "exposedBy": ["solarAegisL", "solarAegisR"],
-          "activeStages": ["lance-deck", "solar-reactor"],
-          "destroyScore": 320
-        },
-        {
-          "id": "beamTurretL",
-          "sprite": "part-capital-turret",
-          "parentId": "frameL",
-          "dx": -22,
-          "dy": -70,
-          "scale": 0.82,
-          "rotation": -0.82,
-          "role": "turret",
-          "hp": {
-            "base": 24,
-            "perWave": 1
-          },
-          "hitbox": {
-            "w": 18,
-            "h": 24
-          },
-          "shield": false,
-          "motion": {
-            "type": "oscillate",
-            "axis": "y",
-            "amplitude": 15,
-            "speed": 2.2
-          },
-          "phase": {
-            "type": "fan",
-            "count": 4,
-            "angleStep": 0.24,
-            "speed": 145
+            "angleStep": 0.28,
+            "speed": 128
           },
           "fireEvery": 3.1,
-          "destroyScore": 160
+          "exposedBy": [
+            "lanceCore"
+          ],
+          "protects": [
+            "core"
+          ]
         },
         {
-          "id": "beamTurretR",
-          "sprite": "part-capital-turret",
-          "parentId": "frameR",
-          "dx": 22,
-          "dy": -70,
-          "scale": 0.82,
-          "rotation": 0.82,
-          "role": "turret",
-          "hp": {
-            "base": 24,
-            "perWave": 1
+          "id": "lanceCore",
+          "sprite": "boss-warship-helios",
+          "crop": {
+            "x": 272,
+            "y": 552,
+            "w": 92,
+            "h": 92
           },
-          "hitbox": {
-            "w": 18,
-            "h": 24
-          },
-          "shield": false,
-          "motion": {
-            "type": "oscillate",
-            "axis": "y",
-            "amplitude": 15,
-            "speed": 2.2,
-            "phase": 3.14
-          },
-          "phase": {
-            "type": "fan",
-            "count": 4,
-            "angleStep": 0.24,
-            "speed": 145
-          },
-          "fireEvery": 3.1,
-          "destroyScore": 160
-        },
-        {
-          "id": "ionDriveL",
-          "sprite": "part-ion-engine",
-          "parentId": "frameL",
-          "dx": -34,
-          "dy": 118,
-          "scale": 0.78,
-          "rotation": -0.35,
-          "role": "engine",
-          "hp": {
-            "base": 22,
-            "perWave": 1
-          },
-          "hitbox": {
-            "w": 17,
-            "h": 30
-          },
-          "shield": false,
-          "destroyScore": 140,
-          "activeStages": ["solar-reactor"]
-        },
-        {
-          "id": "ionDriveR",
-          "sprite": "part-ion-engine",
-          "parentId": "frameR",
-          "dx": 34,
-          "dy": 118,
-          "scale": 0.78,
-          "rotation": 0.35,
-          "role": "engine",
-          "hp": {
-            "base": 22,
-            "perWave": 1
-          },
-          "hitbox": {
-            "w": 17,
-            "h": 30
-          },
-          "shield": false,
-          "destroyScore": 140,
-          "activeStages": ["solar-reactor"]
-        },
-        {
-          "id": "frameL",
-          "sprite": "part-hull-frame",
-          "parentId": "core",
-          "dx": -82,
-          "dy": 0,
-          "scale": 0.72,
-          "rotation": -1.57,
-          "role": "structure",
-          "hp": {
-            "base": 14,
-            "perWave": 1
-          },
-          "hitbox": {
-            "w": 30,
-            "h": 16
-          },
-          "shield": false,
-          "exposedBy": ["solarAegisL", "lanceArmorL", "beamTurretL", "ionDriveL"],
-          "destroyScore": 80
-        },
-        {
-          "id": "frameR",
-          "sprite": "part-hull-frame",
-          "parentId": "core",
-          "dx": 82,
-          "dy": 0,
-          "scale": 0.72,
-          "rotation": 1.57,
-          "role": "structure",
-          "hp": {
-            "base": 14,
-            "perWave": 1
-          },
-          "hitbox": {
-            "w": 30,
-            "h": 16
-          },
-          "shield": false,
-          "exposedBy": ["solarAegisR", "lanceArmorR", "beamTurretR", "ionDriveR"],
-          "destroyScore": 80
-        },
-        {
-          "id": "lanceReactor",
-          "sprite": "part-reactor-core",
-          "parentId": "core",
           "dx": 0,
-          "dy": 78,
-          "scale": 1.05,
+          "dy": 103.5,
           "role": "weakpoint",
+          "hp": {
+            "base": 54,
+            "perWave": 4
+          },
+          "hitbox": {
+            "w": 69,
+            "h": 69
+          },
+          "shield": true,
+          "destroyScore": 530,
+          "damageMultiplier": 1.45,
+          "exposedBy": [
+            "driveL",
+            "driveR"
+          ],
+          "protects": [
+            "core"
+          ]
+        },
+        {
+          "id": "lance",
+          "sprite": "boss-warship-helios",
+          "crop": {
+            "x": 272,
+            "y": 268,
+            "w": 92,
+            "h": 180
+          },
+          "dx": 0,
+          "dy": -76.5,
+          "role": "armor",
           "hp": {
             "base": 40,
             "perWave": 3
           },
           "hitbox": {
-            "w": 22,
-            "h": 22
+            "w": 69,
+            "h": 135
           },
           "shield": false,
-          "protects": ["core"],
-          "exposedBy": ["lanceArmorL", "lanceArmorR"],
-          "activeStages": ["solar-reactor"],
-          "damageMultiplier": 1.5,
-          "motion": {
-            "type": "oscillate",
-            "axis": "y",
-            "amplitude": 4,
-            "speed": 4.1
-          },
-          "destroyScore": 450
+          "destroyScore": 320,
+          "exposedBy": [
+            "wingL",
+            "wingR"
+          ]
         },
         {
-          "id": "crownDrone",
-          "sprite": "part-capital-turret",
-          "parentId": "lanceReactor",
-          "dx": 0,
-          "dy": 0,
-          "scale": 0.66,
-          "role": "turret",
+          "id": "ringL",
+          "sprite": "boss-warship-helios",
+          "crop": {
+            "x": 130,
+            "y": 130,
+            "w": 110,
+            "h": 300
+          },
+          "dx": -99.7,
+          "dy": -135,
+          "role": "shield",
           "hp": {
-            "base": 16,
+            "base": 44,
+            "perWave": 3
+          },
+          "hitbox": {
+            "w": 82.5,
+            "h": 225
+          },
+          "shield": true,
+          "destroyScore": 380,
+          "phase": {
+            "type": "aimed",
+            "speed": 170,
+            "offsetX": 0,
+            "big": true
+          },
+          "fireEvery": 2.6,
+          "exposedBy": [
+            "wingL",
+            "wingR"
+          ],
+          "protects": [
+            "core"
+          ]
+        },
+        {
+          "id": "ringR",
+          "sprite": "boss-warship-helios",
+          "crop": {
+            "x": 396,
+            "y": 130,
+            "w": 110,
+            "h": 300
+          },
+          "dx": 99.8,
+          "dy": -135,
+          "role": "shield",
+          "hp": {
+            "base": 44,
+            "perWave": 3
+          },
+          "hitbox": {
+            "w": 82.5,
+            "h": 225
+          },
+          "shield": true,
+          "destroyScore": 380,
+          "phase": {
+            "type": "aimed",
+            "speed": 170,
+            "offsetX": 0,
+            "big": true
+          },
+          "fireEvery": 2.6,
+          "exposedBy": [
+            "wingL",
+            "wingR"
+          ],
+          "protects": [
+            "core"
+          ]
+        },
+        {
+          "id": "prow",
+          "sprite": "boss-warship-helios",
+          "crop": {
+            "x": 268,
+            "y": 8,
+            "w": 100,
+            "h": 175
+          },
+          "dx": 0,
+          "dy": -273.4,
+          "role": "structure",
+          "hp": {
+            "base": 22,
             "perWave": 1
           },
           "hitbox": {
-            "w": 14,
-            "h": 16
+            "w": 75,
+            "h": 131.3
           },
           "shield": false,
-          "exposedBy": ["lanceArmorL", "lanceArmorR"],
-          "activeStages": ["solar-reactor"],
-          "motion": {
-            "type": "orbit",
-            "radiusX": 62,
-            "radiusY": 38,
-            "speed": 0.62,
-            "phase": 0
-          },
-          "phase": {
-            "type": "aimed",
-            "speed": 180,
-            "offsetX": 0,
-            "big": false
-          },
-          "fireEvery": 4.5,
-          "destroyScore": 100
+          "destroyScore": 120,
+          "exposedBy": [
+            "wingL",
+            "wingR"
+          ]
         }
       ],
       "presentation": {
-        "kind": "warship",
-        "displayWidth": 318,
-        "displayHeight": 460,
+        "kind": "scrolling-warship",
+        "displayWidth": 477,
+        "displayHeight": 690,
+        "artWidth": 636,
+        "artHeight": 920,
         "movementScript": "solar-lance"
       }
     },
@@ -1283,8 +1301,8 @@
         "w": 92,
         "h": 74
       },
-      "entryY": -44,
-      "entrySpd": 46,
+      "entryY": -290,
+      "entrySpd": 150,
       "movement": {
         "type": "patrol",
         "base": 22,
@@ -1333,341 +1351,385 @@
       ],
       "layoutVersion": 2,
       "envelope": {
-        "w": 334,
-        "h": 530
+        "w": 513,
+        "h": 1140
       },
       "stages": [
         {
-          "id": "forward-batteries",
+          "id": "engine-deck",
           "coreTargetable": false,
-          "advanceWhenDestroyed": ["broadsideShieldL", "broadsideShieldR"],
+          "advanceWhenDestroyed": [
+            "driveL",
+            "driveC",
+            "driveR"
+          ],
           "coolScale": 1
+        },
+        {
+          "id": "reactor-breach",
+          "coreTargetable": false,
+          "advanceWhenDestroyed": [
+            "reactor"
+          ],
+          "coolScale": 1.08
         },
         {
           "id": "hull-crawl",
           "coreTargetable": false,
-          "advanceWhenDestroyed": ["midHullL", "midHullR"],
-          "coolScale": 0.8
+          "advanceWhenDestroyed": [
+            "midTurretL",
+            "midTurretR"
+          ],
+          "coolScale": 1.16
         },
         {
-          "id": "reactor-breach",
+          "id": "bridge-assault",
           "coreTargetable": true,
-          "coolScale": 0.62
+          "advanceWhenDestroyed": [
+            "upperTurretL",
+            "upperTurretR"
+          ],
+          "coolScale": 1.26
         }
       ],
       "parts": [
         {
-          "id": "broadsideShieldL",
-          "sprite": "part-shield-array",
-          "parentId": "frameL",
-          "dx": 34,
-          "dy": -232,
-          "hp": {
-            "base": 110,
-            "perWave": 6
+          "id": "driveL",
+          "sprite": "boss-warship-crimson",
+          "crop": {
+            "x": 140,
+            "y": 1330,
+            "w": 145,
+            "h": 190
           },
-          "hitbox": {
-            "w": 26,
-            "h": 38
-          },
-          "role": "shield",
-          "protects": ["core"],
-          "destroyScore": 480,
-          "shield": true,
-          "phase": {
-            "type": "aimed",
-            "speed": 185,
-            "offsetX": 0,
-            "big": true
-          },
-          "fireEvery": 1.7,
-          "activeStages": ["forward-batteries"]
-        },
-        {
-          "id": "broadsideShieldR",
-          "sprite": "part-shield-array",
-          "parentId": "frameR",
-          "dx": -34,
-          "dy": -232,
-          "hp": {
-            "base": 110,
-            "perWave": 6
-          },
-          "hitbox": {
-            "w": 26,
-            "h": 38
-          },
-          "role": "shield",
-          "protects": ["core"],
-          "destroyScore": 480,
-          "shield": true,
-          "phase": {
-            "type": "aimed",
-            "speed": 185,
-            "offsetX": 0,
-            "big": true
-          },
-          "fireEvery": 1.7,
-          "activeStages": ["forward-batteries"]
-        },
-        {
-          "id": "midHullL",
-          "sprite": "part-armor-plate",
-          "parentId": "frameL",
-          "dx": 4,
-          "dy": 0,
-          "scale": 1.35,
-          "rotation": -0.45,
-          "role": "armor",
-          "hp": {
-            "base": 46,
-            "perWave": 3
-          },
-          "hitbox": {
-            "w": 26,
-            "h": 46
-          },
-          "shield": false,
-          "exposedBy": ["broadsideShieldL", "broadsideShieldR"],
-          "activeStages": ["hull-crawl", "reactor-breach"],
-          "destroyScore": 360
-        },
-        {
-          "id": "midHullR",
-          "sprite": "part-armor-plate",
-          "parentId": "frameR",
-          "dx": -4,
-          "dy": 0,
-          "scale": 1.35,
-          "rotation": 0.45,
-          "role": "armor",
-          "hp": {
-            "base": 46,
-            "perWave": 3
-          },
-          "hitbox": {
-            "w": 26,
-            "h": 46
-          },
-          "shield": false,
-          "exposedBy": ["broadsideShieldL", "broadsideShieldR"],
-          "activeStages": ["hull-crawl", "reactor-breach"],
-          "destroyScore": 360
-        },
-        {
-          "id": "missileRackL",
-          "sprite": "part-capital-turret",
-          "parentId": "frameL",
-          "dx": -24,
-          "dy": -174,
-          "scale": 0.78,
-          "rotation": -0.18,
-          "role": "turret",
-          "hp": {
-            "base": 26,
-            "perWave": 1
-          },
-          "hitbox": {
-            "w": 18,
-            "h": 28
-          },
-          "shield": false,
-          "motion": {
-            "type": "oscillate",
-            "axis": "x",
-            "amplitude": 5,
-            "speed": 1.8
-          },
-          "phase": {
-            "type": "fan",
-            "count": 4,
-            "angleStep": 0.2,
-            "speed": 155
-          },
-          "fireEvery": 2.7,
-          "destroyScore": 170,
-          "activeStages": ["forward-batteries"]
-        },
-        {
-          "id": "missileRackR",
-          "sprite": "part-capital-turret",
-          "parentId": "frameR",
-          "dx": 24,
-          "dy": -174,
-          "scale": 0.78,
-          "rotation": 0.18,
-          "role": "turret",
-          "hp": {
-            "base": 26,
-            "perWave": 1
-          },
-          "hitbox": {
-            "w": 18,
-            "h": 28
-          },
-          "shield": false,
-          "motion": {
-            "type": "oscillate",
-            "axis": "x",
-            "amplitude": 5,
-            "speed": 1.8,
-            "phase": 3.14
-          },
-          "phase": {
-            "type": "fan",
-            "count": 4,
-            "angleStep": 0.2,
-            "speed": 155
-          },
-          "fireEvery": 2.7,
-          "destroyScore": 170,
-          "activeStages": ["forward-batteries"]
-        },
-        {
-          "id": "engineL",
-          "sprite": "part-ion-engine",
-          "parentId": "frameL",
-          "dx": -14,
-          "dy": 244,
-          "scale": 0.9,
+          "dx": -97.1,
+          "dy": 498.8,
           "role": "engine",
           "hp": {
-            "base": 24,
-            "perWave": 1
+            "base": 40,
+            "perWave": 2.8
           },
           "hitbox": {
-            "w": 18,
-            "h": 20
+            "w": 108.8,
+            "h": 142.5
           },
-          "shield": false,
-          "destroyScore": 150,
-          "activeStages": ["reactor-breach"]
+          "shield": true,
+          "destroyScore": 340,
+          "protects": [
+            "core"
+          ]
         },
         {
-          "id": "engineR",
-          "sprite": "part-ion-engine",
-          "parentId": "frameR",
-          "dx": 14,
-          "dy": 244,
-          "scale": 0.9,
+          "id": "driveC",
+          "sprite": "boss-warship-crimson",
+          "crop": {
+            "x": 287,
+            "y": 1340,
+            "w": 112,
+            "h": 180
+          },
+          "dx": 0.8,
+          "dy": 502.5,
           "role": "engine",
           "hp": {
-            "base": 24,
-            "perWave": 1
+            "base": 40,
+            "perWave": 2.8
           },
           "hitbox": {
-            "w": 18,
-            "h": 20
+            "w": 84,
+            "h": 135
           },
-          "shield": false,
-          "destroyScore": 150,
-          "activeStages": ["reactor-breach"]
+          "shield": true,
+          "destroyScore": 340,
+          "protects": [
+            "core"
+          ]
         },
         {
-          "id": "frameL",
-          "sprite": "part-hull-frame",
-          "parentId": "core",
-          "dx": -92,
-          "dy": 0,
-          "scale": 0.9,
-          "rotation": -1.57,
-          "role": "structure",
+          "id": "driveR",
+          "sprite": "boss-warship-crimson",
+          "crop": {
+            "x": 401,
+            "y": 1330,
+            "w": 145,
+            "h": 190
+          },
+          "dx": 98.6,
+          "dy": 498.8,
+          "role": "engine",
           "hp": {
-            "base": 18,
-            "perWave": 1
+            "base": 40,
+            "perWave": 2.8
           },
           "hitbox": {
-            "w": 38,
-            "h": 18
+            "w": 108.8,
+            "h": 142.5
           },
-          "shield": false,
-          "exposedBy": ["broadsideShieldL", "midHullL", "missileRackL", "engineL"],
-          "destroyScore": 90
+          "shield": true,
+          "destroyScore": 340,
+          "protects": [
+            "core"
+          ]
         },
         {
-          "id": "frameR",
-          "sprite": "part-hull-frame",
-          "parentId": "core",
-          "dx": 92,
-          "dy": 0,
-          "scale": 0.9,
-          "rotation": 1.57,
-          "role": "structure",
-          "hp": {
-            "base": 18,
-            "perWave": 1
+          "id": "reactor",
+          "sprite": "boss-warship-crimson",
+          "crop": {
+            "x": 292,
+            "y": 1128,
+            "w": 105,
+            "h": 105
           },
-          "hitbox": {
-            "w": 38,
-            "h": 18
-          },
-          "shield": false,
-          "exposedBy": ["broadsideShieldR", "midHullR", "missileRackR", "engineR"],
-          "destroyScore": 90
-        },
-        {
-          "id": "siegeReactor",
-          "sprite": "part-reactor-core",
-          "parentId": "core",
-          "dx": 0,
-          "dy": 216,
-          "scale": 1.18,
+          "dx": 1.9,
+          "dy": 315.4,
           "role": "weakpoint",
           "hp": {
-            "base": 60,
-            "perWave": 3
+            "base": 58,
+            "perWave": 4.7
           },
           "hitbox": {
-            "w": 24,
-            "h": 24
+            "w": 78.8,
+            "h": 78.8
           },
-          "shield": false,
-          "protects": ["core"],
-          "exposedBy": ["midHullL", "midHullR"],
-          "activeStages": ["reactor-breach"],
-          "damageMultiplier": 1.5,
-          "motion": {
-            "type": "oscillate",
-            "axis": "y",
-            "amplitude": 3,
-            "speed": 3.4
-          },
-          "destroyScore": 500
+          "shield": true,
+          "destroyScore": 580,
+          "damageMultiplier": 1.4,
+          "exposedBy": [
+            "driveL",
+            "driveC",
+            "driveR"
+          ],
+          "protects": [
+            "core"
+          ]
         },
         {
-          "id": "reactorDrone",
-          "sprite": "part-capital-turret",
-          "parentId": "siegeReactor",
-          "dx": 0,
-          "dy": 22,
-          "scale": 0.58,
-          "role": "turret",
+          "id": "hullL",
+          "sprite": "boss-warship-crimson",
+          "crop": {
+            "x": 195,
+            "y": 1015,
+            "w": 105,
+            "h": 105
+          },
+          "dx": -70.9,
+          "dy": 230.6,
+          "role": "armor",
           "hp": {
-            "base": 20,
-            "perWave": 1
+            "base": 38,
+            "perWave": 2.8
           },
           "hitbox": {
-            "w": 14,
-            "h": 18
+            "w": 78.8,
+            "h": 78.8
           },
           "shield": false,
-          "exposedBy": ["midHullL", "midHullR"],
-          "activeStages": ["reactor-breach"],
-          "motion": {
-            "type": "orbit",
-            "radiusX": 72,
-            "radiusY": 34,
-            "speed": -0.52,
-            "phase": 0
+          "destroyScore": 290,
+          "exposedBy": [
+            "driveL",
+            "driveC",
+            "driveR"
+          ]
+        },
+        {
+          "id": "hullR",
+          "sprite": "boss-warship-crimson",
+          "crop": {
+            "x": 385,
+            "y": 1015,
+            "w": 105,
+            "h": 105
           },
+          "dx": 71.6,
+          "dy": 230.6,
+          "role": "armor",
+          "hp": {
+            "base": 38,
+            "perWave": 2.8
+          },
+          "hitbox": {
+            "w": 78.8,
+            "h": 78.8
+          },
+          "shield": false,
+          "destroyScore": 290,
+          "exposedBy": [
+            "driveL",
+            "driveC",
+            "driveR"
+          ]
+        },
+        {
+          "id": "midTurretL",
+          "sprite": "boss-warship-crimson",
+          "crop": {
+            "x": 200,
+            "y": 828,
+            "w": 105,
+            "h": 105
+          },
+          "dx": -67.1,
+          "dy": 90.4,
+          "role": "turret",
+          "hp": {
+            "base": 34,
+            "perWave": 2.8
+          },
+          "hitbox": {
+            "w": 78.8,
+            "h": 78.8
+          },
+          "shield": true,
+          "destroyScore": 240,
+          "phase": {
+            "type": "fan",
+            "count": 4,
+            "angleStep": 0.28,
+            "speed": 128
+          },
+          "fireEvery": 2.8,
+          "exposedBy": [
+            "reactor"
+          ],
+          "protects": [
+            "core"
+          ]
+        },
+        {
+          "id": "midTurretR",
+          "sprite": "boss-warship-crimson",
+          "crop": {
+            "x": 380,
+            "y": 828,
+            "w": 105,
+            "h": 105
+          },
+          "dx": 67.9,
+          "dy": 90.4,
+          "role": "turret",
+          "hp": {
+            "base": 34,
+            "perWave": 2.8
+          },
+          "hitbox": {
+            "w": 78.8,
+            "h": 78.8
+          },
+          "shield": true,
+          "destroyScore": 240,
+          "phase": {
+            "type": "fan",
+            "count": 4,
+            "angleStep": 0.28,
+            "speed": 128
+          },
+          "fireEvery": 2.8,
+          "exposedBy": [
+            "reactor"
+          ],
+          "protects": [
+            "core"
+          ]
+        },
+        {
+          "id": "upperTurretL",
+          "sprite": "boss-warship-crimson",
+          "crop": {
+            "x": 195,
+            "y": 538,
+            "w": 105,
+            "h": 105
+          },
+          "dx": -70.9,
+          "dy": -127.1,
+          "role": "turret",
+          "hp": {
+            "base": 32,
+            "perWave": 2.8
+          },
+          "hitbox": {
+            "w": 78.8,
+            "h": 78.8
+          },
+          "shield": true,
+          "destroyScore": 220,
           "phase": {
             "type": "aimed",
-            "speed": 195,
+            "speed": 170,
             "offsetX": 0,
-            "big": false
+            "big": true
           },
-          "fireEvery": 4.5,
-          "destroyScore": 110
+          "fireEvery": 3.1,
+          "exposedBy": [
+            "midTurretL",
+            "midTurretR"
+          ],
+          "protects": [
+            "core"
+          ]
+        },
+        {
+          "id": "upperTurretR",
+          "sprite": "boss-warship-crimson",
+          "crop": {
+            "x": 385,
+            "y": 538,
+            "w": 105,
+            "h": 105
+          },
+          "dx": 71.6,
+          "dy": -127.1,
+          "role": "turret",
+          "hp": {
+            "base": 32,
+            "perWave": 2.8
+          },
+          "hitbox": {
+            "w": 78.8,
+            "h": 78.8
+          },
+          "shield": true,
+          "destroyScore": 220,
+          "phase": {
+            "type": "aimed",
+            "speed": 170,
+            "offsetX": 0,
+            "big": true
+          },
+          "fireEvery": 3.1,
+          "exposedBy": [
+            "midTurretL",
+            "midTurretR"
+          ],
+          "protects": [
+            "core"
+          ]
+        },
+        {
+          "id": "commandSpine",
+          "sprite": "boss-warship-crimson",
+          "crop": {
+            "x": 285,
+            "y": 690,
+            "w": 120,
+            "h": 120
+          },
+          "dx": 2.3,
+          "dy": -7.5,
+          "role": "structure",
+          "hp": {
+            "base": 28,
+            "perWave": 1.9
+          },
+          "hitbox": {
+            "w": 90,
+            "h": 90
+          },
+          "shield": false,
+          "destroyScore": 200,
+          "exposedBy": [
+            "reactor"
+          ]
         }
       ],
       "killScore": 10000,
@@ -1676,8 +1738,10 @@
       "touchDamage": 26,
       "presentation": {
         "kind": "scrolling-warship",
-        "displayWidth": 342,
-        "displayHeight": 760,
+        "displayWidth": 513,
+        "displayHeight": 1140,
+        "artWidth": 684,
+        "artHeight": 1520,
         "movementScript": "hull-crawl"
       }
     },
@@ -1692,8 +1756,8 @@
         "w": 84,
         "h": 84
       },
-      "entryY": 22,
-      "entrySpd": 50,
+      "entryY": -94,
+      "entrySpd": 150,
       "movement": {
         "type": "wander",
         "speed": 34,
@@ -1751,399 +1815,327 @@
       ],
       "layoutVersion": 2,
       "envelope": {
-        "w": 342,
-        "h": 282
+        "w": 525,
+        "h": 765
       },
       "stages": [
         {
-          "id": "escort-screen",
+          "id": "engine-deck",
           "coreTargetable": false,
-          "advanceWhenDestroyed": ["escortA", "escortB", "escortC", "escortD"],
+          "advanceWhenDestroyed": [
+            "driveL",
+            "driveR"
+          ],
           "coolScale": 1
         },
         {
-          "id": "fortress-breach",
+          "id": "spine-ports",
           "coreTargetable": false,
-          "advanceWhenDestroyed": ["fortressPlateL", "fortressPlateR"],
-          "coolScale": 0.78
+          "advanceWhenDestroyed": [
+            "portL",
+            "portR"
+          ],
+          "coolScale": 1.06
         },
         {
-          "id": "command-core",
+          "id": "fortress-reactor",
+          "coreTargetable": false,
+          "advanceWhenDestroyed": [
+            "reactor"
+          ],
+          "coolScale": 1.14
+        },
+        {
+          "id": "bridge-assault",
           "coreTargetable": true,
-          "coolScale": 0.58
+          "advanceWhenDestroyed": [
+            "turretUL",
+            "turretUR"
+          ],
+          "coolScale": 1.24
         }
       ],
       "parts": [
         {
-          "id": "escortA",
-          "sprite": "part-shield-array",
-          "parentId": "frameL",
-          "dx": 36,
-          "dy": -124,
+          "id": "driveL",
+          "sprite": "boss-warship-nova",
+          "crop": {
+            "x": 150,
+            "y": 812,
+            "w": 172,
+            "h": 208
+          },
+          "dx": -85.5,
+          "dy": 304.5,
+          "role": "engine",
           "hp": {
-            "base": 75,
+            "base": 54,
             "perWave": 5
           },
           "hitbox": {
-            "w": 22,
-            "h": 26
+            "w": 129,
+            "h": 156
           },
-          "role": "shield",
-          "protects": ["core"],
-          "destroyScore": 350,
           "shield": true,
-          "phase": {
-            "type": "aimed",
-            "speed": 175,
-            "offsetX": 0,
-            "big": false
-          },
-          "fireEvery": 1.9,
-          "activeStages": ["escort-screen"]
+          "destroyScore": 460,
+          "protects": [
+            "core"
+          ]
         },
         {
-          "id": "escortB",
-          "sprite": "part-shield-array",
-          "parentId": "frameR",
-          "dx": -36,
-          "dy": -124,
+          "id": "driveR",
+          "sprite": "boss-warship-nova",
+          "crop": {
+            "x": 378,
+            "y": 812,
+            "w": 172,
+            "h": 208
+          },
+          "dx": 85.5,
+          "dy": 304.5,
+          "role": "engine",
           "hp": {
-            "base": 75,
+            "base": 54,
             "perWave": 5
           },
           "hitbox": {
-            "w": 22,
-            "h": 26
+            "w": 129,
+            "h": 156
           },
-          "role": "shield",
-          "protects": ["core"],
-          "destroyScore": 350,
           "shield": true,
-          "phase": {
-            "type": "aimed",
-            "speed": 175,
-            "offsetX": 0,
-            "big": false
-          },
-          "fireEvery": 1.9,
-          "activeStages": ["escort-screen"]
+          "destroyScore": 460,
+          "protects": [
+            "core"
+          ]
         },
         {
-          "id": "escortC",
-          "sprite": "part-shield-array",
-          "parentId": "frameL",
-          "dx": 32,
-          "dy": -88,
+          "id": "portL",
+          "sprite": "boss-warship-nova",
+          "crop": {
+            "x": 163,
+            "y": 718,
+            "w": 105,
+            "h": 105
+          },
+          "dx": -100.9,
+          "dy": 195.4,
+          "role": "turret",
           "hp": {
-            "base": 75,
-            "perWave": 5
-          },
-          "hitbox": {
-            "w": 22,
-            "h": 26
-          },
-          "role": "shield",
-          "protects": ["core"],
-          "destroyScore": 350,
-          "shield": true,
-          "phase": {
-            "type": "fan",
-            "count": 3,
-            "angleStep": 0.4,
-            "speed": 150
-          },
-          "fireEvery": 2.3,
-          "activeStages": ["escort-screen"]
-        },
-        {
-          "id": "escortD",
-          "sprite": "part-shield-array",
-          "parentId": "frameR",
-          "dx": -32,
-          "dy": -88,
-          "hp": {
-            "base": 75,
-            "perWave": 5
-          },
-          "hitbox": {
-            "w": 22,
-            "h": 26
-          },
-          "role": "shield",
-          "protects": ["core"],
-          "destroyScore": 350,
-          "shield": true,
-          "phase": {
-            "type": "fan",
-            "count": 3,
-            "angleStep": 0.4,
-            "speed": 150
-          },
-          "fireEvery": 2.3,
-          "activeStages": ["escort-screen"]
-        },
-        {
-          "id": "fortressPlateL",
-          "sprite": "part-armor-plate",
-          "parentId": "frameL",
-          "dx": 4,
-          "dy": -18,
-          "scale": 1.28,
-          "rotation": -0.55,
-          "role": "armor",
-          "hp": {
-            "base": 50,
+            "base": 42,
             "perWave": 3
           },
           "hitbox": {
-            "w": 24,
-            "h": 38
+            "w": 78.8,
+            "h": 78.8
           },
-          "shield": false,
-          "exposedBy": ["escortA", "escortB", "escortC", "escortD"],
-          "activeStages": ["fortress-breach", "command-core"],
-          "destroyScore": 380
+          "shield": true,
+          "destroyScore": 280,
+          "phase": {
+            "type": "fan",
+            "count": 4,
+            "angleStep": 0.28,
+            "speed": 128
+          },
+          "fireEvery": 2.9,
+          "exposedBy": [
+            "driveL",
+            "driveR"
+          ],
+          "protects": [
+            "core"
+          ]
         },
         {
-          "id": "fortressPlateR",
-          "sprite": "part-armor-plate",
-          "parentId": "frameR",
-          "dx": -4,
-          "dy": -18,
-          "scale": 1.28,
-          "rotation": 0.55,
-          "role": "armor",
+          "id": "portR",
+          "sprite": "boss-warship-nova",
+          "crop": {
+            "x": 432,
+            "y": 718,
+            "w": 105,
+            "h": 105
+          },
+          "dx": 100.9,
+          "dy": 195.4,
+          "role": "turret",
           "hp": {
-            "base": 50,
+            "base": 42,
             "perWave": 3
           },
           "hitbox": {
-            "w": 24,
-            "h": 38
+            "w": 78.8,
+            "h": 78.8
           },
-          "shield": false,
-          "exposedBy": ["escortA", "escortB", "escortC", "escortD"],
-          "activeStages": ["fortress-breach", "command-core"],
-          "destroyScore": 380
-        },
-        {
-          "id": "siegeTurretA",
-          "sprite": "part-capital-turret",
-          "parentId": "core",
-          "dx": 0,
-          "dy": -54,
-          "scale": 0.78,
-          "role": "turret",
-          "hp": {
-            "base": 26,
-            "perWave": 1
-          },
-          "hitbox": {
-            "w": 18,
-            "h": 22
-          },
-          "shield": false,
-          "motion": {
-            "type": "orbit",
-            "radiusX": 116,
-            "radiusY": 62,
-            "speed": 0.72,
-            "phase": 0
-          },
+          "shield": true,
+          "destroyScore": 280,
           "phase": {
-            "type": "aimed",
-            "speed": 178,
-            "offsetX": 0,
-            "big": false
+            "type": "fan",
+            "count": 4,
+            "angleStep": 0.28,
+            "speed": 128
           },
-          "fireEvery": 2.6,
-          "destroyScore": 170
+          "fireEvery": 2.9,
+          "exposedBy": [
+            "driveL",
+            "driveR"
+          ],
+          "protects": [
+            "core"
+          ]
         },
         {
-          "id": "siegeTurretB",
-          "sprite": "part-capital-turret",
-          "parentId": "core",
-          "dx": 0,
-          "dy": -54,
-          "scale": 0.78,
-          "role": "turret",
-          "hp": {
-            "base": 26,
-            "perWave": 1
+          "id": "reactor",
+          "sprite": "boss-warship-nova",
+          "crop": {
+            "x": 292,
+            "y": 592,
+            "w": 120,
+            "h": 120
           },
-          "hitbox": {
-            "w": 18,
-            "h": 22
-          },
-          "shield": false,
-          "motion": {
-            "type": "orbit",
-            "radiusX": 116,
-            "radiusY": 62,
-            "speed": 0.72,
-            "phase": 3.14
-          },
-          "phase": {
-            "type": "aimed",
-            "speed": 178,
-            "offsetX": 0,
-            "big": false
-          },
-          "fireEvery": 2.6,
-          "destroyScore": 170
-        },
-        {
-          "id": "vectorDriveL",
-          "sprite": "part-ion-engine",
-          "parentId": "frameL",
-          "dx": -16,
-          "dy": 132,
-          "scale": 0.72,
-          "rotation": -0.25,
-          "role": "engine",
-          "hp": {
-            "base": 24,
-            "perWave": 1
-          },
-          "hitbox": {
-            "w": 16,
-            "h": 28
-          },
-          "shield": false,
-          "motion": {
-            "type": "oscillate",
-            "axis": "y",
-            "amplitude": 6,
-            "speed": 2.1
-          },
-          "destroyScore": 150,
-          "activeStages": ["command-core"]
-        },
-        {
-          "id": "vectorDriveR",
-          "sprite": "part-ion-engine",
-          "parentId": "frameR",
-          "dx": 16,
-          "dy": 132,
-          "scale": 0.72,
-          "rotation": 0.25,
-          "role": "engine",
-          "hp": {
-            "base": 24,
-            "perWave": 1
-          },
-          "hitbox": {
-            "w": 16,
-            "h": 28
-          },
-          "shield": false,
-          "motion": {
-            "type": "oscillate",
-            "axis": "y",
-            "amplitude": 6,
-            "speed": 2.1,
-            "phase": 3.14
-          },
-          "destroyScore": 150,
-          "activeStages": ["command-core"]
-        },
-        {
-          "id": "frameL",
-          "sprite": "part-hull-frame",
-          "parentId": "core",
-          "dx": -88,
-          "dy": 0,
-          "scale": 0.86,
-          "rotation": -1.57,
-          "role": "structure",
-          "hp": {
-            "base": 16,
-            "perWave": 1
-          },
-          "hitbox": {
-            "w": 34,
-            "h": 16
-          },
-          "shield": false,
-          "exposedBy": ["escortA", "escortC", "fortressPlateL", "vectorDriveL"],
-          "destroyScore": 90
-        },
-        {
-          "id": "frameR",
-          "sprite": "part-hull-frame",
-          "parentId": "core",
-          "dx": 88,
-          "dy": 0,
-          "scale": 0.86,
-          "rotation": 1.57,
-          "role": "structure",
-          "hp": {
-            "base": 16,
-            "perWave": 1
-          },
-          "hitbox": {
-            "w": 34,
-            "h": 16
-          },
-          "shield": false,
-          "exposedBy": ["escortB", "escortD", "fortressPlateR", "vectorDriveR"],
-          "destroyScore": 90
-        },
-        {
-          "id": "fortressReactor",
-          "sprite": "part-reactor-core",
-          "parentId": "core",
-          "dx": 0,
-          "dy": 88,
-          "scale": 1.2,
+          "dx": 1.5,
+          "dy": 106.5,
           "role": "weakpoint",
           "hp": {
             "base": 60,
-            "perWave": 3
+            "perWave": 5
           },
           "hitbox": {
-            "w": 24,
-            "h": 24
+            "w": 90,
+            "h": 90
           },
-          "shield": false,
-          "protects": ["core"],
-          "exposedBy": ["fortressPlateL", "fortressPlateR"],
-          "activeStages": ["command-core"],
-          "damageMultiplier": 1.55,
-          "destroyScore": 500
+          "shield": true,
+          "destroyScore": 560,
+          "damageMultiplier": 1.4,
+          "exposedBy": [
+            "portL",
+            "portR"
+          ],
+          "protects": [
+            "core"
+          ]
         },
         {
-          "id": "coreBattery",
-          "sprite": "part-capital-turret",
-          "parentId": "fortressReactor",
-          "dx": 0,
-          "dy": 0,
-          "scale": 0.66,
+          "id": "bridge",
+          "sprite": "boss-warship-nova",
+          "crop": {
+            "x": 297,
+            "y": 250,
+            "w": 110,
+            "h": 150
+          },
+          "dx": 1.5,
+          "dy": -138.7,
+          "role": "armor",
+          "hp": {
+            "base": 48,
+            "perWave": 4
+          },
+          "hitbox": {
+            "w": 82.5,
+            "h": 112.5
+          },
+          "shield": false,
+          "destroyScore": 420,
+          "exposedBy": [
+            "reactor"
+          ]
+        },
+        {
+          "id": "turretUL",
+          "sprite": "boss-warship-nova",
+          "crop": {
+            "x": 150,
+            "y": 180,
+            "w": 112,
+            "h": 140
+          },
+          "dx": -108,
+          "dy": -195,
           "role": "turret",
           "hp": {
-            "base": 22,
+            "base": 32,
+            "perWave": 2
+          },
+          "hitbox": {
+            "w": 84,
+            "h": 105
+          },
+          "shield": true,
+          "destroyScore": 190,
+          "phase": {
+            "type": "aimed",
+            "speed": 170,
+            "offsetX": 0,
+            "big": true
+          },
+          "fireEvery": 3.2,
+          "exposedBy": [
+            "reactor"
+          ],
+          "protects": [
+            "core"
+          ]
+        },
+        {
+          "id": "turretUR",
+          "sprite": "boss-warship-nova",
+          "crop": {
+            "x": 438,
+            "y": 180,
+            "w": 112,
+            "h": 140
+          },
+          "dx": 108,
+          "dy": -195,
+          "role": "turret",
+          "hp": {
+            "base": 32,
+            "perWave": 2
+          },
+          "hitbox": {
+            "w": 84,
+            "h": 105
+          },
+          "shield": true,
+          "destroyScore": 190,
+          "phase": {
+            "type": "aimed",
+            "speed": 170,
+            "offsetX": 0,
+            "big": true
+          },
+          "fireEvery": 3.2,
+          "exposedBy": [
+            "reactor"
+          ],
+          "protects": [
+            "core"
+          ]
+        },
+        {
+          "id": "foreSpire",
+          "sprite": "boss-warship-nova",
+          "crop": {
+            "x": 295,
+            "y": 120,
+            "w": 110,
+            "h": 150
+          },
+          "dx": 0,
+          "dy": -236.2,
+          "role": "structure",
+          "hp": {
+            "base": 26,
             "perWave": 1
           },
           "hitbox": {
-            "w": 14,
-            "h": 16
+            "w": 82.5,
+            "h": 112.5
           },
           "shield": false,
-          "exposedBy": ["fortressPlateL", "fortressPlateR"],
-          "activeStages": ["command-core"],
-          "motion": {
-            "type": "oscillate",
-            "axis": "x",
-            "amplitude": 18,
-            "speed": 2.6
-          },
-          "phase": {
-            "type": "ring",
-            "count": 6,
-            "speed": 125
-          },
-          "fireEvery": 4.4,
-          "destroyScore": 120
+          "destroyScore": 140,
+          "exposedBy": [
+            "reactor"
+          ]
         }
       ],
       "killScore": 14000,
@@ -2151,9 +2143,11 @@
       "hitCooldown": 0.05,
       "touchDamage": 28,
       "presentation": {
-        "kind": "warship",
-        "displayWidth": 350,
-        "displayHeight": 510,
+        "kind": "scrolling-warship",
+        "displayWidth": 525,
+        "displayHeight": 765,
+        "artWidth": 700,
+        "artHeight": 1020,
         "movementScript": "fortress-assault"
       }
     },
@@ -2238,7 +2232,10 @@
         {
           "id": "gravity-lock",
           "coreTargetable": false,
-          "advanceWhenDestroyed": ["arcL", "arcR"],
+          "advanceWhenDestroyed": [
+            "arcL",
+            "arcR"
+          ],
           "coolScale": 1
         },
         {
@@ -2301,26 +2298,37 @@
       "nameKey": "boss.snail",
       "layoutVersion": 2,
       "envelope": {
-        "w": 300,
-        "h": 350
+        "w": 270,
+        "h": 405
       },
       "stages": [
         {
           "id": "gaze",
           "coreTargetable": false,
-          "advanceWhenDestroyed": ["eyeL", "eyeR"],
+          "advanceWhenDestroyed": [
+            "eyeL",
+            "eyeR"
+          ],
           "coolScale": 1
         },
         {
           "id": "shell-break",
           "coreTargetable": false,
-          "advanceWhenDestroyed": ["shellL", "shellR", "shellTop", "shellBottom"],
-          "coolScale": 0.76
+          "advanceWhenDestroyed": [
+            "shellTop",
+            "shellL",
+            "shellR",
+            "shellBottom"
+          ],
+          "coolScale": 1.12
         },
         {
           "id": "soft-heart",
           "coreTargetable": true,
-          "coolScale": 0.55
+          "advanceWhenDestroyed": [
+            "softHeart"
+          ],
+          "coolScale": 1.24
         }
       ],
       "hp": {
@@ -2331,15 +2339,15 @@
         "w": 100,
         "h": 76
       },
-      "entryY": 72,
-      "entrySpd": 34,
+      "entryY": 266,
+      "entrySpd": 170,
       "movement": {
         "type": "wander",
         "speed": 22,
         "minX": 150,
         "maxX": 250,
-        "minY": 50,
-        "maxY": 112
+        "minY": 248,
+        "maxY": 288
       },
       "cool": {
         "base": 1.15,
@@ -2395,354 +2403,252 @@
       "parts": [
         {
           "id": "eyeL",
-          "sprite": "part-eyestalk",
-          "parentId": "headFrame",
-          "dx": 26,
-          "dy": -58,
+          "sprite": "boss-snail",
+          "crop": {
+            "x": 140,
+            "y": 0,
+            "w": 78,
+            "h": 82
+          },
+          "dx": -54.4,
+          "dy": -184,
+          "role": "shield",
           "hp": {
-            "base": 120,
-            "perWave": 7
+            "base": 40,
+            "perWave": 3
           },
           "hitbox": {
-            "w": 24,
-            "h": 44
+            "w": 35.1,
+            "h": 36.9
           },
-          "role": "shield",
-          "protects": ["core"],
-          "destroyScore": 450,
           "shield": true,
+          "destroyScore": 360,
           "phase": {
             "type": "aimed",
-            "speed": 190,
+            "speed": 170,
             "offsetX": 0,
-            "big": false
+            "big": true
           },
-          "fireEvery": 1.6
+          "fireEvery": 2.7,
+          "protects": [
+            "core"
+          ]
         },
         {
           "id": "eyeR",
-          "sprite": "part-eyestalk",
-          "parentId": "headFrame",
-          "dx": 8,
-          "dy": -30,
+          "sprite": "boss-snail",
+          "crop": {
+            "x": 348,
+            "y": 0,
+            "w": 78,
+            "h": 82
+          },
+          "dx": 39.2,
+          "dy": -184,
+          "role": "shield",
           "hp": {
-            "base": 120,
-            "perWave": 7
+            "base": 40,
+            "perWave": 3
           },
           "hitbox": {
-            "w": 24,
-            "h": 44
+            "w": 35.1,
+            "h": 36.9
           },
-          "role": "shield",
-          "protects": ["core"],
-          "destroyScore": 450,
           "shield": true,
+          "destroyScore": 360,
           "phase": {
             "type": "aimed",
-            "speed": 190,
+            "speed": 170,
             "offsetX": 0,
-            "big": false
+            "big": true
           },
-          "fireEvery": 1.9
-        },
-        {
-          "id": "shellL",
-          "sprite": "part-arc",
-          "parentId": "shellFrame",
-          "dx": -108,
-          "dy": 6,
-          "scale": 1.08,
-          "rotation": -0.45,
-          "role": "armor",
-          "hp": {
-            "base": 42,
-            "perWave": 3
-          },
-          "hitbox": {
-            "w": 24,
-            "h": 46
-          },
-          "shield": false,
-          "exposedBy": ["eyeL", "eyeR"],
-          "activeStages": ["shell-break", "soft-heart"],
-          "destroyScore": 350
-        },
-        {
-          "id": "shellR",
-          "sprite": "part-arc",
-          "parentId": "shellFrame",
-          "dx": 80,
-          "dy": 6,
-          "scale": 1.08,
-          "rotation": 0.45,
-          "role": "armor",
-          "hp": {
-            "base": 42,
-            "perWave": 3
-          },
-          "hitbox": {
-            "w": 24,
-            "h": 46
-          },
-          "shield": false,
-          "exposedBy": ["eyeL", "eyeR"],
-          "activeStages": ["shell-break", "soft-heart"],
-          "destroyScore": 350
-        },
-        {
-          "id": "shellTop",
-          "sprite": "part-arc",
-          "parentId": "shellFrame",
-          "dx": 0,
-          "dy": -38,
-          "scale": 0.92,
-          "rotation": 1.57,
-          "role": "armor",
-          "hp": {
-            "base": 38,
-            "perWave": 3
-          },
-          "hitbox": {
-            "w": 38,
-            "h": 22
-          },
-          "shield": false,
-          "exposedBy": ["eyeL", "eyeR"],
-          "activeStages": ["shell-break", "soft-heart"],
-          "destroyScore": 320
-        },
-        {
-          "id": "shellBottom",
-          "sprite": "part-arc",
-          "parentId": "shellFrame",
-          "dx": 0,
-          "dy": 64,
-          "scale": 0.92,
-          "rotation": -1.57,
-          "role": "armor",
-          "hp": {
-            "base": 38,
-            "perWave": 3
-          },
-          "hitbox": {
-            "w": 38,
-            "h": 22
-          },
-          "shield": false,
-          "exposedBy": ["eyeL", "eyeR"],
-          "activeStages": ["shell-break", "soft-heart"],
-          "destroyScore": 320
+          "fireEvery": 2.7,
+          "protects": [
+            "core"
+          ]
         },
         {
           "id": "mouthGun",
-          "sprite": "part-eyestalk",
-          "parentId": "headFrame",
-          "dx": -26,
-          "dy": 24,
-          "scale": 0.76,
-          "rotation": -0.7,
+          "sprite": "boss-snail",
+          "crop": {
+            "x": 240,
+            "y": 120,
+            "w": 120,
+            "h": 110
+          },
+          "dx": 0,
+          "dy": -123.7,
           "role": "turret",
           "hp": {
-            "base": 28,
+            "base": 30,
             "perWave": 2
           },
           "hitbox": {
-            "w": 18,
-            "h": 26
+            "w": 54,
+            "h": 49.5
           },
           "shield": false,
+          "destroyScore": 200,
           "phase": {
             "type": "fan",
             "count": 5,
-            "angleStep": 0.22,
-            "speed": 155
+            "angleStep": 0.28,
+            "speed": 128
           },
-          "fireEvery": 2.8,
-          "destroyScore": 180
+          "fireEvery": 2.4
         },
         {
-          "id": "feeler",
-          "sprite": "part-eyestalk",
-          "parentId": "headFrame",
-          "dx": -42,
-          "dy": -72,
-          "scale": 0.68,
-          "rotation": -0.4,
-          "role": "turret",
+          "id": "shellTop",
+          "sprite": "boss-snail",
+          "crop": {
+            "x": 205,
+            "y": 265,
+            "w": 180,
+            "h": 125
+          },
+          "dx": -2.2,
+          "dy": -55.1,
+          "role": "armor",
           "hp": {
-            "base": 24,
-            "perWave": 1
+            "base": 38,
+            "perWave": 3
           },
           "hitbox": {
-            "w": 16,
-            "h": 26
+            "w": 81,
+            "h": 56.3
           },
-          "shield": false,
-          "motion": {
-            "type": "oscillate",
-            "axis": "y",
-            "amplitude": 14,
-            "speed": 1.8
-          },
-          "phase": {
-            "type": "aimed",
-            "speed": 172,
-            "offsetX": 0,
-            "big": false
-          },
-          "fireEvery": 2.5,
-          "destroyScore": 160
+          "shield": true,
+          "destroyScore": 280,
+          "exposedBy": [
+            "eyeL",
+            "eyeR"
+          ],
+          "protects": [
+            "core"
+          ]
         },
         {
-          "id": "tailDrive",
-          "sprite": "part-vane",
-          "parentId": "shellFrame",
-          "dx": 112,
-          "dy": 58,
-          "scale": 0.88,
-          "rotation": 0.72,
-          "role": "engine",
+          "id": "shellL",
+          "sprite": "boss-snail",
+          "crop": {
+            "x": 88,
+            "y": 465,
+            "w": 120,
+            "h": 132
+          },
+          "dx": -68.4,
+          "dy": 36.5,
+          "role": "armor",
           "hp": {
-            "base": 26,
-            "perWave": 1
+            "base": 36,
+            "perWave": 3
           },
           "hitbox": {
-            "w": 18,
-            "h": 30
+            "w": 54,
+            "h": 59.4
           },
-          "shield": false,
-          "destroyScore": 170
+          "shield": true,
+          "destroyScore": 260,
+          "exposedBy": [
+            "eyeL",
+            "eyeR"
+          ],
+          "protects": [
+            "core"
+          ]
         },
         {
-          "id": "shellOrbiter",
-          "sprite": "part-shard",
-          "parentId": "shellFrame",
-          "dx": 0,
-          "dy": 8,
-          "scale": 0.7,
-          "role": "turret",
+          "id": "shellR",
+          "sprite": "boss-snail",
+          "crop": {
+            "x": 392,
+            "y": 448,
+            "w": 120,
+            "h": 132
+          },
+          "dx": 68.4,
+          "dy": 28.8,
+          "role": "armor",
           "hp": {
-            "base": 22,
-            "perWave": 1
+            "base": 36,
+            "perWave": 3
           },
           "hitbox": {
-            "w": 16,
-            "h": 20
+            "w": 54,
+            "h": 59.4
           },
-          "shield": false,
-          "motion": {
-            "type": "orbit",
-            "radiusX": 132,
-            "radiusY": 74,
-            "speed": -0.58,
-            "phase": 1.4
-          },
-          "phase": {
-            "type": "ring",
-            "count": 6,
-            "speed": 118
-          },
-          "fireEvery": 3.1,
-          "destroyScore": 150
+          "shield": true,
+          "destroyScore": 260,
+          "exposedBy": [
+            "eyeL",
+            "eyeR"
+          ],
+          "protects": [
+            "core"
+          ]
         },
         {
-          "id": "headFrame",
-          "sprite": "part-arc",
-          "parentId": "core",
-          "dx": -84,
-          "dy": -78,
-          "scale": 0.72,
-          "rotation": -1.57,
-          "role": "structure",
+          "id": "shellBottom",
+          "sprite": "boss-snail",
+          "crop": {
+            "x": 198,
+            "y": 695,
+            "w": 150,
+            "h": 140
+          },
+          "dx": -12.1,
+          "dy": 141.8,
+          "role": "armor",
           "hp": {
-            "base": 18,
-            "perWave": 1
+            "base": 38,
+            "perWave": 3
           },
           "hitbox": {
-            "w": 34,
-            "h": 18
+            "w": 67.5,
+            "h": 63
           },
-          "shield": false,
-          "exposedBy": ["eyeL", "eyeR", "mouthGun", "feeler"],
-          "destroyScore": 90
-        },
-        {
-          "id": "shellFrame",
-          "sprite": "part-arc",
-          "parentId": "core",
-          "dx": 14,
-          "dy": 58,
-          "scale": 1.12,
-          "rotation": 1.57,
-          "role": "structure",
-          "hp": {
-            "base": 20,
-            "perWave": 1
-          },
-          "hitbox": {
-            "w": 42,
-            "h": 20
-          },
-          "shield": false,
-          "exposedBy": ["shellL", "shellR", "shellTop", "shellBottom", "tailDrive"],
-          "activeStages": ["shell-break", "soft-heart"],
-          "destroyScore": 100
+          "shield": true,
+          "destroyScore": 280,
+          "exposedBy": [
+            "eyeL",
+            "eyeR"
+          ],
+          "protects": [
+            "core"
+          ]
         },
         {
           "id": "softHeart",
-          "sprite": "part-pod",
-          "parentId": "shellFrame",
-          "dx": 0,
-          "dy": 48,
-          "scale": 1.24,
+          "sprite": "boss-snail",
+          "crop": {
+            "x": 196,
+            "y": 798,
+            "w": 110,
+            "h": 100
+          },
+          "dx": -22,
+          "dy": 179.1,
           "role": "weakpoint",
           "hp": {
-            "base": 75,
+            "base": 56,
             "perWave": 4
           },
           "hitbox": {
-            "w": 26,
-            "h": 26
+            "w": 49.5,
+            "h": 45
           },
-          "shield": false,
-          "protects": ["core"],
-          "exposedBy": ["shellL", "shellR", "shellTop", "shellBottom"],
-          "activeStages": ["soft-heart"],
-          "damageMultiplier": 1.6,
-          "motion": {
-            "type": "oscillate",
-            "axis": "y",
-            "amplitude": 4,
-            "speed": 3.2
-          },
-          "destroyScore": 500
-        },
-        {
-          "id": "gravityVent",
-          "sprite": "part-shard",
-          "parentId": "shellFrame",
-          "dx": 46,
-          "dy": 62,
-          "scale": 0.68,
-          "role": "engine",
-          "hp": {
-            "base": 20,
-            "perWave": 1
-          },
-          "hitbox": {
-            "w": 15,
-            "h": 18
-          },
-          "shield": false,
-          "exposedBy": ["shellL", "shellR", "shellTop", "shellBottom"],
-          "activeStages": ["soft-heart"],
-          "motion": {
-            "type": "oscillate",
-            "axis": "x",
-            "amplitude": 8,
-            "speed": 2.3
-          },
-          "destroyScore": 120
+          "shield": true,
+          "destroyScore": 620,
+          "damageMultiplier": 1.5,
+          "exposedBy": [
+            "shellTop",
+            "shellL",
+            "shellR",
+            "shellBottom"
+          ],
+          "protects": [
+            "core"
+          ]
         }
       ],
       "killScore": 25000,
@@ -2753,6 +2659,8 @@
         "kind": "snail",
         "displayWidth": 270,
         "displayHeight": 405,
+        "artWidth": 600,
+        "artHeight": 900,
         "movementScript": "predator-drift"
       },
       "snailSpecials": {

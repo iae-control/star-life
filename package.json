@@ -12,6 +12,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "boss:layout": "node scripts/gen-boss-layout.mjs",
+    "boss:layout:check": "node scripts/gen-boss-layout.mjs --check",
     "test": "vitest run",
     "test:watch": "vitest",
     "cap:sync": "npm run build && cap sync android",

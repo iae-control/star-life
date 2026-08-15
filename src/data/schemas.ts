@@ -332,6 +332,9 @@ const bossPresentationSchema = z.object({
   kind: z.enum(['warship', 'scrolling-warship', 'snail']),
   displayWidth: z.number().positive().max(1200),
   displayHeight: z.number().positive().max(1600),
+  /** 원본 일러스트 픽셀 크기 — 파트 crop 좌표계의 기준. */
+  artWidth: z.number().positive().max(4096).optional(),
+  artHeight: z.number().positive().max(4096).optional(),
   movementScript: z.enum([
     'wing-sweep',
     'carrier-broadside',
@@ -396,6 +399,19 @@ export const bossesSchema = z.object({
           z.object({
             id: z.string(),
             sprite: z.string(),
+            /**
+             * 본체 일러스트에서 잘라낼 영역(원본 아트 픽셀). 지정하면 파트 텍스처는
+             * 본체 webp의 서브프레임이 되고, dx/dy/hitbox는 이 사각형에서 유도된다.
+             * 손으로 적은 좌표가 선체를 벗어나는 사고를 구조적으로 막는다.
+             */
+            crop: z
+              .object({
+                x: z.number().min(0),
+                y: z.number().min(0),
+                w: z.number().positive(),
+                h: z.number().positive(),
+              })
+              .optional(),
             parentId: z.string().optional(),
             dx: z.number(),
             dy: z.number(),

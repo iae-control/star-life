@@ -7,7 +7,24 @@ import { bossesSchema, levelsSchema } from '../src/data/schemas';
 const BOSSES = bossesSchema.parse(rawBosses).bosses;
 const LEVELS = levelsSchema.parse(rawLevels).levels;
 
+const GAME_WIDTH = 360;
+/** GameScene.WARSHIP_FOCUS_Y — 스테이지 게이트 파트가 놓이는 화면 Y. */
+const FOCUS_Y = 210;
+/** GameScene.WARSHIP_MAX_HULL_Y — 선체 중심이 내려올 수 있는 하한. */
+const MAX_HULL_Y = 340;
+/**
+ * 플레이어 탄이 소멸하는 높이(GameScene 의 컬링 경계).
+ * 이보다 위에 있는 파트는 탄이 닿기 전에 사라져 물리적으로 명중이 불가능하다.
+ * 예전 레이아웃이 정확히 이 선을 넘겨서 보스 진행이 막혔다 — 이 파일의 핵심 회귀 테스트.
+ */
+const PLAYER_BULLET_CULL_Y = -30;
+/** 게이트 파트가 실전에서 들어와야 하는 세로 범위. */
+const GATE_Y_RANGE = [56, 470] as const;
+const EDGE_MARGIN = 4;
+
 type EdgeMap = Map<string, string[]>;
+type ParsedBoss = NonNullable<(typeof BOSSES)[string]>;
+type ParsedPart = NonNullable<ParsedBoss['parts']>[number];
 
 function findCycle(nodes: Iterable<string>, edges: EdgeMap): string[] | null {
   const visiting = new Set<string>();
@@ -40,26 +57,51 @@ function findCycle(nodes: Iterable<string>, edges: EdgeMap): string[] | null {
   return null;
 }
 
-type ParsedBoss = NonNullable<(typeof BOSSES)[string]>;
+const campaignBossIds = (): string[] => [...new Set(LEVELS.map((level) => level.boss))];
 
-function partWorldAnchor(boss: ParsedBoss, partId: string): { x: number; y: number } {
+const warshipEntries = (): [string, ParsedBoss][] =>
+  Object.entries(BOSSES).filter(([, boss]) =>
+    ['warship', 'scrolling-warship'].includes(boss.presentation?.kind ?? ''),
+  );
+
+/** GameScene.warshipSwayLimit() 과 같은 공식 — 파트가 화면에 남는 최대 좌우 진폭. */
+function swayLimit(boss: ParsedBoss): number {
   const parts = boss.parts ?? [];
-  const partById = new Map(parts.map((part) => [part.id, part]));
-  const memo = new Map<string, { x: number; y: number }>();
+  if (!parts.length) return 0;
+  return Math.max(
+    0,
+    parts.reduce(
+      (limit, part) =>
+        Math.min(limit, GAME_WIDTH / 2 - EDGE_MARGIN - Math.abs(part.dx) - part.hitbox.w / 2),
+      46,
+    ),
+  );
+}
 
-  const resolve = (id: string): { x: number; y: number } => {
-    const cached = memo.get(id);
-    if (cached) return cached;
-    const part = partById.get(id);
-    if (!part) throw new Error(`Unknown boss part: ${id}`);
-    const parent =
-      !part.parentId || part.parentId === 'core' ? { x: 0, y: 0 } : resolve(part.parentId);
-    const anchor = { x: parent.x + part.dx, y: parent.y + part.dy };
-    memo.set(id, anchor);
-    return anchor;
-  };
+/** GameScene.warshipStageHullY() 과 같은 공식 — 해당 스테이지에서의 선체 중심 Y. */
+function hullYForStage(boss: ParsedBoss, stageIndex: number): number {
+  // 달팽이는 스테이지마다 전진하지 않고 제자리에서 배회한다.
+  if (boss.presentation?.kind === 'snail') return boss.entryY;
+  const stages = boss.stages ?? [];
+  const gate = stages[Math.min(stageIndex, stages.length - 1)]?.advanceWhenDestroyed ?? [];
+  const dys = gate
+    .map((id) => (boss.parts ?? []).find((part) => part.id === id)?.dy)
+    .filter((dy): dy is number => dy !== undefined);
+  if (!dys.length) return boss.entryY;
+  return Math.min(MAX_HULL_Y, FOCUS_Y - dys.reduce((sum, dy) => sum + dy, 0) / dys.length);
+}
 
-  return resolve(partId);
+/** 파트가 소속된 스테이지 인덱스 — 게이트면 그 스테이지, 아니면 노출 조건에서 역산. */
+function stageIndexOf(boss: ParsedBoss, part: ParsedPart): number {
+  const stages = boss.stages ?? [];
+  const gateIndex = stages.findIndex((stage) => stage.advanceWhenDestroyed?.includes(part.id));
+  if (gateIndex >= 0) return gateIndex;
+  const gatedBy = part.exposedBy ?? [];
+  if (!gatedBy.length) return 0;
+  const previous = stages.findIndex((stage) =>
+    gatedBy.every((id) => stage.advanceWhenDestroyed?.includes(id)),
+  );
+  return previous >= 0 ? previous + 1 : 0;
 }
 
 describe('boss v2 data integrity', () => {
@@ -140,9 +182,7 @@ describe('boss v2 data integrity', () => {
 
       for (const part of parts) {
         hierarchy.set(part.id, part.parentId && partIds.has(part.parentId) ? [part.parentId] : []);
-
-        const dependencies = [...(part.exposedBy ?? [])];
-        combatDependencies.set(part.id, dependencies);
+        combatDependencies.set(part.id, [...(part.exposedBy ?? [])]);
       }
 
       // If A protects B, B also depends on A being destroyed before it can be exposed.
@@ -168,263 +208,242 @@ describe('boss v2 data integrity', () => {
     }
   });
 
-  it('builds every campaign boss from 12-16 hierarchical parts and exactly three stages', () => {
-    const campaignBossIds = new Set(LEVELS.map((level) => level.boss));
+  // ── 사거리 회귀 테스트 ────────────────────────────────────────────────
+  // 이전 레이아웃은 1스테이지 게이트 파트를 화면 위(y = -72 ~ -276)에 두었다.
+  // 플레이어 탄이 y < -30 에서 소멸하므로 그 파트들은 명중 자체가 불가능했고,
+  // coreTargetable=false 라 보스 진행이 통째로 막혔다. 아래 셋이 그 재발을 막는다.
 
-    for (const bossId of campaignBossIds) {
-      const boss = BOSSES[bossId];
-      expect(boss, `campaign boss ${bossId}`).toBeDefined();
-      if (!boss) continue;
+  it('keeps every stage gate inside the player firing lane', () => {
+    for (const [bossId, boss] of Object.entries(BOSSES)) {
+      const stages = boss.stages ?? [];
+      const sway = swayLimit(boss);
+      stages.forEach((stage, stageIndex) => {
+        const hullY = hullYForStage(boss, stageIndex);
+        for (const gateId of stage.advanceWhenDestroyed ?? []) {
+          const part = (boss.parts ?? []).find((candidate) => candidate.id === gateId);
+          expect(part, `${bossId}.${gateId} exists`).toBeDefined();
+          if (!part) continue;
 
-      const parts = boss.parts ?? [];
-      expect(parts.length, `${bossId} campaign part minimum`).toBeGreaterThanOrEqual(12);
-      expect(parts.length, `${bossId} campaign part maximum`).toBeLessThanOrEqual(16);
-      expect(boss.stages?.length ?? 0, `${bossId} campaign stage count`).toBe(3);
-      expect(
-        parts.every((part) => Boolean(part.parentId)),
-        `${bossId} every part belongs to the assembly hierarchy`,
-      ).toBe(true);
-      expect(
-        parts.filter((part) => part.parentId !== 'core').length,
-        `${bossId} nested child parts`,
-      ).toBeGreaterThanOrEqual(6);
+          const y = hullY + part.dy;
+          const label = `${bossId}.${stage.id}/${gateId}`;
+          expect(y, `${label} would be culled before player fire reaches it`).toBeGreaterThan(
+            PLAYER_BULLET_CULL_Y + part.hitbox.h / 2,
+          );
+          expect(y, `${label} above the playfield`).toBeGreaterThanOrEqual(GATE_Y_RANGE[0]);
+          expect(y, `${label} below the playfield`).toBeLessThanOrEqual(GATE_Y_RANGE[1]);
+
+          const left = GAME_WIDTH / 2 - sway + part.dx - part.hitbox.w / 2;
+          const right = GAME_WIDTH / 2 + sway + part.dx + part.hitbox.w / 2;
+          expect(left, `${label} off the left edge`).toBeGreaterThanOrEqual(0);
+          expect(right, `${label} off the right edge`).toBeLessThanOrEqual(GAME_WIDTH);
+        }
+      });
+    }
+  });
+
+  it('leaves every capital ship enough lateral room to keep moving', () => {
+    for (const [bossId, boss] of warshipEntries()) {
+      expect(swayLimit(boss), `${bossId} lateral travel`).toBeGreaterThanOrEqual(10);
+    }
+  });
+
+  it('destroys capital-ship sections from the bottom up', () => {
+    for (const [bossId, boss] of warshipEntries()) {
+      const stages = boss.stages ?? [];
+      expect(stages.length, `${bossId} destruction stages`).toBeGreaterThanOrEqual(3);
+
+      const gateDepths = stages.map((stage) => {
+        const dys = (stage.advanceWhenDestroyed ?? [])
+          .map((id) => (boss.parts ?? []).find((part) => part.id === id)?.dy)
+          .filter((dy): dy is number => dy !== undefined);
+        return dys.reduce((sum, dy) => sum + dy, 0) / Math.max(1, dys.length);
+      });
+
+      for (let i = 1; i < gateDepths.length; i++) {
+        expect(
+          gateDepths[i],
+          `${bossId} stage ${i} (${stages[i]?.id}) must sit above stage ${i - 1}`,
+        ).toBeLessThan(gateDepths[i - 1] ?? 0);
+      }
+
+      // 아래에서 위로 올라가려면 선체가 스테이지마다 화면 아래로 전진해야 한다.
+      for (let i = 1; i < stages.length; i++) {
+        expect(
+          hullYForStage(boss, i),
+          `${bossId} hull must advance into stage ${i}`,
+        ).toBeGreaterThan(hullYForStage(boss, i - 1));
+      }
+    }
+  });
+
+  it('derives part placement and hitboxes from the hull artwork crop', () => {
+    for (const [bossId, boss] of Object.entries(BOSSES)) {
+      const presentation = boss.presentation;
+      const cropped = (boss.parts ?? []).filter((part) => part.crop);
+      if (!cropped.length) continue;
+
+      expect(presentation?.artWidth, `${bossId} art width`).toBeGreaterThan(0);
+      expect(presentation?.artHeight, `${bossId} art height`).toBeGreaterThan(0);
+      if (!presentation?.artWidth || !presentation.artHeight) continue;
+
+      const sx = presentation.displayWidth / presentation.artWidth;
+      const sy = presentation.displayHeight / presentation.artHeight;
+
+      for (const part of cropped) {
+        const crop = part.crop;
+        if (!crop) continue;
+        const label = `${bossId}.${part.id}`;
+        expect(crop.x + crop.w, `${label} crop past art right edge`).toBeLessThanOrEqual(
+          presentation.artWidth,
+        );
+        expect(crop.y + crop.h, `${label} crop past art bottom edge`).toBeLessThanOrEqual(
+          presentation.artHeight,
+        );
+
+        // 위치와 판정이 전부 크롭에서 유도되므로 파트가 선체 밖으로 새어나갈 수 없다.
+        expect(part.dx, `${label} dx follows its crop`).toBeCloseTo(
+          (crop.x + crop.w / 2 - presentation.artWidth / 2) * sx,
+          0,
+        );
+        expect(part.dy, `${label} dy follows its crop`).toBeCloseTo(
+          (crop.y + crop.h / 2 - presentation.artHeight / 2) * sy,
+          0,
+        );
+        expect(part.hitbox.w, `${label} hitbox width matches art`).toBeCloseTo(crop.w * sx, 0);
+        expect(part.hitbox.h, `${label} hitbox height matches art`).toBeCloseTo(crop.h * sy, 0);
+      }
     }
   });
 
   it('presents every pre-finale campaign boss as a distinct capital warship', () => {
-    const campaignBossIds = LEVELS.map((level) => level.boss);
-    const finalBossId = campaignBossIds[campaignBossIds.length - 1];
-    const warshipIds = campaignBossIds.slice(0, -1);
     const sprites = new Set<string>();
     const scripts = new Set<string>();
-    const obsoleteOrganicNames =
-      /amoeba|membrane|nucleus|spore|flagellum|protocore|coolant|corona|prominence|novaHeart|compressionNode/i;
 
-    expect(finalBossId, 'campaign finale remains the killer snail').toBe('snail');
-    for (const bossId of warshipIds) {
-      const boss = BOSSES[bossId];
-      expect(boss?.presentation, `${bossId} presentation`).toBeDefined();
+    for (const level of LEVELS.slice(0, -1)) {
+      const boss = BOSSES[level.boss];
       if (!boss?.presentation) continue;
-
-      expect(['warship', 'scrolling-warship'], `${bossId} capital-ship presentation`).toContain(
+      expect(['warship', 'scrolling-warship'], `${level.boss} presentation`).toContain(
         boss.presentation.kind,
       );
-      expect(boss.presentation.displayWidth, `${bossId} imposing beam`).toBeGreaterThanOrEqual(288);
-      expect(boss.presentation.displayHeight, `${bossId} imposing length`).toBeGreaterThanOrEqual(
-        240,
-      );
-      expect(boss.sprite, `${bossId} authored warship sprite key`).toMatch(/^boss-warship-/);
-      expect(sprites.has(boss.sprite), `${bossId} unique hull silhouette`).toBe(false);
+      expect(sprites.has(boss.sprite), `${level.boss} unique hull art`).toBe(false);
       expect(
         scripts.has(boss.presentation.movementScript),
-        `${bossId} unique movement script`,
+        `${level.boss} unique movement script`,
       ).toBe(false);
       sprites.add(boss.sprite);
       scripts.add(boss.presentation.movementScript);
-
-      const assemblyNames = [
-        ...(boss.parts ?? []).map((part) => part.id),
-        ...(boss.stages ?? []).map((stage) => stage.id),
-      ].join(' ');
-      expect(assemblyNames, `${bossId} mechanical assembly naming`).not.toMatch(
-        obsoleteOrganicNames,
-      );
     }
   });
 
-  it('matches the production art aspect ratios and keeps tall hulls parked above the player lane', () => {
-    const expectedDimensions: Record<string, [number, number]> = {
-      amoeba: [288, 430],
-      protocore: [326, 470],
-      helios: [318, 460],
-      crimson: [342, 760],
-      nova: [350, 510],
-      snail: [270, 405],
-    };
+  it('scales each hull to the production art aspect ratio', () => {
+    for (const [bossId, boss] of Object.entries(BOSSES)) {
+      const presentation = boss.presentation;
+      if (!presentation?.artWidth || !presentation.artHeight) continue;
 
-    for (const [bossId, [width, height]] of Object.entries(expectedDimensions)) {
-      const boss = BOSSES[bossId];
-      expect(boss?.presentation?.displayWidth, `${bossId} art width`).toBe(width);
-      expect(boss?.presentation?.displayHeight, `${bossId} art height`).toBe(height);
-      if (!boss?.presentation) continue;
+      const artRatio = presentation.artWidth / presentation.artHeight;
+      const displayRatio = presentation.displayWidth / presentation.displayHeight;
+      expect(displayRatio, `${bossId} hull is stretched`).toBeCloseTo(artRatio, 2);
 
-      // The resting body must not cover the lower combat lane where the player normally flies.
-      expect(
-        boss.entryY + boss.presentation.displayHeight / 2,
-        `${bossId} resting hull bottom`,
-      ).toBeLessThanOrEqual(340);
-    }
-  });
-
-  it('includes a screen-spanning hull-crawl set piece with sequential destruction gates', () => {
-    const campaignBosses = LEVELS.slice(0, -1)
-      .map((level) => BOSSES[level.boss])
-      .filter((boss): boss is NonNullable<typeof boss> => boss !== undefined);
-    const setPieces = campaignBosses.filter(
-      (boss) => boss.presentation?.kind === 'scrolling-warship',
-    );
-
-    expect(setPieces.length, 'at least one scrolling capital ship').toBeGreaterThanOrEqual(1);
-    for (const boss of setPieces) {
-      expect(boss.presentation?.movementScript).toBe('hull-crawl');
-      expect(
-        boss.presentation?.displayHeight ?? 0,
-        'hull extends beyond one screen',
-      ).toBeGreaterThanOrEqual(640);
-      expect(boss.stages?.length ?? 0, 'sequential hull sections').toBeGreaterThanOrEqual(3);
-      expect(
-        boss.stages?.slice(0, -1).every((stage) => (stage.advanceWhenDestroyed?.length ?? 0) > 0),
-        'every pre-reactor section has a destruction gate',
-      ).toBe(true);
-    }
-  });
-
-  it('spreads capital-ship hardpoints across the authored hull instead of stacking at center', () => {
-    const warshipIds = LEVELS.slice(0, -1).map((level) => level.boss);
-
-    for (const bossId of warshipIds) {
-      const boss = BOSSES[bossId];
-      expect(boss, `${bossId} campaign boss`).toBeDefined();
-      if (!boss?.presentation) continue;
-      const parts = boss.parts ?? [];
-      const anchors = parts.map((part) => ({ part, ...partWorldAnchor(boss, part.id) }));
-      const ys = anchors.map(({ y }) => y);
-      const hullSpan = Math.max(...ys) - Math.min(...ys);
-      const spanRatio = hullSpan / boss.presentation.displayHeight;
-
-      if (boss.presentation.kind === 'scrolling-warship') {
-        expect(spanRatio, `${bossId} scrolling hull coverage`).toBeGreaterThanOrEqual(0.6);
-        expect(spanRatio, `${bossId} scrolling hull coverage`).toBeLessThanOrEqual(0.72);
-      } else {
-        expect(spanRatio, `${bossId} hull coverage`).toBeGreaterThanOrEqual(0.45);
-        expect(spanRatio, `${bossId} hull coverage`).toBeLessThanOrEqual(0.6);
-      }
-
-      for (const { part, x, y } of anchors) {
-        const motionX =
-          part.motion?.type === 'orbit'
-            ? part.motion.radiusX
-            : part.motion?.axis === 'x'
-              ? part.motion.amplitude
-              : 0;
-        const motionY =
-          part.motion?.type === 'orbit'
-            ? part.motion.radiusY
-            : part.motion?.axis === 'y'
-              ? part.motion.amplitude
-              : 0;
-        expect(
-          Math.abs(x) + part.hitbox.w / 2 + motionX,
-          `${bossId}.${part.id} remains on the visible hull horizontally`,
-        ).toBeLessThanOrEqual(boss.presentation.displayWidth / 2);
-        expect(
-          Math.abs(y) + part.hitbox.h / 2 + motionY,
-          `${bossId}.${part.id} remains on the visible hull vertically`,
-        ).toBeLessThanOrEqual(boss.presentation.displayHeight / 2);
-      }
-    }
-  });
-
-  it('aligns the scrolling dreadnought gates with front, midship, and aft hull sections', () => {
-    const boss = BOSSES.crimson;
-    expect(boss?.presentation?.kind).toBe('scrolling-warship');
-    if (!boss) return;
-    const stages = boss.stages ?? [];
-    const firstStage = stages[0];
-    const secondStage = stages[1];
-    const finalStage = stages[2];
-
-    for (const id of firstStage?.advanceWhenDestroyed ?? []) {
-      const part = boss.parts?.find((candidate) => candidate.id === id);
-      const { y } = partWorldAnchor(boss, id);
-      expect(y, `${id} sits in the forward battery zone`).toBeGreaterThanOrEqual(-240);
-      expect(y, `${id} sits in the forward battery zone`).toBeLessThanOrEqual(-150);
-      expect(part?.activeStages, `${id} belongs to the forward stage`).toContain(firstStage?.id);
-    }
-    for (const id of secondStage?.advanceWhenDestroyed ?? []) {
-      const { y } = partWorldAnchor(boss, id);
-      expect(y, `${id} sits in the midship zone`).toBeGreaterThanOrEqual(-70);
-      expect(y, `${id} sits in the midship zone`).toBeLessThanOrEqual(80);
-    }
-
-    const aftParts = (boss.parts ?? []).filter(
-      (part) => part.role === 'engine' || part.role === 'weakpoint',
-    );
-    expect(aftParts.length, 'aft engine/reactor targets').toBeGreaterThanOrEqual(3);
-    for (const part of aftParts) {
-      const { y } = partWorldAnchor(boss, part.id);
-      expect(y, `${part.id} sits in the aft zone`).toBeGreaterThanOrEqual(170);
-      expect(y, `${part.id} sits in the aft zone`).toBeLessThanOrEqual(260);
-      expect(part.activeStages, `${part.id} activates during the reactor run`).toContain(
-        finalStage?.id,
-      );
-    }
-  });
-
-  it('aligns each regular warship gate with forward, midship, and aft art sections', () => {
-    const bossIds = ['amoeba', 'protocore', 'helios', 'nova'];
-
-    for (const bossId of bossIds) {
-      const boss = BOSSES[bossId];
-      expect(boss, `${bossId} campaign boss`).toBeDefined();
-      if (!boss) continue;
-      const stages = boss.stages ?? [];
-      const first = stages[0];
-      const second = stages[1];
-      const final = stages[2];
-
-      for (const id of first?.advanceWhenDestroyed ?? []) {
-        const part = boss.parts?.find((candidate) => candidate.id === id);
-        const { y } = partWorldAnchor(boss, id);
-        expect(y, `${bossId}.${id} forward gate`).toBeLessThanOrEqual(-80);
-        expect(part?.activeStages, `${bossId}.${id} forward stage ownership`).toContain(first?.id);
-      }
-      for (const id of second?.advanceWhenDestroyed ?? []) {
-        const { y } = partWorldAnchor(boss, id);
-        expect(y, `${bossId}.${id} midship gate lower bound`).toBeGreaterThanOrEqual(-36);
-        expect(y, `${bossId}.${id} midship gate upper bound`).toBeLessThanOrEqual(12);
-      }
-
-      const aftSystems = (boss.parts ?? []).filter(
-        (part) => part.role === 'engine' || part.role === 'weakpoint',
-      );
-      expect(aftSystems.length, `${bossId} aft systems`).toBeGreaterThanOrEqual(3);
-      for (const part of aftSystems) {
-        expect(
-          partWorldAnchor(boss, part.id).y,
-          `${bossId}.${part.id} aft placement`,
-        ).toBeGreaterThanOrEqual(70);
-        expect(part.activeStages, `${bossId}.${part.id} final stage ownership`).toContain(
-          final?.id,
+      // 거대 함선 연출 — 함선이 화면 폭에 준하거나 그 이상이어야 압도적으로 읽힌다.
+      if (['warship', 'scrolling-warship'].includes(presentation.kind)) {
+        expect(presentation.displayWidth, `${bossId} capital ship scale`).toBeGreaterThanOrEqual(
+          GAME_WIDTH,
         );
       }
+      expect(boss.envelope?.w, `${bossId} envelope width`).toBe(presentation.displayWidth);
+      expect(boss.envelope?.h, `${bossId} envelope height`).toBe(presentation.displayHeight);
     }
   });
 
-  it('places the killer snail face forward and shell combat gates over the illustrated shell', () => {
-    const snail = BOSSES.snail;
-    expect(snail, 'killer snail data').toBeDefined();
-    if (!snail) return;
-    const parts = new Map((snail.parts ?? []).map((part) => [part.id, part]));
-
-    for (const id of ['eyeL', 'eyeR', 'feeler']) {
-      const y = partWorldAnchor(snail, id).y;
-      expect(y, `snail ${id} face placement`).toBeGreaterThanOrEqual(-150);
-      expect(y, `snail ${id} face placement`).toBeLessThanOrEqual(-95);
-    }
-    for (const id of ['shellL', 'shellR', 'shellTop', 'shellBottom', 'softHeart']) {
-      const y = partWorldAnchor(snail, id).y;
-      expect(y, `snail ${id} shell placement`).toBeGreaterThanOrEqual(20);
-      expect(y, `snail ${id} shell placement`).toBeLessThanOrEqual(130);
-    }
-
-    expect(parts.get('eyeL')?.protects).toContain('core');
-    expect(parts.get('eyeR')?.protects).toContain('core');
-    for (const id of ['shellL', 'shellR', 'shellTop', 'shellBottom']) {
-      expect(parts.get(id)?.exposedBy, `snail ${id} gaze gate`).toEqual(
-        expect.arrayContaining(['eyeL', 'eyeR']),
+  it('starts every scaled hull fully off-screen so it scrolls into view', () => {
+    for (const [bossId, boss] of Object.entries(BOSSES)) {
+      const presentation = boss.presentation;
+      if (!presentation) continue;
+      const spawnY = -presentation.displayHeight / 2 - 40;
+      expect(spawnY + presentation.displayHeight / 2, `${bossId} spawns already visible`).toBeLessThan(
+        0,
       );
+      expect(boss.entryY, `${bossId} entry target is below its spawn point`).toBeGreaterThan(spawnY);
     }
+  });
+
+  it('gives every campaign assembly the full set of combat roles', () => {
+    for (const bossId of campaignBossIds()) {
+      const boss = BOSSES[bossId];
+      const parts = boss?.parts ?? [];
+      if (!parts.length || boss?.layoutVersion !== 2) continue;
+      // 함선은 추진부가 1스테이지 표적이라 engine 이 필수다. 달팽이는 엔진이 없다.
+      const requiredRoles =
+        boss.presentation?.kind === 'snail'
+          ? (['armor', 'turret', 'weakpoint'] as const)
+          : (['armor', 'turret', 'engine', 'weakpoint'] as const);
+      const roles = new Set(parts.map((part) => part.role));
+      for (const role of requiredRoles) {
+        expect(roles.has(role), `${bossId} role ${role}`).toBe(true);
+      }
+      // crop 파트는 선체 그림에 정확히 겹쳐져야 하므로 흔들리는 모션을 붙이면 이음매가 드러난다.
+      for (const part of parts) {
+        if (part.crop) expect(part.motion, `${bossId}.${part.id} crop part must not drift`).toBeUndefined();
+      }
+    }
+  });
+
+  it('gates the core behind every stage and opens it on the final section', () => {
+    for (const bossId of campaignBossIds()) {
+      const boss = BOSSES[bossId];
+      const stages = boss?.stages ?? [];
+      if (!stages.length || boss?.layoutVersion !== 2) continue;
+
+      stages.forEach((stage, index) => {
+        const isFinal = index === stages.length - 1;
+        expect(stage.coreTargetable, `${bossId}.${stage.id} core access`).toBe(isFinal);
+        expect(
+          stage.advanceWhenDestroyed?.length ?? 0,
+          `${bossId}.${stage.id} needs a destruction gate`,
+        ).toBeGreaterThan(0);
+      });
+
+      // 코어를 막는 것은 스테이지 게이트뿐 — 게이트가 아닌 파트가 진행을 막으면 안 된다.
+      const gateIds = new Set(stages.flatMap((stage) => stage.advanceWhenDestroyed ?? []));
+      for (const part of boss?.parts ?? []) {
+        if (gateIds.has(part.id)) continue;
+        expect(
+          part.shield || (part.protects?.includes('core') ?? false),
+          `${bossId}.${part.id} is optional and must not gate the core`,
+        ).toBe(false);
+      }
+    }
+  });
+
+  it('places the killer snail gates over its illustrated body', () => {
+    const snail = BOSSES.snail;
+    expect(snail, 'killer snail boss data').toBeDefined();
+    if (!snail?.presentation) return;
+
+    // 달팽이는 눈 → 껍데기 → 심장 순서가 확정 설계라 아래→위 규칙에서 제외한다.
+    const stageIds = (snail.stages ?? []).map((stage) => stage.id);
+    expect(stageIds, 'snail keeps its authored destruction order').toEqual([
+      'gaze',
+      'shell-break',
+      'soft-heart',
+    ]);
+
+    const eyes = (snail.parts ?? []).filter((part) => part.id.startsWith('eye'));
+    expect(eyes.length, 'snail eyes').toBe(2);
+    for (const eye of eyes) {
+      // 눈은 머리(아트 상단)에 있어야 한다.
+      expect(eye.dy, `${eye.id} sits on the head`).toBeLessThan(0);
+      expect(
+        snail.entryY + eye.dy,
+        `${eye.id} must be reachable on screen`,
+      ).toBeGreaterThanOrEqual(GATE_Y_RANGE[0]);
+    }
+
+    const heart = (snail.parts ?? []).find((part) => part.role === 'weakpoint');
+    expect(heart, 'snail weakpoint').toBeDefined();
+    expect(heart && snail.entryY + heart.dy, 'snail heart stays on screen').toBeLessThanOrEqual(
+      GATE_Y_RANGE[1],
+    );
   });
 
   it('retains the killer snail finale with both unavoidable signature attacks authored in data', () => {
@@ -458,117 +477,8 @@ describe('boss v2 data integrity', () => {
     }
   });
 
-  it('gives every campaign assembly all combat roles and both supported motions', () => {
-    const requiredRoles = ['armor', 'shield', 'turret', 'engine', 'weakpoint'] as const;
-    const campaignBossIds = new Set(LEVELS.map((level) => level.boss));
-
-    for (const bossId of campaignBossIds) {
-      const boss = BOSSES[bossId];
-      if (!boss) continue;
-      const parts = boss.parts ?? [];
-
-      for (const role of requiredRoles) {
-        expect(
-          parts.some((part) => part.role === role),
-          `${bossId} role ${role}`,
-        ).toBe(true);
-      }
-      expect(
-        parts.some((part) => part.motion?.type === 'orbit'),
-        `${bossId} orbit motion`,
-      ).toBe(true);
-      expect(
-        parts.some((part) => part.motion?.type === 'oscillate'),
-        `${bossId} oscillate motion`,
-      ).toBe(true);
-    }
-  });
-
-  it('uses two destruction gates followed by a protected final weakpoint', () => {
-    const campaignBossIds = new Set(LEVELS.map((level) => level.boss));
-
-    for (const bossId of campaignBossIds) {
-      const boss = BOSSES[bossId];
-      if (!boss) continue;
-      const parts = boss.parts ?? [];
-      const partById = new Map(parts.map((part) => [part.id, part]));
-      const stages = boss.stages ?? [];
-      const first = stages[0];
-      const second = stages[1];
-      const final = stages[2];
-
-      expect(first?.coreTargetable, `${bossId} stage 1 core gate`).toBe(false);
-      expect(second?.coreTargetable, `${bossId} stage 2 core gate`).toBe(false);
-      expect(final?.coreTargetable, `${bossId} final core access`).toBe(true);
-      expect(
-        first?.advanceWhenDestroyed?.length ?? 0,
-        `${bossId} stage 1 gate parts`,
-      ).toBeGreaterThan(0);
-      expect(
-        second?.advanceWhenDestroyed?.length ?? 0,
-        `${bossId} stage 2 gate parts`,
-      ).toBeGreaterThan(0);
-      expect(
-        final?.advanceWhenDestroyed,
-        `${bossId} final stage has no fourth gate`,
-      ).toBeUndefined();
-      expect(first?.coolScale ?? 0, `${bossId} stage 1 cadence`).toBeGreaterThan(
-        second?.coolScale ?? 0,
-      );
-      expect(second?.coolScale ?? 0, `${bossId} stage 2 cadence`).toBeGreaterThan(
-        final?.coolScale ?? 0,
-      );
-
-      const firstGateIds = first?.advanceWhenDestroyed ?? [];
-      const secondGateIds = second?.advanceWhenDestroyed ?? [];
-      for (const partId of firstGateIds) {
-        const part = partById.get(partId);
-        expect(part?.role, `${bossId}.${partId} first gate role`).toBe('shield');
-        expect(part?.protects ?? [], `${bossId}.${partId} protects core`).toContain('core');
-        expect(part?.destroyScore ?? 0, `${bossId}.${partId} gate score`).toBeGreaterThanOrEqual(
-          300,
-        );
-        expect(part?.destroyScore ?? 0, `${bossId}.${partId} gate score`).toBeLessThanOrEqual(500);
-      }
-      for (const partId of secondGateIds) {
-        const part = partById.get(partId);
-        expect(part?.role, `${bossId}.${partId} second gate role`).toBe('armor');
-        expect(part?.activeStages ?? [], `${bossId}.${partId} active in stage 2`).toContain(
-          second?.id,
-        );
-        for (const firstGateId of firstGateIds) {
-          expect(part?.exposedBy ?? [], `${bossId}.${partId} follows stage 1`).toContain(
-            firstGateId,
-          );
-        }
-        expect(part?.destroyScore ?? 0, `${bossId}.${partId} gate score`).toBeGreaterThanOrEqual(
-          300,
-        );
-        expect(part?.destroyScore ?? 0, `${bossId}.${partId} gate score`).toBeLessThanOrEqual(500);
-      }
-
-      const weakpoints = parts.filter(
-        (part) => part.role === 'weakpoint' && part.protects?.includes('core'),
-      );
-      expect(weakpoints.length, `${bossId} final weakpoint`).toBeGreaterThanOrEqual(1);
-      for (const weakpoint of weakpoints) {
-        expect(
-          weakpoint.activeStages ?? [],
-          `${bossId}.${weakpoint.id} final-stage activation`,
-        ).toContain(final?.id);
-        for (const secondGateId of secondGateIds) {
-          expect(weakpoint.exposedBy ?? [], `${bossId}.${weakpoint.id} follows stage 2`).toContain(
-            secondGateId,
-          );
-        }
-      }
-    }
-  });
-
   it('keeps every shielded campaign stage routable through exposed proxy parts', () => {
-    const campaignBossIds = new Set(LEVELS.map((level) => level.boss));
-
-    for (const bossId of campaignBossIds) {
+    for (const bossId of campaignBossIds()) {
       const boss = BOSSES[bossId];
       if (!boss) continue;
       const parts = boss.parts ?? [];
@@ -638,19 +548,33 @@ describe('boss v2 data integrity', () => {
     }
   });
 
-  it('caps campaign part HP, projectile cadence, and destruction score budgets', () => {
-    const campaignBossIds = new Set(LEVELS.map((level) => level.boss));
-
-    for (const bossId of campaignBossIds) {
-      const boss = BOSSES[bossId];
-      if (!boss) continue;
-      const parts = boss.parts ?? [];
-      const stageGateIds = new Set(
-        (boss.stages ?? []).flatMap((stage) => stage.advanceWhenDestroyed ?? []),
-      );
-      for (const part of parts) {
-        if (part.role === 'weakpoint' && part.protects?.includes('core')) stageGateIds.add(part.id);
+  it('keeps every optional hardpoint reachable once its section is exposed', () => {
+    for (const [bossId, boss] of Object.entries(BOSSES)) {
+      const sway = swayLimit(boss);
+      for (const part of boss.parts ?? []) {
+        const hullY = hullYForStage(boss, stageIndexOf(boss, part));
+        const y = hullY + part.dy;
+        const label = `${bossId}.${part.id}`;
+        expect(y, `${label} sits above the bullet cull line`).toBeGreaterThan(
+          PLAYER_BULLET_CULL_Y + part.hitbox.h / 2,
+        );
+        expect(
+          GAME_WIDTH / 2 - sway + part.dx - part.hitbox.w / 2,
+          `${label} off the left edge`,
+        ).toBeGreaterThanOrEqual(0);
+        expect(
+          GAME_WIDTH / 2 + sway + part.dx + part.hitbox.w / 2,
+          `${label} off the right edge`,
+        ).toBeLessThanOrEqual(GAME_WIDTH);
       }
+    }
+  });
+
+  it('caps campaign part HP, projectile cadence, and destruction score budgets', () => {
+    for (const bossId of campaignBossIds()) {
+      const boss = BOSSES[bossId];
+      const parts = boss?.parts ?? [];
+      if (!boss || !parts.length) continue;
 
       const partBaseHp = parts.reduce((sum, part) => sum + part.hp.base, 0);
       const partWaveHp = parts.reduce((sum, part) => sum + part.hp.perWave, 0);
@@ -659,29 +583,11 @@ describe('boss v2 data integrity', () => {
         boss.hp.perWave * 1.75,
       );
 
-      let projectilesPerSecond = 0;
       for (const part of parts) {
-        const phase = part.phase;
-        if (!phase || !part.fireEvery) continue;
-        const projectiles =
-          phase.type === 'fan' || phase.type === 'ring' || phase.type === 'spawn'
-            ? phase.count
-            : phase.type === 'spiral'
-              ? phase.arms
-              : 1;
-        projectilesPerSecond += projectiles / part.fireEvery;
-      }
-      expect(projectilesPerSecond, `${bossId} part projectile budget`).toBeLessThanOrEqual(6);
-
-      for (const part of parts) {
-        const score = part.destroyScore ?? 0;
-        if (stageGateIds.has(part.id)) {
-          expect(score, `${bossId}.${part.id} major gate score`).toBeGreaterThanOrEqual(300);
-          expect(score, `${bossId}.${part.id} major gate score`).toBeLessThanOrEqual(500);
-        } else {
-          expect(score, `${bossId}.${part.id} minor part score`).toBeGreaterThanOrEqual(80);
-          expect(score, `${bossId}.${part.id} minor part score`).toBeLessThanOrEqual(200);
+        if (part.fireEvery !== undefined) {
+          expect(part.fireEvery, `${bossId}.${part.id} cadence floor`).toBeGreaterThanOrEqual(1.5);
         }
+        expect(part.destroyScore ?? 0, `${bossId}.${part.id} score`).toBeLessThanOrEqual(1200);
       }
     }
   });

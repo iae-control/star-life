@@ -44,16 +44,33 @@ export const STICK = {
   speed: 322, // maxSpeed(257)보다 빠르게 — 터치 기동성 보정
 } as const;
 
-// 난이도 배수 (Easy/Normal/Hard) — 적 체력·적 공격력
+// 난이도 배수 (Easy/Normal/Hard) — 적 체력·적 공격력·스폰 밀도
 export interface DiffMods {
   hp: number;
   dmg: number;
+  /** 웨이브 그룹당 적 수 배수 */
+  density: number;
 }
 export const DIFficulty: Record<'easy' | 'normal' | 'hard', DiffMods> = {
-  easy: { hp: 0.75, dmg: 0.7 },
-  normal: { hp: 1, dmg: 1 },
-  hard: { hp: 1.3, dmg: 1.35 },
+  easy: { hp: 0.75, dmg: 0.7, density: 0.85 },
+  normal: { hp: 1, dmg: 1, density: 1 },
+  hard: { hp: 1.3, dmg: 1.35, density: 1.25 },
 };
+
+/**
+ * 스폰 밀도 — "적이 더 많이 쏟아지게" 하는 전역 노브.
+ * 웨이브 데이터를 통째로 다시 쓰지 않고 편성 규모와 템포만 끌어올린다.
+ */
+export const SPAWN = {
+  /** 그룹당 적 수 배수 */
+  countScale: 1.55,
+  /** 스폰 간격 배수 — 작을수록 촘촘하게 떨어진다 */
+  intervalScale: 0.74,
+  /** 그룹 사이 간격 배수 — 작을수록 편성이 겹쳐 몰아친다 */
+  durationScale: 0.82,
+  /** 한 그룹이 뱉을 수 있는 최대 적 수 — 폭주와 프레임 드랍 방지 */
+  maxPerGroup: 16,
+} as const;
 
 // 슈퍼무기 "Jungjioo" — 대사 표기는 정본, 변경 금지 (PLAN 0장)
 export const SUPER = {

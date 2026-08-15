@@ -1,6 +1,7 @@
 // 레벨 웨이브 빌더 — levels.json의 그룹 시퀀스를 스폰 타임라인으로 해석 (vitest 대상).
 // 그룹은 순차 실행: 각 그룹의 duration이 지난 뒤 다음 그룹이 시작된다 (데모 buildWave 방식).
 import { GAME_WIDTH } from '../../config';
+import { SPAWN } from './balance';
 import { DATA } from '../../data';
 import type { WaveGroup } from '../../data/schemas';
 
@@ -15,6 +16,23 @@ export type SpawnEvent =
     };
 
 const rnd = (rng: () => number, a: number, b: number) => a + rng() * (b - a);
+
+/**
+ * 편성 규모·템포를 밀도 노브로 부풀린다. 웨이브 데이터를 다시 쓰지 않고
+ * 화면에 동시에 떠 있는 적 수를 끌어올리는 단일 지점이다.
+ */
+function scaleGroup(g: WaveGroup, density: number): WaveGroup {
+  const count =
+    'count' in g
+      ? Math.max(1, Math.min(SPAWN.maxPerGroup, Math.round(g.count * SPAWN.countScale * density)))
+      : undefined;
+  return {
+    ...g,
+    ...(count !== undefined ? { count } : {}),
+    ...('interval' in g ? { interval: g.interval * SPAWN.intervalScale } : {}),
+    duration: g.duration * SPAWN.durationScale,
+  } as WaveGroup;
+}
 
 function emitGroup(q: SpawnEvent[], g: WaveGroup, t0: number, rng: () => number): number {
   if (g.kind === 'column') {
@@ -90,6 +108,7 @@ export function buildLevelWave(
   levelIdx: number,
   waveIdx: number,
   rng: () => number = Math.random,
+  density = 1,
 ): SpawnEvent[] {
   const level = DATA.levels.levels[levelIdx];
   const q: SpawnEvent[] = [];
@@ -101,6 +120,6 @@ export function buildLevelWave(
   const contentIdx = level.waveRoute[waveIdx];
   if (contentIdx === undefined) return q;
   let t = 1.0;
-  for (const g of level.waves[contentIdx] ?? []) t = emitGroup(q, g, t, rng);
+  for (const g of level.waves[contentIdx] ?? []) t = emitGroup(q, scaleGroup(g, density), t, rng);
   return q;
 }

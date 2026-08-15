@@ -155,6 +155,9 @@ interface BossPresentation {
   kind: 'warship' | 'scrolling-warship' | 'snail';
   displayWidth: number;
   displayHeight: number;
+  /** 원본 일러스트 크기 — 파트 crop 좌표의 기준계. */
+  artWidth?: number;
+  artHeight?: number;
   movementScript: string;
 }
 
@@ -405,6 +408,17 @@ const JW = {
   maxBossHits: 5,
 } as const;
 
+/**
+ * 함선 선체를 살짝 눌러 그 위를 지나는 적탄·플레이어 탄이 도드라지게 한다.
+ * 본체와 crop 파트에 똑같이 적용해야 이음매가 드러나지 않는다.
+ */
+const HULL_TINT = 0xc8ccd8;
+
+/** 스테이지 게이트 파트가 놓이는 화면 Y — scripts/gen-boss-layout.mjs 의 FOCUS_Y 와 같아야 한다. */
+const WARSHIP_FOCUS_Y = 210;
+/** 선체 중심이 내려올 수 있는 하한. 더 내려가면 본체가 플레이어를 덮는다. */
+const WARSHIP_MAX_HULL_Y = 340;
+
 const DEPTH = {
   bg: 0,
   hole: 2,
@@ -465,6 +479,7 @@ export class GameScene extends Phaser.Scene {
   private textPool: Phaser.GameObjects.Text[] = [];
   private boss: BossState | null = null;
   private bossLinks!: Phaser.GameObjects.Graphics;
+  private bossMarks!: Phaser.GameObjects.Graphics;
   private snailSpecial: SnailSpecialState | null = null;
   private snailBarrage: SnailBarrageVisual[] = [];
   private snailHuntCooldown = 0;
@@ -747,6 +762,8 @@ export class GameScene extends Phaser.Scene {
       this.auto = q.get('auto') === '1';
       this.god = this.auto || q.get('god') === '1';
       this.debug = q.get('debug') !== null;
+      // ?boss=<id> 로 해당 보스전에 바로 진입한다. 봇/무적은 강제하지 않는다 —
+      // 직접 조작해서 확인하는 게 목적이라, 필요하면 &auto=1 / &god=1 을 따로 붙인다.
       const previewBoss = q.get('boss');
       if (previewBoss && previewBoss in DATA.bosses.bosses) {
         const levelIndex = DATA.levels.levels.findIndex(
@@ -756,8 +773,6 @@ export class GameScene extends Phaser.Scene {
           this.session.level = levelIndex + 1;
           this.session.levelWave = levelWaveCount(levelIndex);
           this.session.wave = Math.max(this.session.wave, this.session.levelWave);
-          this.auto = true;
-          this.god = true;
         }
       }
     }
@@ -788,6 +803,9 @@ export class GameScene extends Phaser.Scene {
       .graphics()
       .setDepth(DEPTH.enemy - 0.05)
       .setBlendMode(Phaser.BlendModes.ADD);
+    // 파트 표적/파괴 표시는 Graphics 로 그린다. setTint 는 Canvas 렌더러에서 무시되므로
+    // 틴트에만 의존하면 WebGL 이 없는 기기에서 "어디를 쏘는지" 단서가 통째로 사라진다.
+    this.bossMarks = this.add.graphics().setDepth(DEPTH.enemy + 0.3);
     this.weaponFx = this.add
       .graphics()
       .setDepth(DEPTH.phantom - 0.15)
@@ -1127,6 +1145,8 @@ export class GameScene extends Phaser.Scene {
       this.spawnQ = buildLevelWave(
         this.session.level - 1,
         Math.max(0, this.session.levelWave - 1),
+        Math.random,
+        this.diff.density,
       ).filter((e) => e.t > this.waveT);
     }
   }
@@ -1138,11 +1158,13 @@ export class GameScene extends Phaser.Scene {
     this.ebullets = [];
     if (this.boss) {
       this.clearSnailRuntime(false);
-      for (const part of this.boss.parts) if (part.alive) this.pool.release(part.img);
+      // crop 파트는 파괴 후에도 그을린 잔해로 남아 있으므로 살아있는지와 무관하게 회수한다.
+      for (const part of this.boss.parts) this.pool.release(part.img);
       this.pool.release(this.boss.img);
       this.pool.release(this.boss.glow);
       this.boss = null;
       this.bossLinks.clear();
+      this.bossMarks.clear();
       this.bossBar.setVisible(false);
       this.bossLabel.setVisible(false);
       this.bossPartStatus.setVisible(false);
@@ -1584,7 +1606,7 @@ export class GameScene extends Phaser.Scene {
       } else {
         const li = Math.floor(Math.random() * DATA.levels.levels.length);
         const wi = Math.floor(Math.random() * Math.max(1, levelWaveCount(li)));
-        this.spawnQ = buildLevelWave(li, wi);
+        this.spawnQ = buildLevelWave(li, wi, Math.random, this.diff.density);
         this.session.wave++;
         this.session.levelWave++;
         this.banner(t('banner.wave', this.session.wave), 1.6, '#ffd75e');
@@ -1598,7 +1620,7 @@ export class GameScene extends Phaser.Scene {
     const routeWave = this.session.levelWave;
     const isBossWave = routeWave >= levelWaveCount(li);
     const sectorChanged = this.enterSector(routeWave);
-    this.spawnQ = buildLevelWave(li, this.session.levelWave);
+    this.spawnQ = buildLevelWave(li, this.session.levelWave, Math.random, this.diff.density);
     if (sectorChanged) {
       const safeDelay = this.sectorTransitionSeconds();
       this.spawnQ = this.spawnQ.map((event) => ({ ...event, t: event.t + safeDelay }));
@@ -1708,9 +1730,14 @@ export class GameScene extends Phaser.Scene {
     const w = this.session.wave;
     const hp = (def.hp.base + w * def.hp.perWave) * this.diff.hp;
     const presentation = (def as ExtendedBossData).presentation;
-    const glow = this.pool.get('boss-glow', GAME_WIDTH / 2, -80);
+    this.ensureBossPartFrames(def);
+    // 함선은 화면보다 커서, 선체 전체가 위에서 흘러내리도록 완전히 화면 밖에서 시작한다.
+    const spawnY = presentation?.displayHeight ? -presentation.displayHeight / 2 - 40 : -80;
+    const glow = this.pool.get('boss-glow', GAME_WIDTH / 2, spawnY);
     glow.setDepth(DEPTH.enemy - 0.2).setBlendMode(Phaser.BlendModes.ADD);
-    const img = this.pool.get(def.sprite, GAME_WIDTH / 2, -80);
+    const img = this.pool.get(def.sprite, GAME_WIDTH / 2, spawnY);
+    // 파트 서브프레임이 등록된 텍스처이므로 본체는 원본 프레임을 명시해야 한다.
+    if (this.textures.get(def.sprite).has('__BASE')) img.setFrame('__BASE');
     img.setDepth(DEPTH.enemy).setScale(def.layoutVersion === 2 ? 1.24 : 1);
     if (presentation?.displayWidth && presentation.displayHeight) {
       img.setDisplaySize(presentation.displayWidth, presentation.displayHeight);
@@ -1720,7 +1747,11 @@ export class GameScene extends Phaser.Scene {
       );
     }
     const parts: BossPart[] = (def.parts ?? []).map((pd) => {
-      const img = this.pool.get(pd.sprite, GAME_WIDTH / 2 + pd.dx, -80 + pd.dy);
+      // crop 파트는 본체 일러스트에서 잘라낸 조각이라, 살아 있는 동안 선체 위에
+      // 정확히 겹쳐져 이음매가 보이지 않는다. 파괴되면 그 구역만 그을려 남는다.
+      const cropped = Boolean(pd.crop) && this.textures.exists(def.sprite);
+      const texture = cropped ? def.sprite : pd.sprite;
+      const img = this.pool.get(texture, GAME_WIDTH / 2 + pd.dx, spawnY + pd.dy);
       const roleDepth =
         pd.role === 'decor'
           ? -0.08
@@ -1729,10 +1760,14 @@ export class GameScene extends Phaser.Scene {
             : pd.role === 'armor'
               ? 0.06
               : 0.12;
-      img
-        .setDepth(DEPTH.enemy + roleDepth)
-        .setScale(pd.scale ?? 1)
-        .setRotation(pd.rotation ?? 0);
+      img.setDepth(DEPTH.enemy + roleDepth).setRotation(pd.rotation ?? 0);
+      if (cropped) {
+        img.setFrame(this.bossPartFrame(pd.id));
+        // 히트박스는 크롭에서 유도됐으므로 표시 크기와 판정이 정확히 일치한다.
+        img.setDisplaySize(pd.hitbox.w, pd.hitbox.h);
+      } else {
+        img.setScale(pd.scale ?? 1);
+      }
       const hp = (pd.hp.base + w * pd.hp.perWave) * this.diff.hp;
       return {
         def: pd,
@@ -1742,7 +1777,7 @@ export class GameScene extends Phaser.Scene {
         flashT: 0,
         fireT: (pd.fireEvery ?? 2) * 0.7,
         x: GAME_WIDTH / 2 + pd.dx,
-        y: -80 + pd.dy,
+        y: spawnY + pd.dy,
         rotation: pd.rotation ?? 0,
         img,
       };
@@ -1750,7 +1785,7 @@ export class GameScene extends Phaser.Scene {
     this.boss = {
       def,
       x: GAME_WIDTH / 2,
-      y: -80,
+      y: spawnY,
       t: 0,
       hp,
       hpMax: hp,
@@ -2426,33 +2461,37 @@ export class GameScene extends Phaser.Scene {
         part.x = parentX + Math.cos(parentRot) * localX - Math.sin(parentRot) * localY;
         part.y = parentY + Math.sin(parentRot) * localX + Math.cos(parentRot) * localY;
         part.rotation = parentRot + (part.def.rotation ?? 0);
-        part.img
-          .setPosition(part.x, part.y)
-          .setRotation(part.rotation)
-          .setVisible(part.alive && this.partActive(part, B))
-          .setAlpha(
-            this.partExposed(part, B)
-              ? illustratedSnail
-                ? part.def.role === 'weakpoint'
-                  ? 0.9
-                  : 0.34
-                : capitalShip
+        part.img.setPosition(part.x, part.y).setRotation(part.rotation);
+        if (part.def.crop) {
+          this.applyCroppedPartLook(part, B);
+        } else {
+          part.img
+            .setVisible(part.alive && this.partActive(part, B))
+            .setAlpha(
+              this.partExposed(part, B)
+                ? illustratedSnail
                   ? part.def.role === 'weakpoint'
-                    ? 0.94
-                    : 0.78
-                  : 1
-              : illustratedSnail
-                ? 0.12
-                : capitalShip
-                  ? 0.22
-                  : 0.42,
-          );
+                    ? 0.9
+                    : 0.34
+                  : capitalShip
+                    ? part.def.role === 'weakpoint'
+                      ? 0.94
+                      : 0.78
+                    : 1
+                : illustratedSnail
+                  ? 0.12
+                  : capitalShip
+                    ? 0.22
+                    : 0.42,
+            );
+        }
         resolved.add(part.def.id);
         progressed = true;
       }
       if (!progressed) break;
     }
 
+    this.drawBossPartMarks(B);
     this.bossLinks.clear();
     for (const part of B.parts) {
       if (!part.alive || !this.partActive(part, B) || !this.partProtectsCore(part)) continue;
@@ -2556,7 +2595,8 @@ export class GameScene extends Phaser.Scene {
       const score = part.def.destroyScore ?? (major ? 500 : 180);
       this.session.score += score;
       this.addFloatText(part.x, part.y, `+${score}`, '#ffd76a');
-      this.pool.release(part.img);
+      // crop 파트는 선체의 한 조각이라, 회수하지 않고 그을린 자국으로 남겨 파괴 흔적을 보여준다.
+      if (!part.def.crop) this.pool.release(part.img);
       this.advanceBossStage(B);
     }
   }
@@ -2899,6 +2939,7 @@ export class GameScene extends Phaser.Scene {
       // 엔들리스는 levelWave를 계속 누적 — 순환 인덱스(cycle/6)가 진행된다
       this.boss = null;
       this.bossLinks.clear();
+      this.bossMarks.clear();
       this.bossBar.setVisible(false);
       this.bossLabel.setVisible(false);
       this.bossPartStatus.setVisible(false);
@@ -4365,6 +4406,135 @@ export class GameScene extends Phaser.Scene {
     return (def as ExtendedBossData).presentation;
   }
 
+  private bossPartFrame(partId: string): string {
+    return `part:${partId}`;
+  }
+
+  /**
+   * crop 파트는 본체 그림의 한 조각이다.
+   *  - 아직 차례가 아니면 선체와 완전히 같은 픽셀이라 이음매가 보이지 않는다.
+   *  - 지금 때려야 할 구역만 맥동하는 열기로 물들여 표적을 알려준다.
+   *  - 부서지면 그을린 자국으로 남아 어디를 뜯어냈는지 그대로 읽힌다.
+   */
+  /**
+   * 지금 때려야 할 구역에 조준 브래킷을, 뜯겨나간 구역에 그을림을 그린다.
+   * Graphics 는 Canvas 렌더러에서도 그려지므로 WebGL 이 없는 기기에서도 단서가 남는다.
+   */
+  private drawBossPartMarks(B: BossState): void {
+    const g = this.bossMarks;
+    g.clear();
+    if (!B.entered) return;
+
+    for (const part of B.parts) {
+      if (!part.def.crop) continue;
+      const hw = part.def.hitbox.w / 2;
+      const hh = part.def.hitbox.h / 2;
+      const left = part.x - hw;
+      const top = part.y - hh;
+
+      if (!part.alive) {
+        // 뜯겨나간 구역 — 그을린 구멍과 잔불
+        g.fillStyle(0x120b07, 0.74);
+        g.fillRect(left, top, hw * 2, hh * 2);
+        g.lineStyle(1, 0xff7a3c, 0.3 + Math.sin(B.t * 3 + part.x) * 0.14);
+        g.strokeRect(left + 1.5, top + 1.5, hw * 2 - 3, hh * 2 - 3);
+        continue;
+      }
+      if (!this.partActive(part, B) || !this.partExposed(part, B)) continue;
+
+      // 현재 표적 — 맥동하는 모서리 브래킷
+      const pulse = 0.55 + Math.sin(B.t * 5.2) * 0.45;
+      const arm = Math.min(hw, hh) * 0.42;
+      g.lineStyle(2, part.def.role === 'weakpoint' ? 0xffe27a : 0xff8a4c, 0.45 + pulse * 0.5);
+      for (const [cx, cy, sx, sy] of [
+        [left, top, 1, 1],
+        [part.x + hw, top, -1, 1],
+        [left, part.y + hh, 1, -1],
+        [part.x + hw, part.y + hh, -1, -1],
+      ] as const) {
+        g.beginPath();
+        g.moveTo(cx + sx * arm, cy);
+        g.lineTo(cx, cy);
+        g.lineTo(cx, cy + sy * arm);
+        g.strokePath();
+      }
+    }
+  }
+
+  private applyCroppedPartLook(part: BossPart, B: BossState): void {
+    const img = part.img;
+    if (!part.alive) {
+      img.setVisible(true).setAlpha(0.94).setTint(0x2a2119);
+      return;
+    }
+    img.setVisible(true).setAlpha(1);
+    if (this.partActive(part, B) && this.partExposed(part, B)) {
+      const pulse = 0.5 + Math.sin(B.t * 5.2) * 0.5;
+      const g = 0xff - Math.round(pulse * 0x62);
+      const b = 0xff - Math.round(pulse * 0x9a);
+      img.setTint(Phaser.Display.Color.GetColor(0xff, g, b));
+    } else {
+      // 아직 차례가 아닌 구역은 본체와 같은 그림·같은 톤이라 이음매가 보이지 않는다.
+      img.setTint(HULL_TINT);
+    }
+  }
+
+  /**
+   * 파트 crop 을 본체 텍스처의 서브프레임으로 등록한다.
+   * 파트 아트가 곧 본체 아트라서 화풍이 어긋날 수 없고, 별도 이미지 파일도 필요 없다.
+   */
+  private ensureBossPartFrames(def: BossData): void {
+    if (!def.parts?.length || !this.textures.exists(def.sprite)) return;
+    const tex = this.textures.get(def.sprite);
+    const source = tex.getSourceImage() as { width: number; height: number };
+    const presentation = this.bossPresentation(def);
+    // crop 은 원본 일러스트 좌표. 실제 텍스처가 리사이즈됐어도 비율로 환산한다.
+    const kx = source.width / (presentation?.artWidth ?? source.width);
+    const ky = source.height / (presentation?.artHeight ?? source.height);
+    for (const pd of def.parts) {
+      const crop = pd.crop;
+      if (!crop) continue;
+      const name = this.bossPartFrame(pd.id);
+      if (tex.has(name)) continue;
+      tex.add(name, 0, crop.x * kx, crop.y * ky, crop.w * kx, crop.h * ky);
+    }
+    // Phaser 는 첫 서브프레임이 추가되는 순간 firstFrame 을 그쪽으로 옮긴다.
+    // 그대로 두면 프레임을 지정하지 않은 본체가 파트 조각 하나로 그려진다.
+    tex.firstFrame = '__BASE';
+  }
+
+  /** 함선이 좌우로 흔들려도 모든 파트가 화면에 남는 최대 진폭 (gen-boss-layout.mjs 와 동일 공식). */
+  private warshipSwayLimit(B: BossState): number {
+    let limit = 46;
+    for (const part of B.parts)
+      limit = Math.min(
+        limit,
+        GAME_WIDTH / 2 - 4 - Math.abs(part.def.dx) - part.def.hitbox.w / 2,
+      );
+    return Math.max(0, limit);
+  }
+
+  /**
+   * 스테이지 게이트 파트를 플레이어 사거리 한가운데(WARSHIP_FOCUS_Y)에 올려놓는 선체 중심 Y.
+   * 스테이지가 넘어갈수록 선체가 아래로 전진해 다음 구역이 사거리에 들어온다.
+   */
+  private warshipStageHullY(B: BossState, stage: number): number {
+    const stages = B.def.stages;
+    if (!stages?.length) return B.def.entryY;
+    const gate = stages[Math.min(stage, stages.length - 1)]?.advanceWhenDestroyed;
+    if (!gate?.length) return B.def.entryY;
+    let sum = 0;
+    let n = 0;
+    for (const id of gate) {
+      const part = B.parts.find((candidate) => candidate.def.id === id);
+      if (!part) continue;
+      sum += part.def.dy;
+      n++;
+    }
+    if (!n) return B.def.entryY;
+    return Math.min(WARSHIP_MAX_HULL_Y, WARSHIP_FOCUS_Y - sum / n);
+  }
+
   private snailConfig(def: BossData): Required<SnailSpecialConfig> {
     const configured = (def as ExtendedBossData).snailSpecials;
     return {
@@ -4771,57 +4941,64 @@ export class GameScene extends Phaser.Scene {
     if (presentation?.kind !== 'warship' && presentation?.kind !== 'scrolling-warship')
       return false;
     const script = (presentation.movementScript ?? 'broadside').toLowerCase();
-    let targetX = GAME_WIDTH / 2;
-    let targetY = B.def.entryY;
+    // 선체 높이는 현재 스테이지에서 유도한다 — 표적이 항상 사거리 안에 놓인다.
+    // 이동 스크립트는 좌우 성격과 미세한 세로 흔들림만 담당한다.
+    const hullY = this.warshipStageHullY(B, B.stage);
+    // 함선이 화면보다 넓으므로 좌우 진폭은 파트가 화면에 남는 한도까지만 허용한다.
+    const sway = this.warshipSwayLimit(B) * mobility;
+    let lateral = 0;
+    let yWobble = 0;
     let rotation = 0;
-    let follow = 2.5;
+    let follow = 1.2;
 
-    if (presentation.kind === 'scrolling-warship' || script.includes('scroll')) {
-      const sectionTravel = Math.min(155, (presentation.displayHeight ?? 460) * 0.285);
-      targetX = GAME_WIDTH / 2 + Math.sin(B.t * 0.42) * 18 * mobility;
-      targetY = Math.min(GAME_HEIGHT * 0.58, B.def.entryY + B.stage * sectionTravel);
-      rotation = Math.sin(B.t * 0.5) * 0.012;
-      follow = B.stage === 0 ? 1.4 : 0.82;
-      this.scrollSpd = Math.max(this.level.scroll.boss, 58 + B.stage * 15);
-    } else if (script.includes('dive') || script === 'solar-lance') {
+    if (script.includes('dive') || script === 'solar-lance') {
       const cycle = B.t % 9.2;
       if (cycle < 2.6) {
-        targetX = GAME_WIDTH / 2 + Math.sin(B.t * 1.1) * 108;
-        targetY = B.def.entryY + 10;
+        lateral = Math.sin(B.t * 1.1);
+        yWobble = 8;
       } else if (cycle < 4.4) {
         const p = (cycle - 2.6) / 1.8;
-        targetX = p < 0.5 ? 62 : GAME_WIDTH - 62;
-        targetY = B.def.entryY + Math.sin(p * Math.PI) * 205;
-        rotation = (targetX < GAME_WIDTH / 2 ? -1 : 1) * 0.16;
-        follow = 5.2;
+        lateral = p < 0.5 ? -1 : 1;
+        yWobble = Math.sin(p * Math.PI) * 46;
+        rotation = lateral * 0.1;
+        follow = 2.6;
       } else {
-        targetX = GAME_WIDTH / 2 + Math.sin(B.t * 0.72) * 72;
-        targetY = B.def.entryY;
+        lateral = Math.sin(B.t * 0.72) * 0.7;
       }
     } else if (script.includes('encircle') || script.includes('orbit') || script === 'wing-sweep') {
       const angle = B.t * 0.62;
-      targetX = GAME_WIDTH / 2 + Math.cos(angle) * 132 * mobility;
-      targetY = B.def.entryY + 48 + Math.sin(angle * 1.35) * 58 * mobility;
-      rotation = -Math.sin(angle) * 0.075;
-      follow = 3.4;
+      lateral = Math.cos(angle);
+      yWobble = Math.sin(angle * 1.35) * 26;
+      rotation = -Math.sin(angle) * 0.05;
+      follow = 1.9;
     } else if (script.includes('siege') || script === 'fortress-assault') {
       const hold = Math.floor(B.t / 3.8) % 3;
-      targetX = [72, GAME_WIDTH / 2, GAME_WIDTH - 72][hold] ?? GAME_WIDTH / 2;
-      targetY = B.def.entryY + Math.sin(B.t * 0.9) * 34;
-      rotation = (targetX - GAME_WIDTH / 2) * -0.00055;
-      follow = 1.8;
+      lateral = [-1, 0, 1][hold] ?? 0;
+      yWobble = Math.sin(B.t * 0.9) * 18;
+      rotation = -lateral * 0.03;
+      follow = 1.1;
+    } else if (script.includes('crawl') || script === 'hull-crawl') {
+      // 거대 함선이 천천히 밀고 내려오는 느낌 — 좌우는 거의 정지.
+      lateral = Math.sin(B.t * 0.42) * 0.55;
+      yWobble = Math.sin(B.t * 0.7) * 9;
+      rotation = Math.sin(B.t * 0.5) * 0.012;
+      follow = B.stage === 0 ? 1.0 : 0.72;
     } else {
-      // Broadside: long lateral passes, short recoil lurches, and a subtle roll.
       const sweep = Math.sin(B.t * 0.58);
-      targetX = GAME_WIDTH / 2 + sweep * 136 * mobility;
-      targetY = B.def.entryY + Math.sin(B.t * 1.16 + 0.7) * 32;
-      rotation = -Math.cos(B.t * 0.58) * 0.065;
-      follow = 2.8;
+      lateral = sweep;
+      yWobble = Math.sin(B.t * 1.16 + 0.7) * 16;
+      rotation = -Math.cos(B.t * 0.58) * 0.045;
+      follow = 1.6;
     }
 
-    const k = Math.min(1, dt * follow * mobility);
-    B.x += (targetX - B.x) * k;
-    B.y += (targetY - B.y) * k;
+    const targetX = GAME_WIDTH / 2 + Phaser.Math.Clamp(lateral, -1, 1) * sway;
+    const targetY = hullY + yWobble;
+    if (presentation.kind === 'scrolling-warship')
+      this.scrollSpd = Math.max(this.level.scroll.boss, 58 + B.stage * 15);
+
+    B.x += (targetX - B.x) * Math.min(1, dt * follow * mobility);
+    // 구역 전진은 연출이라 추진부 파괴로 느려지면 안 된다(좌우 기동만 둔해진다).
+    B.y += (targetY - B.y) * Math.min(1, dt * Math.max(follow, 1.7));
     B.rotation += (rotation - B.rotation) * Math.min(1, dt * 4.5);
     return true;
   }
@@ -4831,6 +5008,8 @@ export class GameScene extends Phaser.Scene {
     const pulse = 1 + Math.sin(B.t * 2.4) * (presentation?.kind === 'snail' ? 0.012 : 0.006);
     if (presentation?.displayWidth && presentation.displayHeight) {
       B.img.setDisplaySize(presentation.displayWidth * pulse, presentation.displayHeight * pulse);
+      // 화면을 뒤덮는 선체 위에서도 탄이 보이도록 톤을 눌러둔다(피격 플래시 중엔 건드리지 않는다).
+      if (presentation.kind !== 'snail' && B.flashT <= 0) B.img.setTint(HULL_TINT);
     } else {
       const bodyScale = B.def.layoutVersion === 2 ? 1.24 : 1;
       B.img.setScale(bodyScale + Math.sin(B.t * 2.4) * 0.018);

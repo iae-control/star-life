@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { DATA } from '../src/data';
+import { SPAWN } from '../src/game/logic/balance';
 import { buildLevelWave, contentWaveIndex, levelWaveCount } from '../src/game/logic/waves';
 
 const rng = () => 0.5;
@@ -36,6 +37,27 @@ describe('buildLevelWave', () => {
       });
       expect(contentWaveIndex(li, level.waveRoute.length)).toBeNull();
     });
+  });
+
+  it('spawns denser formations than the authored counts, scaled by difficulty', () => {
+    const seeded = () => {
+      let s = 1;
+      return () => ((s = (s * 1103515245 + 12345) % 2147483648) / 2147483648);
+    };
+    const enemies = (density: number): number =>
+      buildLevelWave(0, 0, seeded(), density).filter((e) => e.kind === 'enemy').length;
+
+    const level0 = DATA.levels.levels[0];
+    const authored = (level0?.waves[level0?.waveRoute[0] ?? 0] ?? []).reduce(
+      (sum, group) => sum + ('count' in group ? group.count : 1),
+      0,
+    );
+    const normal = enemies(1);
+    expect(normal, '기본 밀도가 원본 편성보다 많아야 한다').toBeGreaterThan(authored);
+    expect(enemies(1.25), 'hard 는 normal 보다 많아야 한다').toBeGreaterThanOrEqual(normal);
+    expect(enemies(0.85), 'easy 는 normal 보다 적어야 한다').toBeLessThanOrEqual(normal);
+    // 폭주 방지 상한이 실제로 걸려 있는지
+    expect(enemies(6), '밀도 상한').toBeLessThanOrEqual(SPAWN.maxPerGroup * 12);
   });
 
   it('unknown level index yields an empty queue', () => {
