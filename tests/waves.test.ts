@@ -42,7 +42,7 @@ describe('buildLevelWave', () => {
   it('spawns denser formations than the authored counts, scaled by difficulty', () => {
     const seeded = () => {
       let s = 1;
-      return () => ((s = (s * 1103515245 + 12345) % 2147483648) / 2147483648);
+      return () => (s = (s * 1103515245 + 12345) % 2147483648) / 2147483648;
     };
     const enemies = (density: number): number =>
       buildLevelWave(0, 0, seeded(), density).filter((e) => e.kind === 'enemy').length;

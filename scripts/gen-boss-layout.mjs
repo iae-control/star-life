@@ -7,6 +7,7 @@
 // 실행: node scripts/gen-boss-layout.mjs [--check]
 //   --check 를 주면 파일을 쓰지 않고 검증 표만 출력한다.
 
+import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
@@ -33,8 +34,7 @@ const MIN_SWAY = 10;
  */
 function swayLimit(parts) {
   return parts.reduce(
-    (limit, p) =>
-      Math.min(limit, GAME_WIDTH / 2 - EDGE_MARGIN - Math.abs(p.dx) - p.hitbox.w / 2),
+    (limit, p) => Math.min(limit, GAME_WIDTH / 2 - EDGE_MARGIN - Math.abs(p.dx) - p.hitbox.w / 2),
     Infinity,
   );
 }
@@ -362,9 +362,12 @@ function validate(bossId, built, spec) {
     if (wander) {
       const top = wander.minY + part.dy - part.hitbox.h / 2;
       const low = wander.maxY + part.dy + part.hitbox.h / 2;
-      if (top < 0) problems.push(`${bossId}.${part.id}: 배회 상단에서 화면 위로 ${(-top).toFixed(0)}px 초과`);
+      if (top < 0)
+        problems.push(`${bossId}.${part.id}: 배회 상단에서 화면 위로 ${(-top).toFixed(0)}px 초과`);
       if (low > 640)
-        problems.push(`${bossId}.${part.id}: 배회 하단에서 화면 아래로 ${(low - 640).toFixed(0)}px 초과`);
+        problems.push(
+          `${bossId}.${part.id}: 배회 하단에서 화면 아래로 ${(low - 640).toFixed(0)}px 초과`,
+        );
     }
     const y = hullY + part.dy;
     const bottom = y + part.hitbox.h / 2;
@@ -431,5 +434,12 @@ console.log('\n검증 통과 — 모든 게이트 파트가 사거리 안에 있
 
 if (!check) {
   writeFileSync(BOSSES, JSON.stringify(data, null, 2) + '\n');
+  // prettier 형식으로 맞춰 둔다. 안 그러면 다음 `npm run format` 때마다
+  // 내용은 그대로인데 수백 줄짜리 diff 가 생겨 리뷰가 오염된다.
+  try {
+    execFileSync('npx', ['prettier', '--write', BOSSES], { cwd: ROOT, stdio: 'ignore' });
+  } catch {
+    console.warn('prettier 적용 실패 — `npm run format` 을 따로 돌려주세요.');
+  }
   console.log(`기록: ${BOSSES}`);
 }

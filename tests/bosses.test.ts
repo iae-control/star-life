@@ -360,10 +360,13 @@ describe('boss v2 data integrity', () => {
       const presentation = boss.presentation;
       if (!presentation) continue;
       const spawnY = -presentation.displayHeight / 2 - 40;
-      expect(spawnY + presentation.displayHeight / 2, `${bossId} spawns already visible`).toBeLessThan(
-        0,
+      expect(
+        spawnY + presentation.displayHeight / 2,
+        `${bossId} spawns already visible`,
+      ).toBeLessThan(0);
+      expect(boss.entryY, `${bossId} entry target is below its spawn point`).toBeGreaterThan(
+        spawnY,
       );
-      expect(boss.entryY, `${bossId} entry target is below its spawn point`).toBeGreaterThan(spawnY);
     }
   });
 
@@ -383,7 +386,8 @@ describe('boss v2 data integrity', () => {
       }
       // crop 파트는 선체 그림에 정확히 겹쳐져야 하므로 흔들리는 모션을 붙이면 이음매가 드러난다.
       for (const part of parts) {
-        if (part.crop) expect(part.motion, `${bossId}.${part.id} crop part must not drift`).toBeUndefined();
+        if (part.crop)
+          expect(part.motion, `${bossId}.${part.id} crop part must not drift`).toBeUndefined();
       }
     }
   });
@@ -433,10 +437,9 @@ describe('boss v2 data integrity', () => {
     for (const eye of eyes) {
       // 눈은 머리(아트 상단)에 있어야 한다.
       expect(eye.dy, `${eye.id} sits on the head`).toBeLessThan(0);
-      expect(
-        snail.entryY + eye.dy,
-        `${eye.id} must be reachable on screen`,
-      ).toBeGreaterThanOrEqual(GATE_Y_RANGE[0]);
+      expect(snail.entryY + eye.dy, `${eye.id} must be reachable on screen`).toBeGreaterThanOrEqual(
+        GATE_Y_RANGE[0],
+      );
     }
 
     const heart = (snail.parts ?? []).find((part) => part.role === 'weakpoint');
