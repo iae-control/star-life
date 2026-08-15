@@ -173,6 +173,8 @@ export class TitleScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', () => this.openSettings());
     uiText(this, GAME_WIDTH - 60, 600, 'CREDITS', 10, '#8fa0c8', 'center');
+    // 빌드 식별자 — 캐시된 옛 페이지를 새 빌드로 착각하지 않도록 눈에 띄지 않게 찍어둔다.
+    uiText(this, GAME_WIDTH / 2, 626, `build ${__BUILD_ID__}`, 9, '#3f4a68', 'center');
     this.add
       .zone(248, 588, 104, 26)
       .setOrigin(0, 0)

@@ -757,23 +757,23 @@ export class GameScene extends Phaser.Scene {
       equippedArmorMax,
     );
 
+    const q = new URLSearchParams(window.location.search);
     if (import.meta.env.DEV) {
-      const q = new URLSearchParams(window.location.search);
       this.auto = q.get('auto') === '1';
       this.god = this.auto || q.get('god') === '1';
       this.debug = q.get('debug') !== null;
-      // ?boss=<id> 로 해당 보스전에 바로 진입한다. 봇/무적은 강제하지 않는다 —
-      // 직접 조작해서 확인하는 게 목적이라, 필요하면 &auto=1 / &god=1 을 따로 붙인다.
-      const previewBoss = q.get('boss');
-      if (previewBoss && previewBoss in DATA.bosses.bosses) {
-        const levelIndex = DATA.levels.levels.findIndex(
-          (candidate) => candidate.boss === previewBoss,
-        );
-        if (levelIndex >= 0) {
-          this.session.level = levelIndex + 1;
-          this.session.levelWave = levelWaveCount(levelIndex);
-          this.session.wave = Math.max(this.session.wave, this.session.levelWave);
-        }
+    }
+    // ?boss=<id> 로 해당 보스전에 바로 진입한다(배포판에서도 동작 — 보스 확인용).
+    // 봇/무적은 강제하지 않는다. 점수는 남기지 않도록 세션을 프리뷰로만 쓴다.
+    const previewBoss = q.get('boss');
+    if (previewBoss && previewBoss in DATA.bosses.bosses) {
+      const levelIndex = DATA.levels.levels.findIndex(
+        (candidate) => candidate.boss === previewBoss,
+      );
+      if (levelIndex >= 0) {
+        this.session.level = levelIndex + 1;
+        this.session.levelWave = levelWaveCount(levelIndex);
+        this.session.wave = Math.max(this.session.wave, this.session.levelWave);
       }
     }
 

@@ -20,6 +20,8 @@ declare global {
   interface Window {
     __game?: Phaser.Game;
   }
+  /** vite.config.ts 가 주입하는 빌드 식별자(git short sha). */
+  const __BUILD_ID__: string;
 }
 
 function boot(): void {
