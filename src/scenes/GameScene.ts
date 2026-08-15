@@ -121,6 +121,8 @@ interface BossPart {
   alive: boolean;
   flashT: number;
   fireT: number;
+  /** 파괴 후 연기를 뿜는 간격 타이머. */
+  smokeT: number;
   x: number;
   y: number;
   rotation: number;
@@ -242,6 +244,18 @@ interface Spark {
   vx: number;
   vy: number;
   t: number;
+}
+/** 뜯겨나간 보스 파트 자리에서 계속 피어오르는 연기. */
+interface DamageSmoke {
+  img: Phaser.GameObjects.Image;
+  vx: number;
+  vy: number;
+  t: number;
+  life: number;
+  size: number;
+  grow: number;
+  spin: number;
+  ember: boolean;
 }
 interface Impact {
   core: Phaser.GameObjects.Image;
@@ -414,6 +428,10 @@ const JW = {
  */
 const HULL_TINT = 0xc8ccd8;
 
+/** 피해 연기 농도 — 너무 짙으면 연기가 적탄을 가려 회피가 불가능해진다. */
+const SMOKE_ALPHA = 0.56;
+const SMOKE_EMBER_ALPHA = 0.5;
+
 /** 스테이지 게이트 파트가 놓이는 화면 Y — scripts/gen-boss-layout.mjs 의 FOCUS_Y 와 같아야 한다. */
 const WARSHIP_FOCUS_Y = 210;
 /** 선체 중심이 내려올 수 있는 하한. 더 내려가면 본체가 플레이어를 덮는다. */
@@ -474,6 +492,7 @@ export class GameScene extends Phaser.Scene {
   private booms: Boom[] = [];
   private impacts: Impact[] = [];
   private sparks: Spark[] = [];
+  private damageSmoke: DamageSmoke[] = [];
   private orbs: OrbEnt[] = [];
   private texts: FloatText[] = [];
   private textPool: Phaser.GameObjects.Text[] = [];
@@ -658,6 +677,7 @@ export class GameScene extends Phaser.Scene {
     this.booms = [];
     this.impacts = [];
     this.sparks = [];
+    this.damageSmoke = [];
     this.orbs = [];
     this.texts = [];
     this.textPool = [];
@@ -1165,6 +1185,7 @@ export class GameScene extends Phaser.Scene {
       this.boss = null;
       this.bossLinks.clear();
       this.bossMarks.clear();
+      this.clearDamageSmoke();
       this.bossBar.setVisible(false);
       this.bossLabel.setVisible(false);
       this.bossPartStatus.setVisible(false);
@@ -1776,6 +1797,7 @@ export class GameScene extends Phaser.Scene {
         alive: true,
         flashT: 0,
         fireT: (pd.fireEvery ?? 2) * 0.7,
+        smokeT: 0,
         x: GAME_WIDTH / 2 + pd.dx,
         y: spawnY + pd.dy,
         rotation: pd.rotation ?? 0,
@@ -2940,6 +2962,7 @@ export class GameScene extends Phaser.Scene {
       this.boss = null;
       this.bossLinks.clear();
       this.bossMarks.clear();
+      this.clearDamageSmoke();
       this.bossBar.setVisible(false);
       this.bossLabel.setVisible(false);
       this.bossPartStatus.setVisible(false);
@@ -4432,14 +4455,9 @@ export class GameScene extends Phaser.Scene {
       const left = part.x - hw;
       const top = part.y - hh;
 
-      if (!part.alive) {
-        // 뜯겨나간 구역 — 그을린 구멍과 잔불
-        g.fillStyle(0x120b07, 0.74);
-        g.fillRect(left, top, hw * 2, hh * 2);
-        g.lineStyle(1, 0xff7a3c, 0.3 + Math.sin(B.t * 3 + part.x) * 0.14);
-        g.strokeRect(left + 1.5, top + 1.5, hw * 2 - 3, hh * 2 - 3);
-        continue;
-      }
+      // 뜯겨나간 구역은 사각형으로 덮지 않는다 — 선체 그림을 그대로 두고
+      // 그 자리에서 연기가 피어오르게 해 피해를 읽힌다(updateDamageSmoke).
+      if (!part.alive) continue;
       if (!this.partActive(part, B) || !this.partExposed(part, B)) continue;
 
       // 현재 표적 — 맥동하는 모서리 브래킷
@@ -4461,10 +4479,86 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * 뜯겨나간 파트 자리에서 연기를 피워 올린다. 파트는 선체와 함께 움직이므로
+   * 발생 지점은 매 프레임 파트 위치를 따라가고, 뿜어진 연기는 뒤로 흘러간다.
+   */
+  private emitDamageSmoke(B: BossState, dt: number): void {
+    const MAX_PUFFS = 26;
+    // 후반에는 부서진 구역이 많아진다. 구역 수에 비례해 각자 덜 뿜게 해서
+    // 연기 총량을 일정하게 묶는다 — 안 그러면 화면이 뿌예져 적탄이 안 보인다.
+    let smoking = 0;
+    for (const part of B.parts) if (!part.alive && part.def.crop) smoking++;
+    const spread = 1 + Math.max(0, smoking - 1) * 0.4;
+
+    for (const part of B.parts) {
+      if (part.alive || !part.def.crop) continue;
+      part.smokeT -= dt;
+      if (part.smokeT > 0) continue;
+      // 큰 구역일수록 자주 뿜는다.
+      const area = part.def.hitbox.w * part.def.hitbox.h;
+      part.smokeT = rnd(0.14, 0.26) * (area > 4200 ? 0.75 : 1.2) * spread;
+      if (this.damageSmoke.length >= MAX_PUFFS) continue;
+
+      const ember = Math.random() < 0.22;
+      const img = this.fxPool.get('hazard-disaster-smoke', 0, 0);
+      const size = rnd(0.16, 0.26) * (area > 4200 ? 1.3 : 1);
+      img
+        .setPosition(
+          part.x + rnd(-1, 1) * part.def.hitbox.w * 0.3,
+          part.y + rnd(-1, 1) * part.def.hitbox.h * 0.3,
+        )
+        .setDepth(DEPTH.enemy + 0.35)
+        .setBlendMode(ember ? Phaser.BlendModes.ADD : Phaser.BlendModes.NORMAL)
+        .setTint(ember ? 0xff9a44 : 0x9aa4b4)
+        .setScale(size)
+        .setRotation(rnd(0, 6.283))
+        .setAlpha(ember ? SMOKE_EMBER_ALPHA : SMOKE_ALPHA);
+      this.damageSmoke.push({
+        img,
+        vx: rnd(-12, 12),
+        vy: rnd(30, 62),
+        t: 0,
+        life: ember ? rnd(0.3, 0.5) : rnd(0.7, 1.05),
+        size,
+        grow: ember ? 0.5 : rnd(1.1, 1.7),
+        spin: rnd(-0.9, 0.9),
+        ember,
+      });
+    }
+  }
+
+  private updateDamageSmoke(dt: number): void {
+    for (let i = this.damageSmoke.length - 1; i >= 0; i--) {
+      const s = this.damageSmoke[i];
+      if (!s) continue;
+      s.t += dt;
+      const k = s.t / s.life;
+      if (k >= 1) {
+        this.fxPool.release(s.img);
+        this.damageSmoke.splice(i, 1);
+        continue;
+      }
+      // 연기는 함선 뒤로 흘러내리며 퍼지고 옅어진다.
+      s.img
+        .setPosition(s.img.x + s.vx * dt, s.img.y + (s.vy + this.scrollSpd * 0.35) * dt)
+        .setScale(s.size * (1 + k * s.grow))
+        .setRotation(s.img.rotation + s.spin * dt)
+        .setAlpha((s.ember ? SMOKE_EMBER_ALPHA : SMOKE_ALPHA) * (1 - k * k));
+    }
+  }
+
+  private clearDamageSmoke(): void {
+    for (const s of this.damageSmoke) this.fxPool.release(s.img);
+    this.damageSmoke = [];
+  }
+
   private applyCroppedPartLook(part: BossPart, B: BossState): void {
     const img = part.img;
     if (!part.alive) {
-      img.setVisible(true).setAlpha(0.94).setTint(0x2a2119);
+      // 파괴된 조각은 감춘다. 아래에 본체 그림이 그대로 있어 선체는 멀쩡해 보이고,
+      // 피해는 그 자리에서 올라오는 연기로 읽힌다.
+      img.setVisible(false);
       return;
     }
     img.setVisible(true).setAlpha(1);
@@ -4507,10 +4601,7 @@ export class GameScene extends Phaser.Scene {
   private warshipSwayLimit(B: BossState): number {
     let limit = 46;
     for (const part of B.parts)
-      limit = Math.min(
-        limit,
-        GAME_WIDTH / 2 - 4 - Math.abs(part.def.dx) - part.def.hitbox.w / 2,
-      );
+      limit = Math.min(limit, GAME_WIDTH / 2 - 4 - Math.abs(part.def.dx) - part.def.hitbox.w / 2);
     return Math.max(0, limit);
   }
 
@@ -5098,6 +5189,7 @@ export class GameScene extends Phaser.Scene {
     B.img.setPosition(B.x, B.y);
     this.applyBossBodyPresentation(B);
     this.updateBossAssembly(B);
+    this.emitDamageSmoke(B, dt);
     // 파츠: 앵커 추적 + 자체 사격
     for (const part of B.parts) {
       if (!part.alive) continue;
@@ -6144,6 +6236,7 @@ export class GameScene extends Phaser.Scene {
         this.sparks.splice(i, 1);
       }
     }
+    this.updateDamageSmoke(dt);
     for (let i = this.texts.length - 1; i >= 0; i--) {
       const tx = this.texts[i];
       if (!tx) continue;

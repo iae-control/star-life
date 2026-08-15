@@ -63,35 +63,25 @@
         {
           "id": "engine-deck",
           "coreTargetable": false,
-          "advanceWhenDestroyed": [
-            "driveL",
-            "driveR"
-          ],
+          "advanceWhenDestroyed": ["driveL", "driveR"],
           "coolScale": 1
         },
         {
           "id": "wing-batteries",
           "coreTargetable": false,
-          "advanceWhenDestroyed": [
-            "wingPortL",
-            "wingPortR"
-          ],
+          "advanceWhenDestroyed": ["wingPortL", "wingPortR"],
           "coolScale": 1.05
         },
         {
           "id": "reactor-breach",
           "coreTargetable": false,
-          "advanceWhenDestroyed": [
-            "reactor"
-          ],
+          "advanceWhenDestroyed": ["reactor"],
           "coolScale": 1.12
         },
         {
           "id": "bridge-assault",
           "coreTargetable": true,
-          "advanceWhenDestroyed": [
-            "bridge"
-          ],
+          "advanceWhenDestroyed": ["bridge"],
           "coolScale": 1.2
         }
       ],
@@ -118,9 +108,7 @@
           },
           "shield": true,
           "destroyScore": 420,
-          "protects": [
-            "core"
-          ]
+          "protects": ["core"]
         },
         {
           "id": "driveR",
@@ -144,9 +132,7 @@
           },
           "shield": true,
           "destroyScore": 420,
-          "protects": [
-            "core"
-          ]
+          "protects": ["core"]
         },
         {
           "id": "wingPortL",
@@ -177,13 +163,8 @@
             "speed": 128
           },
           "fireEvery": 3.2,
-          "exposedBy": [
-            "driveL",
-            "driveR"
-          ],
-          "protects": [
-            "core"
-          ]
+          "exposedBy": ["driveL", "driveR"],
+          "protects": ["core"]
         },
         {
           "id": "wingPortR",
@@ -214,13 +195,8 @@
             "speed": 128
           },
           "fireEvery": 3.2,
-          "exposedBy": [
-            "driveL",
-            "driveR"
-          ],
-          "protects": [
-            "core"
-          ]
+          "exposedBy": ["driveL", "driveR"],
+          "protects": ["core"]
         },
         {
           "id": "reactor",
@@ -245,13 +221,8 @@
           "shield": true,
           "destroyScore": 520,
           "damageMultiplier": 1.4,
-          "exposedBy": [
-            "wingPortL",
-            "wingPortR"
-          ],
-          "protects": [
-            "core"
-          ]
+          "exposedBy": ["wingPortL", "wingPortR"],
+          "protects": ["core"]
         },
         {
           "id": "batteryL",
@@ -282,9 +253,7 @@
             "big": false
           },
           "fireEvery": 2.9,
-          "exposedBy": [
-            "reactor"
-          ]
+          "exposedBy": ["reactor"]
         },
         {
           "id": "batteryR",
@@ -315,9 +284,7 @@
             "big": false
           },
           "fireEvery": 2.9,
-          "exposedBy": [
-            "reactor"
-          ]
+          "exposedBy": ["reactor"]
         },
         {
           "id": "bridge",
@@ -341,12 +308,8 @@
           },
           "shield": true,
           "destroyScore": 380,
-          "exposedBy": [
-            "reactor"
-          ],
-          "protects": [
-            "core"
-          ]
+          "exposedBy": ["reactor"],
+          "protects": ["core"]
         },
         {
           "id": "prow",
@@ -370,9 +333,7 @@
           },
           "shield": false,
           "destroyScore": 120,
-          "exposedBy": [
-            "reactor"
-          ]
+          "exposedBy": ["reactor"]
         }
       ],
       "presentation": {
@@ -465,35 +426,25 @@
         {
           "id": "engine-deck",
           "coreTargetable": false,
-          "advanceWhenDestroyed": [
-            "driveL",
-            "driveR"
-          ],
+          "advanceWhenDestroyed": ["driveL", "driveR"],
           "coolScale": 1
         },
         {
           "id": "gun-deck",
           "coreTargetable": false,
-          "advanceWhenDestroyed": [
-            "gunDeckL",
-            "gunDeckR"
-          ],
+          "advanceWhenDestroyed": ["gunDeckL", "gunDeckR"],
           "coolScale": 1.05
         },
         {
           "id": "hangar-core",
           "coreTargetable": false,
-          "advanceWhenDestroyed": [
-            "reactor"
-          ],
+          "advanceWhenDestroyed": ["reactor"],
           "coolScale": 1.12
         },
         {
           "id": "bridge-assault",
           "coreTargetable": true,
-          "advanceWhenDestroyed": [
-            "bridge"
-          ],
+          "advanceWhenDestroyed": ["bridge"],
           "coolScale": 1.2
         }
       ],
@@ -520,9 +471,7 @@
           },
           "shield": true,
           "destroyScore": 440,
-          "protects": [
-            "core"
-          ]
+          "protects": ["core"]
         },
         {
           "id": "driveR",
@@ -546,9 +495,7 @@
           },
           "shield": true,
           "destroyScore": 440,
-          "protects": [
-            "core"
-          ]
+          "protects": ["core"]
         },
         {
           "id": "gunDeckL",
@@ -579,13 +526,8 @@
             "speed": 128
           },
           "fireEvery": 3,
-          "exposedBy": [
-            "driveL",
-            "driveR"
-          ],
-          "protects": [
-            "core"
-          ]
+          "exposedBy": ["driveL", "driveR"],
+          "protects": ["core"]
         },
         {
           "id": "gunDeckR",
@@ -616,13 +558,8 @@
             "speed": 128
           },
           "fireEvery": 3,
-          "exposedBy": [
-            "driveL",
-            "driveR"
-          ],
-          "protects": [
-            "core"
-          ]
+          "exposedBy": ["driveL", "driveR"],
+          "protects": ["core"]
         },
         {
           "id": "reactor",
@@ -647,13 +584,8 @@
           "shield": true,
           "destroyScore": 540,
           "damageMultiplier": 1.4,
-          "exposedBy": [
-            "gunDeckL",
-            "gunDeckR"
-          ],
-          "protects": [
-            "core"
-          ]
+          "exposedBy": ["gunDeckL", "gunDeckR"],
+          "protects": ["core"]
         },
         {
           "id": "hangarL",
@@ -677,10 +609,7 @@
           },
           "shield": false,
           "destroyScore": 300,
-          "exposedBy": [
-            "gunDeckL",
-            "gunDeckR"
-          ]
+          "exposedBy": ["gunDeckL", "gunDeckR"]
         },
         {
           "id": "hangarR",
@@ -704,10 +633,7 @@
           },
           "shield": false,
           "destroyScore": 300,
-          "exposedBy": [
-            "gunDeckL",
-            "gunDeckR"
-          ]
+          "exposedBy": ["gunDeckL", "gunDeckR"]
         },
         {
           "id": "bridge",
@@ -731,12 +657,8 @@
           },
           "shield": true,
           "destroyScore": 400,
-          "exposedBy": [
-            "reactor"
-          ],
-          "protects": [
-            "core"
-          ]
+          "exposedBy": ["reactor"],
+          "protects": ["core"]
         },
         {
           "id": "turretUL",
@@ -767,9 +689,7 @@
             "big": false
           },
           "fireEvery": 3.4,
-          "exposedBy": [
-            "reactor"
-          ]
+          "exposedBy": ["reactor"]
         },
         {
           "id": "turretUR",
@@ -800,9 +720,7 @@
             "big": false
           },
           "fireEvery": 3.4,
-          "exposedBy": [
-            "reactor"
-          ]
+          "exposedBy": ["reactor"]
         },
         {
           "id": "prow",
@@ -826,9 +744,7 @@
           },
           "shield": false,
           "destroyScore": 130,
-          "exposedBy": [
-            "reactor"
-          ]
+          "exposedBy": ["reactor"]
         }
       ],
       "presentation": {
@@ -912,36 +828,25 @@
         {
           "id": "engine-deck",
           "coreTargetable": false,
-          "advanceWhenDestroyed": [
-            "driveL",
-            "driveR"
-          ],
+          "advanceWhenDestroyed": ["driveL", "driveR"],
           "coolScale": 1
         },
         {
           "id": "lance-core",
           "coreTargetable": false,
-          "advanceWhenDestroyed": [
-            "lanceCore"
-          ],
+          "advanceWhenDestroyed": ["lanceCore"],
           "coolScale": 1.06
         },
         {
           "id": "solar-wings",
           "coreTargetable": false,
-          "advanceWhenDestroyed": [
-            "wingL",
-            "wingR"
-          ],
+          "advanceWhenDestroyed": ["wingL", "wingR"],
           "coolScale": 1.14
         },
         {
           "id": "aegis-ring",
           "coreTargetable": true,
-          "advanceWhenDestroyed": [
-            "ringL",
-            "ringR"
-          ],
+          "advanceWhenDestroyed": ["ringL", "ringR"],
           "coolScale": 1.22
         }
       ],
@@ -968,9 +873,7 @@
           },
           "shield": true,
           "destroyScore": 430,
-          "protects": [
-            "core"
-          ]
+          "protects": ["core"]
         },
         {
           "id": "driveR",
@@ -994,9 +897,7 @@
           },
           "shield": true,
           "destroyScore": 430,
-          "protects": [
-            "core"
-          ]
+          "protects": ["core"]
         },
         {
           "id": "wingL",
@@ -1027,12 +928,8 @@
             "speed": 128
           },
           "fireEvery": 3.1,
-          "exposedBy": [
-            "lanceCore"
-          ],
-          "protects": [
-            "core"
-          ]
+          "exposedBy": ["lanceCore"],
+          "protects": ["core"]
         },
         {
           "id": "wingR",
@@ -1063,12 +960,8 @@
             "speed": 128
           },
           "fireEvery": 3.1,
-          "exposedBy": [
-            "lanceCore"
-          ],
-          "protects": [
-            "core"
-          ]
+          "exposedBy": ["lanceCore"],
+          "protects": ["core"]
         },
         {
           "id": "lanceCore",
@@ -1093,13 +986,8 @@
           "shield": true,
           "destroyScore": 530,
           "damageMultiplier": 1.45,
-          "exposedBy": [
-            "driveL",
-            "driveR"
-          ],
-          "protects": [
-            "core"
-          ]
+          "exposedBy": ["driveL", "driveR"],
+          "protects": ["core"]
         },
         {
           "id": "lance",
@@ -1123,10 +1011,7 @@
           },
           "shield": false,
           "destroyScore": 320,
-          "exposedBy": [
-            "wingL",
-            "wingR"
-          ]
+          "exposedBy": ["wingL", "wingR"]
         },
         {
           "id": "ringL",
@@ -1157,13 +1042,8 @@
             "big": true
           },
           "fireEvery": 2.6,
-          "exposedBy": [
-            "wingL",
-            "wingR"
-          ],
-          "protects": [
-            "core"
-          ]
+          "exposedBy": ["wingL", "wingR"],
+          "protects": ["core"]
         },
         {
           "id": "ringR",
@@ -1194,13 +1074,8 @@
             "big": true
           },
           "fireEvery": 2.6,
-          "exposedBy": [
-            "wingL",
-            "wingR"
-          ],
-          "protects": [
-            "core"
-          ]
+          "exposedBy": ["wingL", "wingR"],
+          "protects": ["core"]
         },
         {
           "id": "prow",
@@ -1224,10 +1099,7 @@
           },
           "shield": false,
           "destroyScore": 120,
-          "exposedBy": [
-            "wingL",
-            "wingR"
-          ]
+          "exposedBy": ["wingL", "wingR"]
         }
       ],
       "presentation": {
@@ -1358,37 +1230,25 @@
         {
           "id": "engine-deck",
           "coreTargetable": false,
-          "advanceWhenDestroyed": [
-            "driveL",
-            "driveC",
-            "driveR"
-          ],
+          "advanceWhenDestroyed": ["driveL", "driveC", "driveR"],
           "coolScale": 1
         },
         {
           "id": "reactor-breach",
           "coreTargetable": false,
-          "advanceWhenDestroyed": [
-            "reactor"
-          ],
+          "advanceWhenDestroyed": ["reactor"],
           "coolScale": 1.08
         },
         {
           "id": "hull-crawl",
           "coreTargetable": false,
-          "advanceWhenDestroyed": [
-            "midTurretL",
-            "midTurretR"
-          ],
+          "advanceWhenDestroyed": ["midTurretL", "midTurretR"],
           "coolScale": 1.16
         },
         {
           "id": "bridge-assault",
           "coreTargetable": true,
-          "advanceWhenDestroyed": [
-            "upperTurretL",
-            "upperTurretR"
-          ],
+          "advanceWhenDestroyed": ["upperTurretL", "upperTurretR"],
           "coolScale": 1.26
         }
       ],
@@ -1415,9 +1275,7 @@
           },
           "shield": true,
           "destroyScore": 340,
-          "protects": [
-            "core"
-          ]
+          "protects": ["core"]
         },
         {
           "id": "driveC",
@@ -1441,9 +1299,7 @@
           },
           "shield": true,
           "destroyScore": 340,
-          "protects": [
-            "core"
-          ]
+          "protects": ["core"]
         },
         {
           "id": "driveR",
@@ -1467,9 +1323,7 @@
           },
           "shield": true,
           "destroyScore": 340,
-          "protects": [
-            "core"
-          ]
+          "protects": ["core"]
         },
         {
           "id": "reactor",
@@ -1494,14 +1348,8 @@
           "shield": true,
           "destroyScore": 580,
           "damageMultiplier": 1.4,
-          "exposedBy": [
-            "driveL",
-            "driveC",
-            "driveR"
-          ],
-          "protects": [
-            "core"
-          ]
+          "exposedBy": ["driveL", "driveC", "driveR"],
+          "protects": ["core"]
         },
         {
           "id": "hullL",
@@ -1525,11 +1373,7 @@
           },
           "shield": false,
           "destroyScore": 290,
-          "exposedBy": [
-            "driveL",
-            "driveC",
-            "driveR"
-          ]
+          "exposedBy": ["driveL", "driveC", "driveR"]
         },
         {
           "id": "hullR",
@@ -1553,11 +1397,7 @@
           },
           "shield": false,
           "destroyScore": 290,
-          "exposedBy": [
-            "driveL",
-            "driveC",
-            "driveR"
-          ]
+          "exposedBy": ["driveL", "driveC", "driveR"]
         },
         {
           "id": "midTurretL",
@@ -1588,12 +1428,8 @@
             "speed": 128
           },
           "fireEvery": 2.8,
-          "exposedBy": [
-            "reactor"
-          ],
-          "protects": [
-            "core"
-          ]
+          "exposedBy": ["reactor"],
+          "protects": ["core"]
         },
         {
           "id": "midTurretR",
@@ -1624,12 +1460,8 @@
             "speed": 128
           },
           "fireEvery": 2.8,
-          "exposedBy": [
-            "reactor"
-          ],
-          "protects": [
-            "core"
-          ]
+          "exposedBy": ["reactor"],
+          "protects": ["core"]
         },
         {
           "id": "upperTurretL",
@@ -1660,13 +1492,8 @@
             "big": true
           },
           "fireEvery": 3.1,
-          "exposedBy": [
-            "midTurretL",
-            "midTurretR"
-          ],
-          "protects": [
-            "core"
-          ]
+          "exposedBy": ["midTurretL", "midTurretR"],
+          "protects": ["core"]
         },
         {
           "id": "upperTurretR",
@@ -1697,13 +1524,8 @@
             "big": true
           },
           "fireEvery": 3.1,
-          "exposedBy": [
-            "midTurretL",
-            "midTurretR"
-          ],
-          "protects": [
-            "core"
-          ]
+          "exposedBy": ["midTurretL", "midTurretR"],
+          "protects": ["core"]
         },
         {
           "id": "commandSpine",
@@ -1727,9 +1549,7 @@
           },
           "shield": false,
           "destroyScore": 200,
-          "exposedBy": [
-            "reactor"
-          ]
+          "exposedBy": ["reactor"]
         }
       ],
       "killScore": 10000,
@@ -1822,36 +1642,25 @@
         {
           "id": "engine-deck",
           "coreTargetable": false,
-          "advanceWhenDestroyed": [
-            "driveL",
-            "driveR"
-          ],
+          "advanceWhenDestroyed": ["driveL", "driveR"],
           "coolScale": 1
         },
         {
           "id": "spine-ports",
           "coreTargetable": false,
-          "advanceWhenDestroyed": [
-            "portL",
-            "portR"
-          ],
+          "advanceWhenDestroyed": ["portL", "portR"],
           "coolScale": 1.06
         },
         {
           "id": "fortress-reactor",
           "coreTargetable": false,
-          "advanceWhenDestroyed": [
-            "reactor"
-          ],
+          "advanceWhenDestroyed": ["reactor"],
           "coolScale": 1.14
         },
         {
           "id": "bridge-assault",
           "coreTargetable": true,
-          "advanceWhenDestroyed": [
-            "turretUL",
-            "turretUR"
-          ],
+          "advanceWhenDestroyed": ["turretUL", "turretUR"],
           "coolScale": 1.24
         }
       ],
@@ -1878,9 +1687,7 @@
           },
           "shield": true,
           "destroyScore": 460,
-          "protects": [
-            "core"
-          ]
+          "protects": ["core"]
         },
         {
           "id": "driveR",
@@ -1904,9 +1711,7 @@
           },
           "shield": true,
           "destroyScore": 460,
-          "protects": [
-            "core"
-          ]
+          "protects": ["core"]
         },
         {
           "id": "portL",
@@ -1937,13 +1742,8 @@
             "speed": 128
           },
           "fireEvery": 2.9,
-          "exposedBy": [
-            "driveL",
-            "driveR"
-          ],
-          "protects": [
-            "core"
-          ]
+          "exposedBy": ["driveL", "driveR"],
+          "protects": ["core"]
         },
         {
           "id": "portR",
@@ -1974,13 +1774,8 @@
             "speed": 128
           },
           "fireEvery": 2.9,
-          "exposedBy": [
-            "driveL",
-            "driveR"
-          ],
-          "protects": [
-            "core"
-          ]
+          "exposedBy": ["driveL", "driveR"],
+          "protects": ["core"]
         },
         {
           "id": "reactor",
@@ -2005,13 +1800,8 @@
           "shield": true,
           "destroyScore": 560,
           "damageMultiplier": 1.4,
-          "exposedBy": [
-            "portL",
-            "portR"
-          ],
-          "protects": [
-            "core"
-          ]
+          "exposedBy": ["portL", "portR"],
+          "protects": ["core"]
         },
         {
           "id": "bridge",
@@ -2035,9 +1825,7 @@
           },
           "shield": false,
           "destroyScore": 420,
-          "exposedBy": [
-            "reactor"
-          ]
+          "exposedBy": ["reactor"]
         },
         {
           "id": "turretUL",
@@ -2068,12 +1856,8 @@
             "big": true
           },
           "fireEvery": 3.2,
-          "exposedBy": [
-            "reactor"
-          ],
-          "protects": [
-            "core"
-          ]
+          "exposedBy": ["reactor"],
+          "protects": ["core"]
         },
         {
           "id": "turretUR",
@@ -2104,12 +1888,8 @@
             "big": true
           },
           "fireEvery": 3.2,
-          "exposedBy": [
-            "reactor"
-          ],
-          "protects": [
-            "core"
-          ]
+          "exposedBy": ["reactor"],
+          "protects": ["core"]
         },
         {
           "id": "foreSpire",
@@ -2133,9 +1913,7 @@
           },
           "shield": false,
           "destroyScore": 140,
-          "exposedBy": [
-            "reactor"
-          ]
+          "exposedBy": ["reactor"]
         }
       ],
       "killScore": 14000,
@@ -2232,10 +2010,7 @@
         {
           "id": "gravity-lock",
           "coreTargetable": false,
-          "advanceWhenDestroyed": [
-            "arcL",
-            "arcR"
-          ],
+          "advanceWhenDestroyed": ["arcL", "arcR"],
           "coolScale": 1
         },
         {
@@ -2305,29 +2080,19 @@
         {
           "id": "gaze",
           "coreTargetable": false,
-          "advanceWhenDestroyed": [
-            "eyeL",
-            "eyeR"
-          ],
+          "advanceWhenDestroyed": ["eyeL", "eyeR"],
           "coolScale": 1
         },
         {
           "id": "shell-break",
           "coreTargetable": false,
-          "advanceWhenDestroyed": [
-            "shellTop",
-            "shellL",
-            "shellR",
-            "shellBottom"
-          ],
+          "advanceWhenDestroyed": ["shellTop", "shellL", "shellR", "shellBottom"],
           "coolScale": 1.12
         },
         {
           "id": "soft-heart",
           "coreTargetable": true,
-          "advanceWhenDestroyed": [
-            "softHeart"
-          ],
+          "advanceWhenDestroyed": ["softHeart"],
           "coolScale": 1.24
         }
       ],
@@ -2430,9 +2195,7 @@
             "big": true
           },
           "fireEvery": 2.7,
-          "protects": [
-            "core"
-          ]
+          "protects": ["core"]
         },
         {
           "id": "eyeR",
@@ -2463,9 +2226,7 @@
             "big": true
           },
           "fireEvery": 2.7,
-          "protects": [
-            "core"
-          ]
+          "protects": ["core"]
         },
         {
           "id": "mouthGun",
@@ -2519,13 +2280,8 @@
           },
           "shield": true,
           "destroyScore": 280,
-          "exposedBy": [
-            "eyeL",
-            "eyeR"
-          ],
-          "protects": [
-            "core"
-          ]
+          "exposedBy": ["eyeL", "eyeR"],
+          "protects": ["core"]
         },
         {
           "id": "shellL",
@@ -2549,13 +2305,8 @@
           },
           "shield": true,
           "destroyScore": 260,
-          "exposedBy": [
-            "eyeL",
-            "eyeR"
-          ],
-          "protects": [
-            "core"
-          ]
+          "exposedBy": ["eyeL", "eyeR"],
+          "protects": ["core"]
         },
         {
           "id": "shellR",
@@ -2579,13 +2330,8 @@
           },
           "shield": true,
           "destroyScore": 260,
-          "exposedBy": [
-            "eyeL",
-            "eyeR"
-          ],
-          "protects": [
-            "core"
-          ]
+          "exposedBy": ["eyeL", "eyeR"],
+          "protects": ["core"]
         },
         {
           "id": "shellBottom",
@@ -2609,13 +2355,8 @@
           },
           "shield": true,
           "destroyScore": 280,
-          "exposedBy": [
-            "eyeL",
-            "eyeR"
-          ],
-          "protects": [
-            "core"
-          ]
+          "exposedBy": ["eyeL", "eyeR"],
+          "protects": ["core"]
         },
         {
           "id": "softHeart",
@@ -2640,15 +2381,8 @@
           "shield": true,
           "destroyScore": 620,
           "damageMultiplier": 1.5,
-          "exposedBy": [
-            "shellTop",
-            "shellL",
-            "shellR",
-            "shellBottom"
-          ],
-          "protects": [
-            "core"
-          ]
+          "exposedBy": ["shellTop", "shellL", "shellR", "shellBottom"],
+          "protects": ["core"]
         }
       ],
       "killScore": 25000,
