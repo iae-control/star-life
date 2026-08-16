@@ -84,6 +84,14 @@ export const BOSS_ENRAGE = {
   minCoolScale: 0.42,
 } as const;
 
+/** 보스 전투 배수 — 파트가 순식간에 녹거나 보스탄이 간지럼이 되지 않게. */
+export const BOSS_COMBAT = {
+  /** 파트 내구도 배수 (데이터 HP × 이 값) */
+  partHpScale: 2.6,
+  /** 보스 본체·파트가 쏘는 탄의 데미지 배수 */
+  bulletDamageScale: 1.6,
+} as const;
+
 // 슈퍼무기 "Jungjioo" — 대사 표기는 정본, 변경 금지 (PLAN 0장)
 export const SUPER = {
   holeMinR: 15, // (13) ×SR

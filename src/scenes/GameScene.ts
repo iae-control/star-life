@@ -12,7 +12,15 @@ import type {
   LevelData,
   SectorData,
 } from '../data/schemas';
-import { BOSS_ENRAGE, DIFficulty, PLAYER, SPAWN, STICK, SUPER } from '../game/logic/balance';
+import {
+  BOSS_COMBAT,
+  BOSS_ENRAGE,
+  DIFficulty,
+  PLAYER,
+  SPAWN,
+  STICK,
+  SUPER,
+} from '../game/logic/balance';
 import { aabb, applyDamage, sweptAabb } from '../game/logic/damage';
 import {
   createWeaponRuntimeState,
@@ -78,6 +86,8 @@ interface EBul {
   warped?: boolean;
   big: boolean;
   size: number;
+  /** 데미지 배수 — 보스탄은 잡졸탄보다 아프다. 생략 시 1. */
+  dmgScale?: number;
   img: Phaser.GameObjects.Image;
 }
 interface Enemy {
@@ -439,7 +449,11 @@ const WARSHIP_MAX_HULL_Y = 340;
 
 const DEPTH = {
   bg: 0,
+  // 배경/전환 연출의 레이어 경계로도 쓰인다(값 변경 금지) — 슈퍼 블랙홀 실체는 superHole 에 그린다.
   hole: 2,
+  // 화면을 덮는 거대 보스(enemy=4, 파츠·연기 ≤ enemy+0.6)보다 위, 팬텀(6)보다 아래.
+  // 예전엔 hole(2)에 그려서 보스 선체가 블랙홀을 통째로 가렸다.
+  superHole: 5.5,
   orb: 3,
   enemy: 4,
   bullet: 5,
@@ -1789,7 +1803,7 @@ export class GameScene extends Phaser.Scene {
       } else {
         img.setScale(pd.scale ?? 1);
       }
-      const hp = (pd.hp.base + w * pd.hp.perWave) * this.diff.hp;
+      const hp = (pd.hp.base + w * pd.hp.perWave) * this.diff.hp * BOSS_COMBAT.partHpScale;
       return {
         def: pd,
         hp,
@@ -2323,7 +2337,7 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private eFire(x: number, y: number, spd: number, big = false): void {
+  private eFire(x: number, y: number, spd: number, big = false, dmgScale = 1): void {
     // 탄막 상한 — 발사 빈도를 아무리 끌어올려도 회피 불능 수준으로는 못 쌓인다.
     if (this.ebullets.length >= SPAWN.maxEnemyBullets) return;
     const dx = this.px - x;
@@ -2339,13 +2353,21 @@ export class GameScene extends Phaser.Scene {
       vy: (dy / L) * spd,
       big,
       size: big ? eb.bigSize : eb.smallSize,
+      dmgScale,
       img,
     });
     SFX.eshoot();
   }
 
   /** 각도 기반 적탄 (링/나선/부채꼴 스폰용) */
-  private eFireAngle(x: number, y: number, ang: number, spd: number, size?: number): void {
+  private eFireAngle(
+    x: number,
+    y: number,
+    ang: number,
+    spd: number,
+    size?: number,
+    dmgScale = 1,
+  ): void {
     if (this.ebullets.length >= SPAWN.maxEnemyBullets) return;
     const img = this.pool.get('eb-small', x, y);
     img.setDepth(DEPTH.ebullet);
@@ -2356,6 +2378,7 @@ export class GameScene extends Phaser.Scene {
       vy: Math.sin(ang) * spd,
       big: false,
       size: size ?? DATA.enemies.ebullet.smallSize,
+      dmgScale,
       img,
     });
   }
@@ -2364,22 +2387,30 @@ export class GameScene extends Phaser.Scene {
     const B = this.boss;
     if (!B) return;
     const oy = B.def.fireOffsetY;
+    const dmg = BOSS_COMBAT.bulletDamageScale;
     if (ph.type === 'fan') {
       for (let k = 0; k < ph.count; k++) {
         const ang = Math.PI / 2 + (k - (ph.count - 1) / 2) * ph.angleStep;
-        this.eFireAngle(B.x, B.y + oy + 3, ang, ph.speed, DATA.enemies.ebullet.fanSize);
+        this.eFireAngle(B.x, B.y + oy + 3, ang, ph.speed, DATA.enemies.ebullet.fanSize, dmg);
       }
       SFX.eshoot();
     } else if (ph.type === 'aimed') {
-      this.eFire(B.x - ph.offsetX, B.y + oy, ph.speed, ph.big);
-      this.eFire(B.x + ph.offsetX, B.y + oy, ph.speed, ph.big);
+      this.eFire(B.x - ph.offsetX, B.y + oy, ph.speed, ph.big, dmg);
+      this.eFire(B.x + ph.offsetX, B.y + oy, ph.speed, ph.big, dmg);
     } else if (ph.type === 'ring') {
       for (let k = 0; k < ph.count; k++)
-        this.eFireAngle(B.x, B.y, (k / ph.count) * Math.PI * 2, ph.speed);
+        this.eFireAngle(B.x, B.y, (k / ph.count) * Math.PI * 2, ph.speed, undefined, dmg);
       SFX.eshoot();
     } else if (ph.type === 'spiral') {
       for (let a = 0; a < ph.arms; a++)
-        this.eFireAngle(B.x, B.y, B.spiralAngle + (a / ph.arms) * Math.PI * 2, ph.speed);
+        this.eFireAngle(
+          B.x,
+          B.y,
+          B.spiralAngle + (a / ph.arms) * Math.PI * 2,
+          ph.speed,
+          undefined,
+          dmg,
+        );
       B.spiralAngle += ph.rotStep;
       SFX.eshoot();
     } else {
@@ -2397,21 +2428,29 @@ export class GameScene extends Phaser.Scene {
     if (!ph) return;
     const px = part.x;
     const py = part.y;
+    const dmg = BOSS_COMBAT.bulletDamageScale;
     if (ph.type === 'aimed') {
-      this.eFire(px, py + 8, ph.speed, ph.big);
+      this.eFire(px, py + 8, ph.speed, ph.big, dmg);
     } else if (ph.type === 'fan') {
       for (let k = 0; k < ph.count; k++) {
         const ang = Math.PI / 2 + (k - (ph.count - 1) / 2) * ph.angleStep;
-        this.eFireAngle(px, py + 8, ang, ph.speed, DATA.enemies.ebullet.fanSize);
+        this.eFireAngle(px, py + 8, ang, ph.speed, DATA.enemies.ebullet.fanSize, dmg);
       }
       SFX.eshoot();
     } else if (ph.type === 'ring') {
       for (let k = 0; k < ph.count; k++)
-        this.eFireAngle(px, py, (k / ph.count) * Math.PI * 2, ph.speed);
+        this.eFireAngle(px, py, (k / ph.count) * Math.PI * 2, ph.speed, undefined, dmg);
       SFX.eshoot();
     } else if (ph.type === 'spiral') {
       for (let arm = 0; arm < ph.arms; arm++)
-        this.eFireAngle(px, py, B.spiralAngle + (arm / ph.arms) * Math.PI * 2, ph.speed);
+        this.eFireAngle(
+          px,
+          py,
+          B.spiralAngle + (arm / ph.arms) * Math.PI * 2,
+          ph.speed,
+          undefined,
+          dmg,
+        );
       B.spiralAngle += ph.rotStep;
       SFX.eshoot();
     } else {
@@ -3272,15 +3311,15 @@ export class GameScene extends Phaser.Scene {
       const hy = GAME_HEIGHT - rnd(SUPER.holeYMin, SUPER.holeYMax);
       const r = rnd(SUPER.holeMinR, SUPER.holeMaxR);
       const core = this.fxPool.get('hole-core', hx, hy);
-      core.setDepth(DEPTH.hole).setScale(0);
+      core.setDepth(DEPTH.superHole).setScale(0);
       const glow = this.fxPool.get('hole-glow', hx, hy);
       glow
-        .setDepth(DEPTH.hole - 0.2)
+        .setDepth(DEPTH.superHole - 0.2)
         .setBlendMode(Phaser.BlendModes.ADD)
         .setScale(0);
       const arcs = [0, 1, 2].map((k) => {
         const a = this.fxPool.get(`hole-arc${k}`, hx, hy);
-        a.setDepth(DEPTH.hole + 0.2)
+        a.setDepth(DEPTH.superHole + 0.2)
           .setBlendMode(Phaser.BlendModes.ADD)
           .setScale(0);
         return a;
@@ -4276,7 +4315,7 @@ export class GameScene extends Phaser.Scene {
       ) {
         this.pool.release(b.img);
         this.ebullets.splice(i, 1);
-        this.damagePlayer(b.big ? eb.bigDamage : eb.smallDamage);
+        this.damagePlayer((b.big ? eb.bigDamage : eb.smallDamage) * (b.dmgScale ?? 1));
       }
     }
   }
@@ -5218,7 +5257,9 @@ export class GameScene extends Phaser.Scene {
       if (!part.alive) continue;
       if (part.flashT > 0) {
         part.flashT -= dt;
-        part.img.setTintFill(0xffffff);
+        // crop 파트는 원화 색으로만 밝힌다(틴트 해제 = 원화 그대로) — 순백 실루엣 점멸 금지.
+        if (part.def.crop) part.img.clearTint();
+        else part.img.setTintFill(0xffffff);
         if (part.flashT <= 0) part.img.clearTint();
       }
       if (
@@ -5241,8 +5282,16 @@ export class GameScene extends Phaser.Scene {
     B.glow.setAlpha(0.45 + Math.sin(B.t * 4) * 0.2).setScale(1.15 + Math.sin(B.t * 4) * 0.08);
     if (B.flashT > 0) {
       B.flashT -= dt;
-      B.img.setTintFill(0xffffff);
-      if (B.flashT <= 0) B.img.clearTint();
+      if (this.bossPresentation(B.def)) {
+        // 화면을 덮는 일러스트 보스가 매 피격마다 순백으로 점멸하면 광과민성 발작 위험이 있다.
+        // 원화 밝기를 넘지 않는 옅은 열기 톤만 얹는다(연사 중엔 사실상 일정한 톤 유지 = 무점멸).
+        B.img.setTint(0xf0ded2);
+        if (B.flashT <= 0)
+          B.img.setTint(this.bossPresentation(B.def)?.kind === 'snail' ? 0xffffff : HULL_TINT);
+      } else {
+        B.img.setTintFill(0xffffff);
+        if (B.flashT <= 0) B.img.clearTint();
+      }
     }
     this.applySnailSpecialPose(B);
 
