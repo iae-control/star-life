@@ -63,13 +63,13 @@ export const DIFficulty: Record<'easy' | 'normal' | 'hard', DiffMods> = {
  */
 export const SPAWN = {
   /** 그룹당 적 수 배수 */
-  countScale: 1.9,
+  countScale: 2.3,
   /** 스폰 간격 배수 — 작을수록 촘촘하게 떨어진다 */
-  intervalScale: 0.62,
+  intervalScale: 0.54,
   /** 그룹 사이 간격 배수 — 작을수록 편성이 겹쳐 몰아친다 */
-  durationScale: 0.74,
+  durationScale: 0.66,
   /** 한 그룹이 뱉을 수 있는 최대 적 수 — 폭주와 프레임 드랍 방지 */
-  maxPerGroup: 20,
+  maxPerGroup: 24,
   /** 적 발사 간격 배수 — 작을수록 자주 쏜다 (확률 발사는 역수로 적용) */
   fireCoolScale: 0.62,
   /** 화면 위 적탄 상한 — 탄막이 이 이상이면 새 탄을 버려 회피 불능을 막는다 */
@@ -87,7 +87,7 @@ export const BOSS_ENRAGE = {
 /** 보스 전투 배수 — 파트가 순식간에 녹지 않게. 공격은 데미지 배수가 아니라 탄막 밀도로 압박한다. */
 export const BOSS_COMBAT = {
   /** 파트 내구도 배수 (데이터 HP × 이 값) */
-  partHpScale: 2.6,
+  partHpScale: 5.2,
 } as const;
 
 /** 보스 레이저 — 예고선을 보여준 뒤 기둥형 빔을 떨어뜨린다. */
