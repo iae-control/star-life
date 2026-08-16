@@ -12,7 +12,7 @@ import type {
   LevelData,
   SectorData,
 } from '../data/schemas';
-import { DIFficulty, PLAYER, STICK, SUPER } from '../game/logic/balance';
+import { BOSS_ENRAGE, DIFficulty, PLAYER, SPAWN, STICK, SUPER } from '../game/logic/balance';
 import { aabb, applyDamage, sweptAabb } from '../game/logic/damage';
 import {
   createWeaponRuntimeState,
@@ -429,8 +429,8 @@ const JW = {
 const HULL_TINT = 0xc8ccd8;
 
 /** 피해 연기 농도 — 너무 짙으면 연기가 적탄을 가려 회피가 불가능해진다. */
-const SMOKE_ALPHA = 0.56;
-const SMOKE_EMBER_ALPHA = 0.5;
+const SMOKE_ALPHA = 0.78;
+const SMOKE_EMBER_ALPHA = 0.62;
 
 /** 스테이지 게이트 파트가 놓이는 화면 Y — scripts/gen-boss-layout.mjs 의 FOCUS_Y 와 같아야 한다. */
 const WARSHIP_FOCUS_Y = 210;
@@ -2324,6 +2324,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private eFire(x: number, y: number, spd: number, big = false): void {
+    // 탄막 상한 — 발사 빈도를 아무리 끌어올려도 회피 불능 수준으로는 못 쌓인다.
+    if (this.ebullets.length >= SPAWN.maxEnemyBullets) return;
     const dx = this.px - x;
     const dy = this.py - y;
     const L = Math.hypot(dx, dy) || 1;
@@ -2344,6 +2346,7 @@ export class GameScene extends Phaser.Scene {
 
   /** 각도 기반 적탄 (링/나선/부채꼴 스폰용) */
   private eFireAngle(x: number, y: number, ang: number, spd: number, size?: number): void {
+    if (this.ebullets.length >= SPAWN.maxEnemyBullets) return;
     const img = this.pool.get('eb-small', x, y);
     img.setDepth(DEPTH.ebullet);
     this.ebullets.push({
@@ -4297,7 +4300,11 @@ export class GameScene extends Phaser.Scene {
         const p = def.params;
         e.y += (e.spd ?? 0) * dt;
         e.x = (e.bx ?? e.x) + Math.sin(e.t * (e.f ?? 2)) * (e.amp ?? 0);
-        if (w >= p.fireFromWave && Math.random() < p.fireChancePerSec * dt && this.alive) {
+        if (
+          w >= p.fireFromWave &&
+          Math.random() < (p.fireChancePerSec / SPAWN.fireCoolScale) * dt &&
+          this.alive
+        ) {
           if (p.fireMode === 'spread3') {
             for (const off of [-0.35, 0, 0.35])
               this.eFireAngle(e.x, e.y + 10, Math.PI / 2 + off, p.bulletSpeed);
@@ -4317,8 +4324,9 @@ export class GameScene extends Phaser.Scene {
           if ((e.cool ?? 0) <= 0 && this.alive) {
             this.eFire(e.x, e.y + 13, p.bulletSpeedBase + w * p.bulletSpeedPerWave);
             e.cool =
-              rnd(p.fireCoolMin, p.fireCoolMax) -
-              Math.min(p.coolReduceMax, w * p.coolReducePerWave);
+              (rnd(p.fireCoolMin, p.fireCoolMax) -
+                Math.min(p.coolReduceMax, w * p.coolReducePerWave)) *
+              SPAWN.fireCoolScale;
           }
           if ((e.life ?? 0) <= 0) e.y += p.leaveSpd * dt;
         }
@@ -4335,7 +4343,7 @@ export class GameScene extends Phaser.Scene {
         e.fireT = (e.fireT ?? 0) - dt;
         if ((e.fireT ?? 0) <= 0 && this.alive) {
           this.eFire(e.x, e.y + 10, p.bulletSpeed);
-          e.fireT = p.fireEvery;
+          e.fireT = p.fireEvery * SPAWN.fireCoolScale;
         }
       } else {
         // orbiter: 하강 후 중심점 주위를 공전하며 링 사격
@@ -4356,7 +4364,7 @@ export class GameScene extends Phaser.Scene {
             for (let k = 0; k < p.ringCount; k++)
               this.eFireAngle(e.x, e.y, (k / p.ringCount) * Math.PI * 2, p.bulletSpeed);
             SFX.eshoot();
-            e.fireT = p.fireEvery;
+            e.fireT = p.fireEvery * SPAWN.fireCoolScale;
           }
           if ((e.life ?? 0) <= 0) e.cy = (e.cy ?? 0) + 90 * dt;
         }
@@ -4484,12 +4492,12 @@ export class GameScene extends Phaser.Scene {
    * 발생 지점은 매 프레임 파트 위치를 따라가고, 뿜어진 연기는 뒤로 흘러간다.
    */
   private emitDamageSmoke(B: BossState, dt: number): void {
-    const MAX_PUFFS = 26;
+    const MAX_PUFFS = 40;
     // 후반에는 부서진 구역이 많아진다. 구역 수에 비례해 각자 덜 뿜게 해서
     // 연기 총량을 일정하게 묶는다 — 안 그러면 화면이 뿌예져 적탄이 안 보인다.
     let smoking = 0;
     for (const part of B.parts) if (!part.alive && part.def.crop) smoking++;
-    const spread = 1 + Math.max(0, smoking - 1) * 0.4;
+    const spread = 1 + Math.max(0, smoking - 1) * 0.24;
 
     for (const part of B.parts) {
       if (part.alive || !part.def.crop) continue;
@@ -4502,7 +4510,7 @@ export class GameScene extends Phaser.Scene {
 
       const ember = Math.random() < 0.22;
       const img = this.fxPool.get('hazard-disaster-smoke', 0, 0);
-      const size = rnd(0.16, 0.26) * (area > 4200 ? 1.3 : 1);
+      const size = rnd(0.2, 0.32) * (area > 4200 ? 1.3 : 1);
       img
         .setPosition(
           part.x + rnd(-1, 1) * part.def.hitbox.w * 0.3,
@@ -4510,7 +4518,7 @@ export class GameScene extends Phaser.Scene {
         )
         .setDepth(DEPTH.enemy + 0.35)
         .setBlendMode(ember ? Phaser.BlendModes.ADD : Phaser.BlendModes.NORMAL)
-        .setTint(ember ? 0xff9a44 : 0x9aa4b4)
+        .setTint(ember ? 0xff9a44 : 0x788296)
         .setScale(size)
         .setRotation(rnd(0, 6.283))
         .setAlpha(ember ? SMOKE_EMBER_ALPHA : SMOKE_ALPHA);
@@ -4595,6 +4603,19 @@ export class GameScene extends Phaser.Scene {
     // Phaser 는 첫 서브프레임이 추가되는 순간 firstFrame 을 그쪽으로 옮긴다.
     // 그대로 두면 프레임을 지정하지 않은 본체가 파트 조각 하나로 그려진다.
     tex.firstFrame = '__BASE';
+  }
+
+  /**
+   * 격노 배수 — 파트가 뜯겨나갈수록 남은 화기의 발사 쿨다운이 줄어든다.
+   * 전부 파괴 직전이면 BOSS_ENRAGE.minCoolScale 까지 떨어진다(= 그만큼 자주 쏜다).
+   */
+  private bossEnrageScale(B: BossState): number {
+    const total = B.parts.length;
+    if (!total) return 1;
+    let destroyed = 0;
+    for (const part of B.parts) if (!part.alive) destroyed++;
+    const ratio = destroyed / total;
+    return 1 - (1 - BOSS_ENRAGE.minCoolScale) * ratio;
   }
 
   /** 함선이 좌우로 흔들려도 모든 파트가 화면에 남는 최대 진폭 (gen-boss-layout.mjs 와 동일 공식). */
@@ -5178,10 +5199,12 @@ export class GameScene extends Phaser.Scene {
           if (ph) {
             if (this.ebullets.length < 210) this.executeBossPhase(ph);
             const stageScale = def.stages?.[B.stage]?.coolScale ?? 1;
+            // 격노: 파트가 뜯겨나갈수록 본체 발사 간격이 줄어든다.
             B.cool =
               (ph.cool ??
                 Math.max(def.cool.min, def.cool.base + this.session.wave * def.cool.perWave)) *
-              stageScale;
+              stageScale *
+              this.bossEnrageScale(B);
           }
         }
       }
@@ -5207,7 +5230,8 @@ export class GameScene extends Phaser.Scene {
       ) {
         part.fireT -= dt;
         if (part.fireT <= 0) {
-          part.fireT = part.def.fireEvery ?? 2;
+          // 격노: 동료 파트가 부서질수록 살아남은 화기가 자주 쏜다.
+          part.fireT = (part.def.fireEvery ?? 2) * this.bossEnrageScale(B);
           if (this.ebullets.length < 210) this.executePartPhase(part, B);
         }
       }

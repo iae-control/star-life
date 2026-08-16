@@ -63,13 +63,25 @@ export const DIFficulty: Record<'easy' | 'normal' | 'hard', DiffMods> = {
  */
 export const SPAWN = {
   /** 그룹당 적 수 배수 */
-  countScale: 1.55,
+  countScale: 1.9,
   /** 스폰 간격 배수 — 작을수록 촘촘하게 떨어진다 */
-  intervalScale: 0.74,
+  intervalScale: 0.62,
   /** 그룹 사이 간격 배수 — 작을수록 편성이 겹쳐 몰아친다 */
-  durationScale: 0.82,
+  durationScale: 0.74,
   /** 한 그룹이 뱉을 수 있는 최대 적 수 — 폭주와 프레임 드랍 방지 */
-  maxPerGroup: 16,
+  maxPerGroup: 20,
+  /** 적 발사 간격 배수 — 작을수록 자주 쏜다 (확률 발사는 역수로 적용) */
+  fireCoolScale: 0.62,
+  /** 화면 위 적탄 상한 — 탄막이 이 이상이면 새 탄을 버려 회피 불능을 막는다 */
+  maxEnemyBullets: 260,
+} as const;
+
+/**
+ * 보스 격노 — 파트가 뜯겨나갈수록 남은 화기가 미친 듯이 쏜다.
+ * 파괴 비율 0→1 에 따라 발사 쿨다운이 1→minCoolScale 로 줄어든다.
+ */
+export const BOSS_ENRAGE = {
+  minCoolScale: 0.42,
 } as const;
 
 // 슈퍼무기 "Jungjioo" — 대사 표기는 정본, 변경 금지 (PLAN 0장)
