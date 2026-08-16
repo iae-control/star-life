@@ -13,6 +13,7 @@ import type {
   SectorData,
 } from '../data/schemas';
 import {
+  BOSS_BEAM,
   BOSS_COMBAT,
   BOSS_ENRAGE,
   DIFficulty,
@@ -86,8 +87,6 @@ interface EBul {
   warped?: boolean;
   big: boolean;
   size: number;
-  /** 데미지 배수 — 보스탄은 잡졸탄보다 아프다. 생략 시 1. */
-  dmgScale?: number;
   img: Phaser.GameObjects.Image;
 }
 interface Enemy {
@@ -255,6 +254,17 @@ interface Spark {
   vy: number;
   t: number;
 }
+/** 보스 레이저 빔 — 예고선(charge) 뒤 기둥이 떨어진다. x 는 차지 시작 시 고정. */
+interface BossBeam {
+  x: number;
+  /** 빔이 시작되는 높이(총구). 이 아래로 화면 끝까지 뻗는다. */
+  y: number;
+  w: number;
+  t: number;
+  charge: number;
+  duration: number;
+}
+
 /** 뜯겨나간 보스 파트 자리에서 계속 피어오르는 연기. */
 interface DamageSmoke {
   img: Phaser.GameObjects.Image;
@@ -507,6 +517,8 @@ export class GameScene extends Phaser.Scene {
   private impacts: Impact[] = [];
   private sparks: Spark[] = [];
   private damageSmoke: DamageSmoke[] = [];
+  private bossBeams: BossBeam[] = [];
+  private beamGfx!: Phaser.GameObjects.Graphics;
   private orbs: OrbEnt[] = [];
   private texts: FloatText[] = [];
   private textPool: Phaser.GameObjects.Text[] = [];
@@ -692,6 +704,7 @@ export class GameScene extends Phaser.Scene {
     this.impacts = [];
     this.sparks = [];
     this.damageSmoke = [];
+    this.bossBeams = [];
     this.orbs = [];
     this.texts = [];
     this.textPool = [];
@@ -840,6 +853,8 @@ export class GameScene extends Phaser.Scene {
     // 파트 표적/파괴 표시는 Graphics 로 그린다. setTint 는 Canvas 렌더러에서 무시되므로
     // 틴트에만 의존하면 WebGL 이 없는 기기에서 "어디를 쏘는지" 단서가 통째로 사라진다.
     this.bossMarks = this.add.graphics().setDepth(DEPTH.enemy + 0.3);
+    // 레이저는 적탄과 같은 층 — 보스·연기 위, 플레이어 시인성 최우선.
+    this.beamGfx = this.add.graphics().setDepth(DEPTH.ebullet);
     this.weaponFx = this.add
       .graphics()
       .setDepth(DEPTH.phantom - 0.15)
@@ -1200,6 +1215,7 @@ export class GameScene extends Phaser.Scene {
       this.bossLinks.clear();
       this.bossMarks.clear();
       this.clearDamageSmoke();
+      this.clearBossBeams();
       this.bossBar.setVisible(false);
       this.bossLabel.setVisible(false);
       this.bossPartStatus.setVisible(false);
@@ -2337,7 +2353,7 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private eFire(x: number, y: number, spd: number, big = false, dmgScale = 1): void {
+  private eFire(x: number, y: number, spd: number, big = false): void {
     // 탄막 상한 — 발사 빈도를 아무리 끌어올려도 회피 불능 수준으로는 못 쌓인다.
     if (this.ebullets.length >= SPAWN.maxEnemyBullets) return;
     const dx = this.px - x;
@@ -2353,21 +2369,13 @@ export class GameScene extends Phaser.Scene {
       vy: (dy / L) * spd,
       big,
       size: big ? eb.bigSize : eb.smallSize,
-      dmgScale,
       img,
     });
     SFX.eshoot();
   }
 
   /** 각도 기반 적탄 (링/나선/부채꼴 스폰용) */
-  private eFireAngle(
-    x: number,
-    y: number,
-    ang: number,
-    spd: number,
-    size?: number,
-    dmgScale = 1,
-  ): void {
+  private eFireAngle(x: number, y: number, ang: number, spd: number, size?: number): void {
     if (this.ebullets.length >= SPAWN.maxEnemyBullets) return;
     const img = this.pool.get('eb-small', x, y);
     img.setDepth(DEPTH.ebullet);
@@ -2378,7 +2386,6 @@ export class GameScene extends Phaser.Scene {
       vy: Math.sin(ang) * spd,
       big: false,
       size: size ?? DATA.enemies.ebullet.smallSize,
-      dmgScale,
       img,
     });
   }
@@ -2387,32 +2394,30 @@ export class GameScene extends Phaser.Scene {
     const B = this.boss;
     if (!B) return;
     const oy = B.def.fireOffsetY;
-    const dmg = BOSS_COMBAT.bulletDamageScale;
     if (ph.type === 'fan') {
       for (let k = 0; k < ph.count; k++) {
         const ang = Math.PI / 2 + (k - (ph.count - 1) / 2) * ph.angleStep;
-        this.eFireAngle(B.x, B.y + oy + 3, ang, ph.speed, DATA.enemies.ebullet.fanSize, dmg);
+        this.eFireAngle(B.x, B.y + oy + 3, ang, ph.speed, DATA.enemies.ebullet.fanSize);
       }
       SFX.eshoot();
     } else if (ph.type === 'aimed') {
-      this.eFire(B.x - ph.offsetX, B.y + oy, ph.speed, ph.big, dmg);
-      this.eFire(B.x + ph.offsetX, B.y + oy, ph.speed, ph.big, dmg);
+      this.eFire(B.x - ph.offsetX, B.y + oy, ph.speed, ph.big);
+      this.eFire(B.x + ph.offsetX, B.y + oy, ph.speed, ph.big);
     } else if (ph.type === 'ring') {
       for (let k = 0; k < ph.count; k++)
-        this.eFireAngle(B.x, B.y, (k / ph.count) * Math.PI * 2, ph.speed, undefined, dmg);
+        this.eFireAngle(B.x, B.y, (k / ph.count) * Math.PI * 2, ph.speed);
       SFX.eshoot();
     } else if (ph.type === 'spiral') {
       for (let a = 0; a < ph.arms; a++)
-        this.eFireAngle(
-          B.x,
-          B.y,
-          B.spiralAngle + (a / ph.arms) * Math.PI * 2,
-          ph.speed,
-          undefined,
-          dmg,
-        );
+        this.eFireAngle(B.x, B.y, B.spiralAngle + (a / ph.arms) * Math.PI * 2, ph.speed);
       B.spiralAngle += ph.rotStep;
       SFX.eshoot();
+    } else if (ph.type === 'volley') {
+      this.fireVolley(B.x, B.y + oy, ph.count, ph.spread, ph.speed);
+    } else if (ph.type === 'curtain') {
+      this.fireCurtain(B.y + oy, ph.columns, ph.gap, ph.speed);
+    } else if (ph.type === 'laser') {
+      this.spawnBossBeams(ph, B.y + oy);
     } else {
       // spawn: 보스 양옆에서 미니언 소환
       for (let k = 0; k < ph.count; k++) {
@@ -2422,37 +2427,57 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /** 플레이어를 겨눈 좁은 부채꼴 집중 사격 */
+  private fireVolley(x: number, y: number, count: number, spread: number, speed: number): void {
+    const base = Math.atan2(this.py - y, this.px - x);
+    for (let k = 0; k < count; k++) {
+      const ang = base + (k - (count - 1) / 2) * (spread / Math.max(1, count - 1));
+      this.eFireAngle(x, y, ang, speed);
+    }
+    SFX.eshoot();
+  }
+
+  /** 화면 폭 탄커튼 — 무작위 위치에 통과 가능한 틈 하나를 남긴다 */
+  private fireCurtain(y: number, columns: number, gap: number, speed: number): void {
+    const margin = 16;
+    const gapX = rnd(margin + gap / 2 + 20, GAME_WIDTH - margin - gap / 2 - 20);
+    for (let k = 0; k < columns; k++) {
+      const x = margin + ((GAME_WIDTH - margin * 2) * k) / (columns - 1);
+      if (Math.abs(x - gapX) < gap / 2) continue;
+      this.eFireAngle(x, y, Math.PI / 2, speed);
+    }
+    SFX.eshoot();
+  }
+
   /** 파츠 자체 사격 — 페이즈 정의를 파츠 위치 기준으로 실행 */
   private executePartPhase(part: BossPart, B: BossState): void {
     const ph = part.def.phase;
     if (!ph) return;
     const px = part.x;
     const py = part.y;
-    const dmg = BOSS_COMBAT.bulletDamageScale;
     if (ph.type === 'aimed') {
-      this.eFire(px, py + 8, ph.speed, ph.big, dmg);
+      this.eFire(px, py + 8, ph.speed, ph.big);
     } else if (ph.type === 'fan') {
       for (let k = 0; k < ph.count; k++) {
         const ang = Math.PI / 2 + (k - (ph.count - 1) / 2) * ph.angleStep;
-        this.eFireAngle(px, py + 8, ang, ph.speed, DATA.enemies.ebullet.fanSize, dmg);
+        this.eFireAngle(px, py + 8, ang, ph.speed, DATA.enemies.ebullet.fanSize);
       }
       SFX.eshoot();
     } else if (ph.type === 'ring') {
       for (let k = 0; k < ph.count; k++)
-        this.eFireAngle(px, py, (k / ph.count) * Math.PI * 2, ph.speed, undefined, dmg);
+        this.eFireAngle(px, py, (k / ph.count) * Math.PI * 2, ph.speed);
       SFX.eshoot();
     } else if (ph.type === 'spiral') {
       for (let arm = 0; arm < ph.arms; arm++)
-        this.eFireAngle(
-          px,
-          py,
-          B.spiralAngle + (arm / ph.arms) * Math.PI * 2,
-          ph.speed,
-          undefined,
-          dmg,
-        );
+        this.eFireAngle(px, py, B.spiralAngle + (arm / ph.arms) * Math.PI * 2, ph.speed);
       B.spiralAngle += ph.rotStep;
       SFX.eshoot();
+    } else if (ph.type === 'volley') {
+      this.fireVolley(px, py + 8, ph.count, ph.spread, ph.speed);
+    } else if (ph.type === 'curtain') {
+      this.fireCurtain(py + 8, ph.columns, ph.gap, ph.speed);
+    } else if (ph.type === 'laser') {
+      this.spawnBossBeams(ph, py + 8);
     } else {
       for (let k = 0; k < ph.count; k++)
         this.spawnEnemyAt(ph.enemy, px + rnd(-18, 18), py + rnd(6, 24), {});
@@ -3005,6 +3030,7 @@ export class GameScene extends Phaser.Scene {
       this.bossLinks.clear();
       this.bossMarks.clear();
       this.clearDamageSmoke();
+      this.clearBossBeams();
       this.bossBar.setVisible(false);
       this.bossLabel.setVisible(false);
       this.bossPartStatus.setVisible(false);
@@ -4315,7 +4341,7 @@ export class GameScene extends Phaser.Scene {
       ) {
         this.pool.release(b.img);
         this.ebullets.splice(i, 1);
-        this.damagePlayer((b.big ? eb.bigDamage : eb.smallDamage) * (b.dmgScale ?? 1));
+        this.damagePlayer(b.big ? eb.bigDamage : eb.smallDamage);
       }
     }
   }
@@ -4598,6 +4624,78 @@ export class GameScene extends Phaser.Scene {
   private clearDamageSmoke(): void {
     for (const s of this.damageSmoke) this.fxPool.release(s.img);
     this.damageSmoke = [];
+  }
+
+  /** 레이저 소환 — 첫 빔은 플레이어를 조준하고 나머지는 무작위 열에 떨어진다. */
+  private spawnBossBeams(
+    ph: { beams: number; charge: number; duration: number; width: number },
+    originY: number,
+  ): void {
+    for (let k = 0; k < ph.beams; k++) {
+      if (this.bossBeams.length >= BOSS_BEAM.maxActive) break;
+      const x =
+        k === 0 ? Phaser.Math.Clamp(this.px, 34, GAME_WIDTH - 34) : rnd(34, GAME_WIDTH - 34);
+      this.bossBeams.push({
+        x,
+        y: originY,
+        w: ph.width,
+        t: 0,
+        charge: ph.charge,
+        duration: ph.duration,
+      });
+    }
+    SFX.warn();
+  }
+
+  /**
+   * 레이저 진행/판정/그리기. Graphics 라서 Canvas 렌더러에서도 동일하게 보인다.
+   * 광과민성 주의: 점멸 없이 예고선이 서서히 밝아졌다가 빔이 서서히 꺼진다.
+   */
+  private updateBossBeams(dt: number): void {
+    const g = this.beamGfx;
+    g.clear();
+    if (!this.bossBeams.length) return;
+    for (let i = this.bossBeams.length - 1; i >= 0; i--) {
+      const beam = this.bossBeams[i];
+      if (!beam) continue;
+      beam.t += dt;
+      if (beam.t >= beam.charge + beam.duration) {
+        this.bossBeams.splice(i, 1);
+        continue;
+      }
+      const bottom = GAME_HEIGHT - beam.y;
+      if (beam.t < beam.charge) {
+        // 예고선 — 점점 또렷해지는 얇은 선 + 총구 마커
+        const k = beam.t / beam.charge;
+        g.lineStyle(2, 0xff5a4c, 0.22 + k * 0.5);
+        g.lineBetween(beam.x, beam.y, beam.x, GAME_HEIGHT);
+        g.fillStyle(0xff5a4c, 0.3 + k * 0.4);
+        g.fillCircle(beam.x, beam.y, 4 + k * 5);
+        continue;
+      }
+      // 발사 — 서서히 꺼지는 기둥 (하드 점멸 금지)
+      const life = 1 - (beam.t - beam.charge) / beam.duration;
+      const w = beam.w * (0.7 + life * 0.3);
+      g.fillStyle(0xff4a2e, 0.4 * life + 0.14);
+      g.fillRect(beam.x - w * 1.25, beam.y, w * 2.5, bottom);
+      g.fillStyle(0xff9c5a, 0.55 * life + 0.18);
+      g.fillRect(beam.x - w * 0.72, beam.y, w * 1.44, bottom);
+      g.fillStyle(0xfff3e2, 0.8 * life + 0.16);
+      g.fillRect(beam.x - w * 0.36, beam.y, w * 0.72, bottom);
+      g.lineStyle(1.5, 0xffd9a8, 0.5 * life + 0.15);
+      g.lineBetween(beam.x - w * 0.72, beam.y, beam.x - w * 0.72, GAME_HEIGHT);
+      g.lineBetween(beam.x + w * 0.72, beam.y, beam.x + w * 0.72, GAME_HEIGHT);
+      if (beam.t - beam.charge < dt * 1.5) SFX.shoot('laser');
+
+      if (this.alive && this.py > beam.y && Math.abs(this.px - beam.x) < w / 2 + PLAYER.hitW / 2) {
+        this.damagePlayer(BOSS_BEAM.damage);
+      }
+    }
+  }
+
+  private clearBossBeams(): void {
+    this.bossBeams = [];
+    this.beamGfx.clear();
   }
 
   private applyCroppedPartLook(part: BossPart, B: BossState): void {
@@ -6310,6 +6408,7 @@ export class GameScene extends Phaser.Scene {
       }
     }
     this.updateDamageSmoke(dt);
+    this.updateBossBeams(dt);
     for (let i = this.texts.length - 1; i >= 0; i--) {
       const tx = this.texts[i];
       if (!tx) continue;

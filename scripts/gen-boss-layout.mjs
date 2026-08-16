@@ -55,11 +55,25 @@ const SPECS = {
     parts: [
       ['driveL', [188, 742, 92, 118], 'engine', [46, 4], 420],
       ['driveR', [296, 742, 92, 118], 'engine', [46, 4], 420],
-      ['wingPortL', [118, 648, 108, 98], 'turret', [38, 3], 260, { fire: 3.2, phase: fan(3) }],
-      ['wingPortR', [350, 648, 108, 98], 'turret', [38, 3], 260, { fire: 3.2, phase: fan(3) }],
+      ['wingPortL', [118, 648, 108, 98], 'turret', [38, 3], 260, { fire: 3.2, phase: fan(5) }],
+      ['wingPortR', [350, 648, 108, 98], 'turret', [38, 3], 260, { fire: 3.2, phase: fan(5) }],
       ['reactor', [240, 528, 96, 100], 'weakpoint', [52, 4], 520, { dmgMul: 1.4 }],
-      ['batteryL', [163, 352, 98, 94], 'turret', [26, 2], 160, { fire: 2.9, phase: aimed() }],
-      ['batteryR', [315, 352, 98, 94], 'turret', [26, 2], 160, { fire: 2.9, phase: aimed() }],
+      [
+        'batteryL',
+        [163, 352, 98, 94],
+        'turret',
+        [26, 2],
+        160,
+        { fire: 2.9, phase: volley(3, 150, 0.36) },
+      ],
+      [
+        'batteryR',
+        [315, 352, 98, 94],
+        'turret',
+        [26, 2],
+        160,
+        { fire: 2.9, phase: volley(3, 150, 0.36) },
+      ],
       ['bridge', [228, 238, 120, 116], 'armor', [44, 3], 380],
       ['prow', [232, 14, 112, 150], 'structure', [22, 1], 120],
     ],
@@ -79,14 +93,28 @@ const SPECS = {
     parts: [
       ['driveL', [210, 752, 105, 188], 'engine', [50, 4], 440],
       ['driveR', [337, 752, 105, 188], 'engine', [50, 4], 440],
-      ['gunDeckL', [190, 528, 100, 100], 'turret', [40, 3], 270, { fire: 3.0, phase: fan(4) }],
-      ['gunDeckR', [362, 528, 100, 100], 'turret', [40, 3], 270, { fire: 3.0, phase: fan(4) }],
+      ['gunDeckL', [190, 528, 100, 100], 'turret', [40, 3], 270, { fire: 3.0, phase: fan(6) }],
+      ['gunDeckR', [362, 528, 100, 100], 'turret', [40, 3], 270, { fire: 3.0, phase: fan(6) }],
       ['reactor', [278, 430, 96, 100], 'weakpoint', [56, 4], 540, { dmgMul: 1.4 }],
       ['hangarL', [125, 300, 120, 270], 'armor', [34, 3], 300, { spawn: 'e2' }],
       ['hangarR', [407, 300, 120, 270], 'armor', [34, 3], 300, { spawn: 'e2' }],
       ['bridge', [268, 150, 116, 120], 'armor', [46, 3], 400],
-      ['turretUL', [140, 162, 112, 112], 'turret', [28, 2], 170, { fire: 3.4, phase: aimed() }],
-      ['turretUR', [400, 162, 112, 112], 'turret', [28, 2], 170, { fire: 3.4, phase: aimed() }],
+      [
+        'turretUL',
+        [140, 162, 112, 112],
+        'turret',
+        [28, 2],
+        170,
+        { fire: 3.4, phase: volley(3, 152, 0.38) },
+      ],
+      [
+        'turretUR',
+        [400, 162, 112, 112],
+        'turret',
+        [28, 2],
+        170,
+        { fire: 3.4, phase: volley(3, 152, 0.38) },
+      ],
       ['prow', [248, 8, 156, 140], 'structure', [24, 1], 130],
     ],
     stages: [
@@ -105,8 +133,8 @@ const SPECS = {
     parts: [
       ['driveL', [212, 768, 92, 152], 'engine', [48, 4], 430],
       ['driveR', [332, 768, 92, 152], 'engine', [48, 4], 430],
-      ['wingL', [115, 495, 100, 100], 'turret', [38, 3], 265, { fire: 3.1, phase: fan(3) }],
-      ['wingR', [421, 495, 100, 100], 'turret', [38, 3], 265, { fire: 3.1, phase: fan(3) }],
+      ['wingL', [115, 495, 100, 100], 'turret', [38, 3], 265, { fire: 3.1, phase: fan(5) }],
+      ['wingR', [421, 495, 100, 100], 'turret', [38, 3], 265, { fire: 3.1, phase: fan(5) }],
       ['lanceCore', [272, 552, 92, 92], 'weakpoint', [54, 4], 530, { dmgMul: 1.45 }],
       ['lance', [272, 268, 92, 180], 'armor', [40, 3], 320],
       ['ringL', [130, 130, 110, 300], 'shield', [44, 3], 380, { fire: 2.6, phase: aimed(true) }],
@@ -130,12 +158,26 @@ const SPECS = {
     parts: [
       ['driveL', [150, 812, 172, 208], 'engine', [54, 5], 460],
       ['driveR', [378, 812, 172, 208], 'engine', [54, 5], 460],
-      ['portL', [163, 718, 105, 105], 'turret', [42, 3], 280, { fire: 2.9, phase: fan(4) }],
-      ['portR', [432, 718, 105, 105], 'turret', [42, 3], 280, { fire: 2.9, phase: fan(4) }],
+      ['portL', [163, 718, 105, 105], 'turret', [42, 3], 280, { fire: 2.9, phase: fan(6) }],
+      ['portR', [432, 718, 105, 105], 'turret', [42, 3], 280, { fire: 2.9, phase: fan(6) }],
       ['reactor', [292, 592, 120, 120], 'weakpoint', [60, 5], 560, { dmgMul: 1.4 }],
       ['bridge', [297, 250, 110, 150], 'armor', [48, 4], 420],
-      ['turretUL', [150, 180, 112, 140], 'turret', [32, 2], 190, { fire: 3.2, phase: aimed(true) }],
-      ['turretUR', [438, 180, 112, 140], 'turret', [32, 2], 190, { fire: 3.2, phase: aimed(true) }],
+      [
+        'turretUL',
+        [150, 180, 112, 140],
+        'turret',
+        [32, 2],
+        190,
+        { fire: 3.2, phase: volley(4, 165, 0.42) },
+      ],
+      [
+        'turretUR',
+        [438, 180, 112, 140],
+        'turret',
+        [32, 2],
+        190,
+        { fire: 3.2, phase: volley(4, 165, 0.42) },
+      ],
       // 함수 첨탑(아트 y≈80)은 765px 선체에서 사거리 위로 벗어난다 — 바로 아래 구획을 쓴다.
       ['foreSpire', [295, 120, 110, 150], 'structure', [26, 1], 140],
     ],
@@ -160,15 +202,15 @@ const SPECS = {
       ['reactor', [292, 1128, 105, 105], 'weakpoint', [62, 5], 580, { dmgMul: 1.4 }],
       ['hullL', [195, 1015, 105, 105], 'armor', [40, 3], 290],
       ['hullR', [385, 1015, 105, 105], 'armor', [40, 3], 290],
-      ['midTurretL', [200, 828, 105, 105], 'turret', [36, 3], 240, { fire: 2.8, phase: fan(4) }],
-      ['midTurretR', [380, 828, 105, 105], 'turret', [36, 3], 240, { fire: 2.8, phase: fan(4) }],
+      ['midTurretL', [200, 828, 105, 105], 'turret', [36, 3], 240, { fire: 2.8, phase: fan(6) }],
+      ['midTurretR', [380, 828, 105, 105], 'turret', [36, 3], 240, { fire: 2.8, phase: fan(6) }],
       [
         'upperTurretL',
         [195, 538, 105, 105],
         'turret',
         [34, 3],
         220,
-        { fire: 3.1, phase: aimed(true) },
+        { fire: 3.1, phase: volley(4, 162, 0.42) },
       ],
       [
         'upperTurretR',
@@ -176,7 +218,7 @@ const SPECS = {
         'turret',
         [34, 3],
         220,
-        { fire: 3.1, phase: aimed(true) },
+        { fire: 3.1, phase: volley(4, 162, 0.42) },
       ],
       // 함교는 아트 상단(y≈340)에 있지만 1140px 선체에서는 사거리 밖으로 밀려난다.
       // 손이 닿는 척추 구획을 대신 표적으로 삼는다.
@@ -221,12 +263,82 @@ const SPECS = {
   },
 };
 
-function fan(count) {
-  return { type: 'fan', count, angleStep: 0.28, speed: 128 };
+function fan(count, speed = 128) {
+  return { type: 'fan', count, angleStep: count >= 6 ? 0.22 : 0.26, speed };
 }
 function aimed(big = false) {
   return { type: 'aimed', speed: big ? 170 : 150, offsetX: 0, big };
 }
+function volley(count, speed = 155, spread = 0.5) {
+  return { type: 'volley', count, spread, speed };
+}
+function ring(count, speed = 110) {
+  return { type: 'ring', count, speed };
+}
+function curtain(columns, gap, speed = 118) {
+  return { type: 'curtain', columns, gap, speed };
+}
+function laser(beams, charge = 0.9, duration = 0.55, width = 26) {
+  return { type: 'laser', beams, charge, duration, width };
+}
+function spiral(arms, rotStep = 0.45, speed = 125) {
+  return { type: 'spiral', arms, speed, rotStep };
+}
+function spawn(enemy, count, cool = 1.9) {
+  return { type: 'spawn', enemy, count, cool };
+}
+
+/**
+ * 본체 탄막 로테이션 — "데미지 배수 대신 다채롭고 두꺼운 탄막"이 설계 원칙이다.
+ * 레벨이 오를수록 탄속·밀도가 오르고, 레이저·탄커튼·집중사격이 섞인다.
+ */
+const PHASES = {
+  amoeba: [
+    fan(7, 118),
+    volley(4, 148, 0.42),
+    ring(12, 104),
+    curtain(11, 92, 110),
+    spawn('e2', 2),
+    laser(1, 1.0, 0.5, 24),
+    aimed(true),
+  ],
+  protocore: [
+    ring(14, 108),
+    volley(5, 155),
+    curtain(12, 86, 116),
+    spiral(2, 0.55, 130),
+    laser(1, 0.95, 0.55, 26),
+    fan(9, 124),
+    spawn('e2', 3),
+  ],
+  // 헬리오스 — 태양 창기병: 레이저가 주력
+  helios: [
+    laser(2, 0.85, 0.6, 26),
+    fan(9, 130),
+    volley(5, 160, 0.46),
+    ring(14, 112),
+    laser(1, 0.8, 0.7, 32),
+    curtain(12, 84, 122),
+    aimed(true),
+  ],
+  crimson: [
+    volley(6, 165),
+    curtain(13, 80, 126),
+    ring(16, 116),
+    laser(2, 0.85, 0.6, 28),
+    spiral(4, 0.42, 122),
+    fan(11, 132),
+  ],
+  nova: [
+    curtain(14, 78, 130),
+    ring(16, 120),
+    laser(2, 0.8, 0.65, 30),
+    volley(6, 170, 0.48),
+    fan(11, 136),
+    spawn('e2', 3),
+    aimed(true),
+  ],
+};
 
 /** 스테이지 게이트 파트를 FOCUS_Y 에 올려놓는 선체 중심 Y. */
 function hullYForStage(parts, gateIds) {
@@ -417,6 +529,7 @@ for (const [bossId, spec] of Object.entries(SPECS)) {
   boss.parts = built.parts;
   boss.stages = built.stages;
   boss.presentation = built.presentation;
+  if (PHASES[bossId]) boss.phases = PHASES[bossId];
   boss.entryY = built.entryY;
   // 선체 전체를 화면 위에서 흘려보내며 등장하므로 이동 거리가 길다 — 등장 속도를 올린다.
   boss.entrySpd = spec.entrySpd ?? 150;

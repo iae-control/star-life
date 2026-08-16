@@ -28,8 +28,26 @@
       "fireOffsetY": 20,
       "phases": [
         {
+          "type": "fan",
+          "count": 7,
+          "angleStep": 0.22,
+          "speed": 118
+        },
+        {
+          "type": "volley",
+          "count": 4,
+          "spread": 0.42,
+          "speed": 148
+        },
+        {
           "type": "ring",
-          "count": 10,
+          "count": 12,
+          "speed": 104
+        },
+        {
+          "type": "curtain",
+          "columns": 11,
+          "gap": 92,
           "speed": 110
         },
         {
@@ -39,14 +57,16 @@
           "cool": 1.9
         },
         {
-          "type": "ring",
-          "count": 10,
-          "speed": 110
+          "type": "laser",
+          "beams": 1,
+          "charge": 1,
+          "duration": 0.5,
+          "width": 24
         },
         {
           "type": "aimed",
-          "speed": 175,
-          "offsetX": 14,
+          "speed": 170,
+          "offsetX": 0,
           "big": true
         }
       ],
@@ -158,8 +178,8 @@
           "destroyScore": 260,
           "phase": {
             "type": "fan",
-            "count": 3,
-            "angleStep": 0.28,
+            "count": 5,
+            "angleStep": 0.26,
             "speed": 128
           },
           "fireEvery": 3.2,
@@ -190,8 +210,8 @@
           "destroyScore": 260,
           "phase": {
             "type": "fan",
-            "count": 3,
-            "angleStep": 0.28,
+            "count": 5,
+            "angleStep": 0.26,
             "speed": 128
           },
           "fireEvery": 3.2,
@@ -247,10 +267,10 @@
           "shield": false,
           "destroyScore": 160,
           "phase": {
-            "type": "aimed",
-            "speed": 150,
-            "offsetX": 0,
-            "big": false
+            "type": "volley",
+            "count": 3,
+            "spread": 0.36,
+            "speed": 150
           },
           "fireEvery": 2.9,
           "exposedBy": ["reactor"]
@@ -278,10 +298,10 @@
           "shield": false,
           "destroyScore": 160,
           "phase": {
-            "type": "aimed",
-            "speed": 150,
-            "offsetX": 0,
-            "big": false
+            "type": "volley",
+            "count": 3,
+            "spread": 0.36,
+            "speed": 150
           },
           "fireEvery": 2.9,
           "exposedBy": ["reactor"]
@@ -373,44 +393,46 @@
       "fireOffsetY": 24,
       "phases": [
         {
-          "type": "spiral",
-          "arms": 2,
-          "speed": 135,
-          "rotStep": 0.55,
-          "cool": 0.22
+          "type": "ring",
+          "count": 14,
+          "speed": 108
+        },
+        {
+          "type": "volley",
+          "count": 5,
+          "spread": 0.5,
+          "speed": 155
+        },
+        {
+          "type": "curtain",
+          "columns": 12,
+          "gap": 86,
+          "speed": 116
         },
         {
           "type": "spiral",
           "arms": 2,
-          "speed": 135,
-          "rotStep": 0.55,
-          "cool": 0.22
+          "speed": 130,
+          "rotStep": 0.55
         },
         {
-          "type": "spiral",
-          "arms": 2,
-          "speed": 135,
-          "rotStep": 0.55,
-          "cool": 0.22
+          "type": "laser",
+          "beams": 1,
+          "charge": 0.95,
+          "duration": 0.55,
+          "width": 26
         },
         {
-          "type": "spiral",
-          "arms": 2,
-          "speed": 135,
-          "rotStep": 0.55,
-          "cool": 1.6
-        },
-        {
-          "type": "aimed",
-          "speed": 195,
-          "offsetX": 16,
-          "big": true
+          "type": "fan",
+          "count": 9,
+          "angleStep": 0.22,
+          "speed": 124
         },
         {
           "type": "spawn",
-          "enemy": "pr_shard",
-          "count": 2,
-          "cool": 2
+          "enemy": "e2",
+          "count": 3,
+          "cool": 1.9
         }
       ],
       "killScore": 6500,
@@ -521,8 +543,8 @@
           "destroyScore": 270,
           "phase": {
             "type": "fan",
-            "count": 4,
-            "angleStep": 0.28,
+            "count": 6,
+            "angleStep": 0.22,
             "speed": 128
           },
           "fireEvery": 3,
@@ -553,8 +575,8 @@
           "destroyScore": 270,
           "phase": {
             "type": "fan",
-            "count": 4,
-            "angleStep": 0.28,
+            "count": 6,
+            "angleStep": 0.22,
             "speed": 128
           },
           "fireEvery": 3,
@@ -683,10 +705,10 @@
           "shield": false,
           "destroyScore": 170,
           "phase": {
-            "type": "aimed",
-            "speed": 150,
-            "offsetX": 0,
-            "big": false
+            "type": "volley",
+            "count": 3,
+            "spread": 0.38,
+            "speed": 152
           },
           "fireEvery": 3.4,
           "exposedBy": ["reactor"]
@@ -714,10 +736,10 @@
           "shield": false,
           "destroyScore": 170,
           "phase": {
-            "type": "aimed",
-            "speed": 150,
-            "offsetX": 0,
-            "big": false
+            "type": "volley",
+            "count": 3,
+            "spread": 0.38,
+            "speed": 152
           },
           "fireEvery": 3.4,
           "exposedBy": ["reactor"]
@@ -784,35 +806,47 @@
       "fireOffsetY": 26,
       "phases": [
         {
+          "type": "laser",
+          "beams": 2,
+          "charge": 0.85,
+          "duration": 0.6,
+          "width": 26
+        },
+        {
+          "type": "fan",
+          "count": 9,
+          "angleStep": 0.22,
+          "speed": 130
+        },
+        {
+          "type": "volley",
+          "count": 5,
+          "spread": 0.46,
+          "speed": 160
+        },
+        {
           "type": "ring",
           "count": 14,
-          "speed": 125
+          "speed": 112
         },
         {
-          "type": "fan",
-          "count": 5,
-          "angleStep": 0.3,
-          "speed": 150,
-          "cool": 0.5
+          "type": "laser",
+          "beams": 1,
+          "charge": 0.8,
+          "duration": 0.7,
+          "width": 32
         },
         {
-          "type": "fan",
-          "count": 5,
-          "angleStep": 0.3,
-          "speed": 150,
-          "cool": 0.5
+          "type": "curtain",
+          "columns": 12,
+          "gap": 84,
+          "speed": 122
         },
         {
           "type": "aimed",
-          "speed": 215,
-          "offsetX": 18,
+          "speed": 170,
+          "offsetX": 0,
           "big": true
-        },
-        {
-          "type": "spawn",
-          "enemy": "ms_flare",
-          "count": 2,
-          "cool": 1.8
         }
       ],
       "killScore": 8000,
@@ -923,8 +957,8 @@
           "destroyScore": 265,
           "phase": {
             "type": "fan",
-            "count": 3,
-            "angleStep": 0.28,
+            "count": 5,
+            "angleStep": 0.26,
             "speed": 128
           },
           "fireEvery": 3.1,
@@ -955,8 +989,8 @@
           "destroyScore": 265,
           "phase": {
             "type": "fan",
-            "count": 3,
-            "angleStep": 0.28,
+            "count": 5,
+            "angleStep": 0.26,
             "speed": 128
           },
           "fireEvery": 3.1,
@@ -1190,35 +1224,40 @@
       "fireOffsetY": 30,
       "phases": [
         {
+          "type": "volley",
+          "count": 6,
+          "spread": 0.5,
+          "speed": 165
+        },
+        {
+          "type": "curtain",
+          "columns": 13,
+          "gap": 80,
+          "speed": 126
+        },
+        {
           "type": "ring",
           "count": 16,
-          "speed": 120
+          "speed": 116
+        },
+        {
+          "type": "laser",
+          "beams": 2,
+          "charge": 0.85,
+          "duration": 0.6,
+          "width": 28
+        },
+        {
+          "type": "spiral",
+          "arms": 4,
+          "speed": 122,
+          "rotStep": 0.42
         },
         {
           "type": "fan",
-          "count": 7,
-          "angleStep": 0.26,
-          "speed": 160,
-          "cool": 0.55
-        },
-        {
-          "type": "fan",
-          "count": 7,
-          "angleStep": 0.26,
-          "speed": 160,
-          "cool": 1.4
-        },
-        {
-          "type": "aimed",
-          "speed": 210,
-          "offsetX": 24,
-          "big": true
-        },
-        {
-          "type": "spawn",
-          "enemy": "rg_cinder",
-          "count": 2,
-          "cool": 2
+          "count": 11,
+          "angleStep": 0.22,
+          "speed": 132
         }
       ],
       "layoutVersion": 2,
@@ -1423,8 +1462,8 @@
           "destroyScore": 240,
           "phase": {
             "type": "fan",
-            "count": 4,
-            "angleStep": 0.28,
+            "count": 6,
+            "angleStep": 0.22,
             "speed": 128
           },
           "fireEvery": 2.8,
@@ -1455,8 +1494,8 @@
           "destroyScore": 240,
           "phase": {
             "type": "fan",
-            "count": 4,
-            "angleStep": 0.28,
+            "count": 6,
+            "angleStep": 0.22,
             "speed": 128
           },
           "fireEvery": 2.8,
@@ -1486,10 +1525,10 @@
           "shield": true,
           "destroyScore": 220,
           "phase": {
-            "type": "aimed",
-            "speed": 170,
-            "offsetX": 0,
-            "big": true
+            "type": "volley",
+            "count": 4,
+            "spread": 0.42,
+            "speed": 162
           },
           "fireEvery": 3.1,
           "exposedBy": ["midTurretL", "midTurretR"],
@@ -1518,10 +1557,10 @@
           "shield": true,
           "destroyScore": 220,
           "phase": {
-            "type": "aimed",
-            "speed": 170,
-            "offsetX": 0,
-            "big": true
+            "type": "volley",
+            "count": 4,
+            "spread": 0.42,
+            "speed": 162
           },
           "fireEvery": 3.1,
           "exposedBy": ["midTurretL", "midTurretR"],
@@ -1594,43 +1633,46 @@
       "fireOffsetY": 30,
       "phases": [
         {
-          "type": "spiral",
-          "arms": 3,
-          "speed": 150,
-          "rotStep": 0.5,
-          "cool": 0.2
-        },
-        {
-          "type": "spiral",
-          "arms": 3,
-          "speed": 150,
-          "rotStep": 0.5,
-          "cool": 0.2
-        },
-        {
-          "type": "spiral",
-          "arms": 3,
-          "speed": 150,
-          "rotStep": 0.5,
-          "cool": 0.2
-        },
-        {
-          "type": "spiral",
-          "arms": 3,
-          "speed": 150,
-          "rotStep": 0.5,
-          "cool": 1.5
+          "type": "curtain",
+          "columns": 14,
+          "gap": 78,
+          "speed": 130
         },
         {
           "type": "ring",
-          "count": 18,
-          "speed": 135
+          "count": 16,
+          "speed": 120
+        },
+        {
+          "type": "laser",
+          "beams": 2,
+          "charge": 0.8,
+          "duration": 0.65,
+          "width": 30
+        },
+        {
+          "type": "volley",
+          "count": 6,
+          "spread": 0.48,
+          "speed": 170
+        },
+        {
+          "type": "fan",
+          "count": 11,
+          "angleStep": 0.22,
+          "speed": 136
         },
         {
           "type": "spawn",
-          "enemy": "sn_bit",
+          "enemy": "e2",
           "count": 3,
-          "cool": 1.8
+          "cool": 1.9
+        },
+        {
+          "type": "aimed",
+          "speed": 170,
+          "offsetX": 0,
+          "big": true
         }
       ],
       "layoutVersion": 2,
@@ -1737,8 +1779,8 @@
           "destroyScore": 280,
           "phase": {
             "type": "fan",
-            "count": 4,
-            "angleStep": 0.28,
+            "count": 6,
+            "angleStep": 0.22,
             "speed": 128
           },
           "fireEvery": 2.9,
@@ -1769,8 +1811,8 @@
           "destroyScore": 280,
           "phase": {
             "type": "fan",
-            "count": 4,
-            "angleStep": 0.28,
+            "count": 6,
+            "angleStep": 0.22,
             "speed": 128
           },
           "fireEvery": 2.9,
@@ -1850,10 +1892,10 @@
           "shield": true,
           "destroyScore": 190,
           "phase": {
-            "type": "aimed",
-            "speed": 170,
-            "offsetX": 0,
-            "big": true
+            "type": "volley",
+            "count": 4,
+            "spread": 0.42,
+            "speed": 165
           },
           "fireEvery": 3.2,
           "exposedBy": ["reactor"],
@@ -1882,10 +1924,10 @@
           "shield": true,
           "destroyScore": 190,
           "phase": {
-            "type": "aimed",
-            "speed": 170,
-            "offsetX": 0,
-            "big": true
+            "type": "volley",
+            "count": 4,
+            "spread": 0.42,
+            "speed": 165
           },
           "fireEvery": 3.2,
           "exposedBy": ["reactor"],
@@ -2253,7 +2295,7 @@
           "phase": {
             "type": "fan",
             "count": 5,
-            "angleStep": 0.28,
+            "angleStep": 0.26,
             "speed": 128
           },
           "fireEvery": 2.4

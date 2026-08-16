@@ -294,6 +294,33 @@ const bossPhaseSchema = z.discriminatedUnion('type', [
     rotStep: z.number(),
     cool: z.number().optional(),
   }),
+  /** 플레이어를 향해 좁은 부채꼴로 집중 사격 — 샷건식 압박 */
+  z.object({
+    type: z.literal('volley'),
+    count: z.number().int().min(2).max(9),
+    spread: z.number().min(0.1).max(1.2),
+    speed: z.number(),
+    cool: z.number().optional(),
+  }),
+  /** 화면 폭 전체에 탄커튼을 내리고 무작위 틈 하나를 남긴다 */
+  z.object({
+    type: z.literal('curtain'),
+    columns: z.number().int().min(5).max(18),
+    speed: z.number(),
+    /** 통과 가능한 틈의 폭(px) — 좁을수록 어렵다 */
+    gap: z.number().min(48).max(160),
+    cool: z.number().optional(),
+  }),
+  /** 예고선 후 기둥형 레이저 — 첫 빔은 플레이어 위치를 조준 */
+  z.object({
+    type: z.literal('laser'),
+    beams: z.number().int().min(1).max(3),
+    /** 예고(차지) 시간 초 — 회피 여유. 0.6 미만은 불공정해서 금지 */
+    charge: z.number().min(0.6).max(2),
+    duration: z.number().min(0.2).max(1.2),
+    width: z.number().min(14).max(44),
+    cool: z.number().optional(),
+  }),
   z.object({
     type: z.literal('spawn'),
     enemy: z.string(),
